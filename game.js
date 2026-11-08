@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.5';   // 每次更新請加一
+const VERSION = 'v0.7.6';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -121,7 +121,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
-  tint: 0x9fb2cc,
+  walkTex: 'hansoldier', walkBright: { side: 1, front: 1, back: 1 },   // 官軍走路圖（Codex 生成）
   name: '官軍', showName: false, shadowColor: 0x000000,
   h: HERO_H,   // 與主角等高
   hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
@@ -232,6 +232,9 @@ class VillageScene extends Phaser.Scene {
     this.load.image('turban_walk_side', A + 'characters/turban_walk_side.png');
     this.load.image('turban_walk_front', A + 'characters/turban_walk_front.png');
     this.load.image('turban_walk_back', A + 'characters/turban_walk_back.png');
+    this.load.image('hansoldier_walk_side', A + 'characters/hansoldier_walk_side.png');
+    this.load.image('hansoldier_walk_front', A + 'characters/hansoldier_walk_front.png');
+    this.load.image('hansoldier_walk_back', A + 'characters/hansoldier_walk_back.png');
     this.load.image('bandit_front', A + 'characters/bandit_front.png');
     this.load.image('bandit_back', A + 'characters/bandit_back.png');
     this.load.image('bandit_side', A + 'characters/bandit_side.png');
