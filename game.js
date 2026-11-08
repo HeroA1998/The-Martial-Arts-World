@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.12';   // 每次更新請加一
+const VERSION = 'v0.7.13';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -101,12 +101,16 @@ const ENEMY_TYPES = {
     pSlashClose: 0.7, pLungeClose: 0.1,   // 貼身：揮砍 70%、衝刺 10%、其餘只繞步
     pLungeMid: 0.4,                        // 中距離：衝刺 40%，其餘走近再揮砍
     pCombo: 0.3,                           // 揮砍連揮兩下的機率
-    rest: 1200,                            // 破綻結束後繞步的時間
+    rest: 700,                             // 破綻結束後繞步的時間（短一點，不給玩家打了就退的空檔）
     // 防禦與閃避
-    reactRange: 90, reactCdMs: 2500, pGuard: 0.30, pDodge: 0.20, dodgeCdMs: 3000,
+    reactRange: 90, reactCdMs: 1500, pGuard: 0.45, pDodge: 0.25, dodgeCdMs: 3000,
     guardDur: 700, guardDmgMul: 0.15, guardBreakHits: 3, guardBreakStun: 900, dodgeCounterWindup: 480,
     // 架勢與受擊
-    poise: 36, stun: 600, knock: 120,
+    poise: 48, stun: 600, knock: 120,
+    // 反制「打了就退」：被打中後有機率立刻轉向反擊（蓄力縮短，仍有預備動作）
+    counterOnHit: 0.5, counterWindup: 320, counterRange: 70,
+    // 搶先出刀：玩家快速逼近或已出刀時，距離內有機率先動手（蓄力時間不縮短，動作仍可辨識）
+    preempt: true, preemptDist: 85, pPreempt: 0.55, preemptCdMs: 1800, preemptCloseSpd: 70,
     respawnMs: 6000,
   },
 };
@@ -122,6 +126,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
   poise: 10, stun: 500, knock: 140, respawnMs: 20000,
+  counterOnHit: 0, preempt: false,   // 小兵不反擊、不搶先出刀
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
@@ -134,6 +139,8 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   pSlashClose: 0.65, pLungeClose: 0.1, pLungeMid: 0.25,
   pGuard: 0.15, pDodge: 0.08,
   poise: 28, stun: 500, respawnMs: 15000,
+  reactCdMs: 2500,
+  counterOnHit: 0, preempt: false,   // 精兵維持原本手感
 });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
@@ -414,6 +421,7 @@ class VillageScene extends Phaser.Scene {
         strikeAt: -1e9, did: false, adx: 0, ady: 1, respawnAt: 0,
         poise: T.poise, lastHit: 0, windup: T.windup, combo: 0,
         reactCd: 0, dodgeCd: 0, guardHits: 0, gdx: 0, gdy: 1,
+        preemptCd: 0, pRoll: false, pd: undefined, pt: 0,
       });
     }
     for (let i = 0; i < this.bandits.length; i++) {
@@ -862,6 +870,22 @@ class VillageScene extends Phaser.Scene {
 
       if (b.state !== 'hurt' && b.poise < b.t.poise && time - b.lastHit > 2500) b.poise = b.t.poise;
 
+      // 搶先出刀：玩家快速朝我逼近時，進入距離內擲一次骰，過了就直接蓄力（不走「頓一下」）
+      const closing = b.pd !== undefined && time > b.pt ? (b.pd - dist) / ((time - b.pt) / 1000) : 0;
+      b.pd = dist; b.pt = time;
+      if (b.t.preempt) {
+        if (dist > b.t.preemptDist + 25) b.pRoll = false;
+        if (!this.down && !b.pRoll && dist < b.t.preemptDist && closing > b.t.preemptCloseSpd
+            && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest')
+            && time >= b.preemptCd && this.tokenFree(b)) {
+          b.pRoll = true;
+          if (Math.random() < b.t.pPreempt) {
+            b.preemptCd = time + b.t.preemptCdMs;
+            this.startWindup(b, time, false, ux, uy, dist <= 60 ? 'slash' : 'lunge');
+          }
+        }
+      }
+
       if (b.state === 'dead') {
         if (time >= b.respawnAt) this.reviveBandit(b);
       } else if (b.state === 'hurt') {
@@ -1071,6 +1095,14 @@ class VillageScene extends Phaser.Scene {
       const m = Math.hypot(dx, dy) || 1;
       b.kx = dx / m * b.t.knock; b.ky = dy / m * b.t.knock;
       this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '破勢', '#9fd8ff');
+    } else if (b.t.counterOnHit && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause')
+               && Math.random() < b.t.counterOnHit && this.tokenFree(b)) {
+      // 被打中沒破勢：立刻轉向反擊，反制打一刀就退
+      const cx = this.playerBody.x - b.body.x, cy = this.playerBody.y + 4 - (b.body.y + 4), cd = Math.hypot(cx, cy) || 1;
+      if (cd < b.t.counterRange) {
+        this.startWindup(b, time, true, cx / cd, cy / cd, 'slash');
+        b.windup = b.t.counterWindup; b.combo = 0;
+      }
     }
   }
 
@@ -1090,6 +1122,10 @@ class VillageScene extends Phaser.Scene {
         b.state = 'dodge'; b.t0 = time; b.until = time + REACT_DELAY + DODGE_DUR;
         b.gdx = -dx / d; b.gdy = -dy / d;          // 往離開玩家的方向閃
         b.reactCd = time + b.t.reactCdMs; b.dodgeCd = time + b.t.dodgeCdMs;
+      } else if (b.t.preempt && time >= b.preemptCd && d <= b.t.preemptDist && this.tokenFree(b) && Math.random() < b.t.pPreempt) {
+        // 沒防禦也沒閃：玩家出刀的當下，有機率搶先動手
+        b.preemptCd = time + b.t.preemptCdMs;
+        this.startWindup(b, time, false, dx / d, dy / d, d <= 60 ? 'slash' : 'lunge');
       }
     }
   }
