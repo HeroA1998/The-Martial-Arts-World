@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.4';   // 每次更新請加一
+const VERSION = 'v0.7.5';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -110,9 +110,11 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   walkTex: 'turban', walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
   h: Math.round(HERO_H * 0.9),   // 小兵縮小約 10%
-  hp: 12, speed: 70, aggro: 140, lose: 300, stalkDist: 0, orbitR: 90,
-  attackSlots: 3, atkGap: 250,
-  slashWindup: 700, slashWindupFast: 520, slashRecover: 1000, rest: 1800, dmgSlash: 6,
+  hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
+  attackSlots: 2, atkGap: 400,
+  slashWindup: 900, slashWindupFast: 650, slashRecover: 1000, rest: 1800, dmgSlash: 4,
+  pEngage: 0.4,              // 走到你面前時，只有 40% 的機率真的出手，其餘退到外圍晃
+  fleeOnHit: true,           // 被打中、或身邊同伴倒下，就往後退
   pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
   poise: 10, stun: 500, knock: 140, respawnMs: 20000,
@@ -794,7 +796,20 @@ class VillageScene extends Phaser.Scene {
         if (time >= b.respawnAt) this.reviveBandit(b);
       } else if (b.state === 'hurt') {
         vx = b.kx; vy = b.ky;
-        if (time >= b.until) { b.state = this.down ? 'idle' : 'chase'; b.poise = b.t.poise; }
+        if (time >= b.until) {
+          b.poise = b.t.poise;
+          if (this.down) b.state = 'idle';
+          else if (b.t.fleeOnHit) { b.state = 'flee'; b.t0 = time; b.fleeFor = 900 + Math.random() * 600; }
+          else b.state = 'chase';
+        }
+      } else if (b.state === 'flee') {
+        // 怕你：背對你快步後退，退夠了才繞步觀望
+        if (this.down || dist > b.t.lose) b.state = 'idle';
+        else {
+          vx = -ux * b.t.speed * 1.3; vy = -uy * b.t.speed * 1.3;
+          b.facing = Math.abs(ux) > Math.abs(uy) ? (ux > 0 ? 'left' : 'right') : (uy > 0 ? 'up' : 'down');
+          if (time - b.t0 >= b.fleeFor) { b.state = 'rest'; b.t0 = time; b.orbitDir = Math.random() < 0.5 ? 1 : -1; b.stalked = true; }
+        }
       } else if (b.state === 'idle') {
         if (!this.down && dist < b.t.aggro) { b.state = 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'chase') {
@@ -815,6 +830,7 @@ class VillageScene extends Phaser.Scene {
           } else {
             // 選招：貼身多半普通揮砍，偶爾衝刺或只是繞步；中距離才常用衝刺拉近
             let kind = b.nextKind; b.nextKind = null;
+            if (!kind && b.t.pEngage !== undefined && Math.random() > b.t.pEngage) kind = 'feint';   // 沒膽出手，退到外圍晃
             if (!kind) {
               const r = Math.random();
               kind = dist <= 40 ? (r < b.t.pSlashClose ? 'slash' : r < b.t.pSlashClose + b.t.pLungeClose ? 'lunge' : 'feint') : (r < b.t.pLungeMid ? 'lunge' : 'slash');
@@ -897,7 +913,7 @@ class VillageScene extends Phaser.Scene {
         // 移動中（追、繞、逼近）播走路動畫；蓄力、出刀、防禦等維持原本姿勢
         const wdt = time - (b.lastT === undefined ? time : b.lastT); b.lastT = time;
         const sp = Math.hypot(vx, vy);
-        const moving = sp > 8 && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause');
+        const moving = sp > 8 && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee');
         if (moving) b.walkT = (b.walkT || 0) + wdt * Math.max(0.5, Math.min(1, sp / b.t.speed)); else b.walkT = 0;
         const wf = Math.floor(b.walkT / WALK_FRAME_MS) % 4;
         const wdir = b.facing === 'up' ? 'back' : (b.facing === 'left' || b.facing === 'right') ? 'side' : 'front';
@@ -1026,6 +1042,11 @@ class VillageScene extends Phaser.Scene {
   }
 
   killBandit(b, dx, time) {
+    for (const o of this.bandits) {   // 身邊同伴倒下，膽小的敵人嚇得後退
+      if (o === b || o.dead || !o.t.fleeOnHit) continue;
+      if (!(o.state === 'chase' || o.state === 'stalk' || o.state === 'rest' || o.state === 'pause' || o.state === 'idle')) continue;
+      if (Math.hypot(o.body.x - b.body.x, o.body.y - b.body.y) < 130) { o.state = 'flee'; o.t0 = time; o.fleeFor = 900 + Math.random() * 600; }
+    }
     b.state = 'dead'; b.dead = true;
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
