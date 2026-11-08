@@ -2,7 +2,7 @@
 'use strict';
 
 const MAP_W = 820, MAP_H = 660;
-const SPEED = 120;      // 世界單位 / 秒
+const SPEED = 170;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
