@@ -5,13 +5,14 @@ const MAP_W = 820, MAP_H = 660;
 const SPEED = 150;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
+const WALK_FRAME_MS = 120;   // 走路動畫每幀的長度（毫秒，全速時）
 const ACCEL_MS = 100;   // 起步約這麼久加到全速
 const DECEL_MS = 120;   // 放手後約這麼久停下來
 const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.6';   // 每次更新請加一
+const VERSION = 'v0.5.7';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -153,6 +154,35 @@ function keyAndTrim(img) {
   return out;
 }
 
+// 動畫橫排圖：去洋紅背景，所有幀用同一個裁切框（保持幀與幀之間的位置一致）
+function keyAndTrimFrames(img, n) {
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+  const cw = Math.floor(c.width / n);
+  let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < cw * n; x++) {
+      const i = (y * c.width + x) * 4;
+      if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) { p[i + 3] = 0; continue; }
+      const lx = x % cw;
+      if (lx < minX) minX = lx; if (lx > maxX) maxX = lx;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+  }
+  g.putImageData(d, 0, 0);
+  const w = maxX - minX + 1, h = maxY - minY + 1, out = [];
+  for (let f = 0; f < n; f++) {
+    const o = document.createElement('canvas');
+    o.width = w; o.height = h;
+    o.getContext('2d').drawImage(c, f * cw + minX, minY, w, h, 0, 0, w, h);
+    out.push(o);
+  }
+  return out;
+}
+
 class VillageScene extends Phaser.Scene {
   constructor() { super('village'); }
 
@@ -161,6 +191,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_front', A + 'characters/hero_front.png');
     this.load.image('hero_back', A + 'characters/hero_back.png');
     this.load.image('hero_side', A + 'characters/hero_side.png');
+    this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('bandit_front', A + 'characters/bandit_front.png');
     this.load.image('bandit_back', A + 'characters/bandit_back.png');
     this.load.image('bandit_side', A + 'characters/bandit_side.png');
@@ -174,6 +205,9 @@ class VillageScene extends Phaser.Scene {
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
     this.keyTex('hero_side', 'hero_side_k');
+    // 側面走路動畫：4 幀
+    keyAndTrimFrames(this.textures.get('hero_walk_side').getSourceImage(), 4)
+      .forEach((cv, i) => this.textures.addCanvas('hero_walk_side_' + i, cv));
     this.keyTex('bandit_front', 'bandit_down');
     this.keyTex('bandit_back', 'bandit_up');
     this.keyTex('bandit_side', 'bandit_side_k');
@@ -242,7 +276,7 @@ class VillageScene extends Phaser.Scene {
     this.heroShadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.28).setDepth(-10);
     this.hero = this.add.image(0, 0, 'hero_down').setOrigin(0.5, 1).setDepth(0);
     this.facing = 'down';
-    this.walk = 0;
+    this.walk = 0; this.walkT = 0;
     this.setHeroTexture('hero_down');
     this.world.push(this.heroShadow, this.hero);
 
@@ -502,9 +536,14 @@ class VillageScene extends Phaser.Scene {
     // 圖片跟著腳底框；朝向換貼圖
     const fx = this.playerBody.x, fy = this.playerBody.y + 4;
     const spd = Math.min(1, Math.hypot(this.mv.x, this.mv.y) / SPEED);
-    const bob = spd > 0.1 ? Math.abs(Math.sin(this.walk * Math.PI)) * 3 * spd : 0;   // 踏步頓挫
+    const bob = spd > 0.1 && !(this.facing === 'left' || this.facing === 'right') ? Math.abs(Math.sin(this.walk * Math.PI)) * 3 * spd : 0;   // 踏步頓挫
+    const side = this.facing === 'left' || this.facing === 'right';
+    // 側面走路用 4 幀動畫（速度越快播得越快）；其他情況用靜止圖
+    const walking = side && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
+    if (walking) this.walkT = (this.walkT || 0) + delta * spd; else this.walkT = 0;
     const key = this.facing === 'up' ? 'hero_up'
-              : (this.facing === 'left' || this.facing === 'right') ? 'hero_side_k'
+              : walking ? 'hero_walk_side_' + (Math.floor(this.walkT / WALK_FRAME_MS) % 4)
+              : side ? 'hero_side_k'
               : 'hero_down';
     if (this.hero.texture.key !== key) this.setHeroTexture(key);
     this.hero.setFlipX(this.facing === 'left');
