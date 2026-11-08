@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.11';   // 每次更新請加一
+const VERSION = 'v0.5.12';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -194,6 +194,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_side', A + 'characters/hero_side.png');
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
+    this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
     this.load.image('bandit_front', A + 'characters/bandit_front.png');
     this.load.image('bandit_back', A + 'characters/bandit_back.png');
     this.load.image('bandit_side', A + 'characters/bandit_side.png');
@@ -212,6 +213,8 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_side_' + i, cv));
     keyAndTrimFrames(this.textures.get('hero_walk_front').getSourceImage(), 4, 0.85)
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_front_' + i, cv));
+    keyAndTrimFrames(this.textures.get('hero_walk_back').getSourceImage(), 4, 0.94)
+      .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
     this.keyTex('bandit_front', 'bandit_down');
     this.keyTex('bandit_back', 'bandit_up');
     this.keyTex('bandit_side', 'bandit_side_k');
@@ -543,10 +546,10 @@ class VillageScene extends Phaser.Scene {
     const bob = spd > 0.1 ? Math.abs(Math.sin(this.walk * Math.PI)) * 1 * spd : 0;   // 踏步頓挫（走路圖本身已有起伏，這裡只加一點點）
     const side = this.facing === 'left' || this.facing === 'right';
     // 側面走路用 4 幀動畫（速度越快播得越快）；其他情況用靜止圖
-    const walking = (side || this.facing === 'down') && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
+    const walking = (side || this.facing === 'down' || this.facing === 'up') && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
     if (walking) this.walkT = (this.walkT || 0) + delta * spd; else this.walkT = 0;
     const walkFrame = Math.floor(this.walkT / WALK_FRAME_MS) % 4;
-    const key = this.facing === 'up' ? 'hero_up'
+    const key = this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
               : walking && this.facing === 'down' ? 'hero_walk_front_' + walkFrame
               : walking ? 'hero_walk_side_' + walkFrame
               : side ? 'hero_side_k'
