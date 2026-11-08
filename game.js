@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.14';   // 每次更新請加一
+const VERSION = 'v0.7.15';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -263,6 +263,8 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_attack_front', A + 'characters/hero_attack_front.png');
     this.load.image('hero_attack_back', A + 'characters/hero_attack_back.png');
     this.load.image('hero_roll_side', A + 'characters/hero_roll_side.png');
+    this.load.image('hero_roll_front', A + 'characters/hero_roll_front.png');
+    this.load.image('hero_roll_back', A + 'characters/hero_roll_back.png');
     this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
     this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
     this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
@@ -299,9 +301,13 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_atk_front_' + i, cv));
     keyAndTrimFramesCentered(this.textures.get('hero_attack_back').getSourceImage(), 3, 0.94)
       .forEach((cv, i) => this.textures.addCanvas('hero_atk_back_' + i, cv));
-    // 翻滾動畫（側面 3 幀：蹲伏蹬地 → 翻滾 → 起身）；上下方向與小退步還沒有圖，沿用壓扁表現
+    // 翻滾動畫（側面、正面、背面各 3 幀：蹲伏蹬地 → 翻滾 → 起身）；小退步沒有圖，沿用壓扁表現
     keyAndTrimFramesCentered(this.textures.get('hero_roll_side').getSourceImage(), 3, 0.85)
       .forEach((cv, i) => this.textures.addCanvas('hero_roll_side_' + i, cv));
+    keyAndTrimFramesCentered(this.textures.get('hero_roll_front').getSourceImage(), 3, 0.85)
+      .forEach((cv, i) => this.textures.addCanvas('hero_roll_front_' + i, cv));
+    keyAndTrimFramesCentered(this.textures.get('hero_roll_back').getSourceImage(), 3, 0.94)
+      .forEach((cv, i) => this.textures.addCanvas('hero_roll_back_' + i, cv));
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
       const wk = T.walkTex || T.tex;
@@ -659,15 +665,15 @@ class VillageScene extends Phaser.Scene {
       const at = time - this.atk.start;
       atkFrame = at < this.atk.hitFrom ? 0 : at <= this.atk.hitTo ? 1 : 2;
     }
-    // 翻滾（左右方向）：蹲伏 → 無敵時間內翻滾 → 起身；小退步與上下翻滾沒有圖，仍用靜止圖壓扁
-    const rollSprite = !!this.roll && !this.roll.back && side;
+    // 翻滾（四個方向）：蹲伏 → 無敵時間內翻滾 → 起身；小退步沒有圖，仍用靜止圖壓扁
+    const rollSprite = !!this.roll && !this.roll.back;
     let rollFrame = 0;
     if (rollSprite) {
       const rt = time - this.roll.start;
       rollFrame = rt < ROLL_CROUCH_MS ? 0 : rt < this.roll.iTo ? 1 : 2;
     }
     const key = atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + atkFrame
-              : rollSprite ? 'hero_roll_side_' + rollFrame
+              : rollSprite ? 'hero_roll_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + rollFrame
               : this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
               : walking && this.facing === 'down' ? 'hero_walk_front_' + walkFrame
               : walking ? 'hero_walk_side_' + walkFrame
