@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.9';   // 每次更新請加一
+const VERSION = 'v0.7.10';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -112,7 +112,7 @@ const ENEMY_TYPES = {
 ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   walkTex: 'turban', walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
-  h: Math.round(HERO_H * 0.9),   // 小兵縮小約 10%
+  h: Math.round(HERO_H * 0.8),   // 小兵縮小約 20%，與精兵區分
   hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
   attackSlots: 2, atkGap: 400,
   slashWindup: 900, slashWindupFast: 650, slashRecover: 1000, rest: 1800, dmgSlash: 4,
