@@ -7,10 +7,11 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.0';   // 每次更新請加一
+const VERSION = 'v0.4.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 420;         // 兩次攻擊的最短間隔（毫秒）
-const ATK_DUR = 360;        // 揮劍動作長度（含收招，期間不能做別的事）
+const ATK_SWING = 230;      // 揮劍動作本身的長度
+const ATK_DUR = 360;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
 const ATK_HIT_FROM = 90, ATK_HIT_TO = 210;   // 動作中可以打到人的時間窗
 const ATK_ROLL_CANCEL = 250;                 // 揮劍多久之後可以用翻滾取消收招
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
@@ -413,7 +414,8 @@ class VillageScene extends Phaser.Scene {
       const f = time - this.roll.start < ROLL_IFRAMES ? 1 : 0.35;
       this.playerBody.body.setVelocity(this.roll.dx * ROLL_SPEED * f, this.roll.dy * ROLL_SPEED * f);
     } else {
-      const speed = SPEED * (this.atk ? ATK_MOVE_MUL : 1);
+      const stiff = this.atk && time - this.atk.start > ATK_SWING;   // 揮完刀的硬直
+    const speed = stiff ? 0 : SPEED * (this.atk ? ATK_MOVE_MUL : 1);
       this.playerBody.body.setVelocity(x * speed, y * speed);
     }
 
