@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.0';   // 每次更新請加一
+const VERSION = 'v0.7.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -73,6 +73,7 @@ const ENEMY_SPAWNS = [
 const ENEMY_TYPES = {
   bandit: {
     tex: 'bandit',            // 貼圖前綴：bandit_up / bandit_down / bandit_side_k
+    walkBright: { side: 0.87, front: 0.92, back: 0.94 },   // 走路圖亮度校正（與靜止圖一致）
     h: HERO_H,                // 顯示高度（與主角等高）
     hp: 50,
     speed: 82,
@@ -190,6 +191,9 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
+    this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
+    this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
+    this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
     this.load.image('bandit_front', A + 'characters/bandit_front.png');
     this.load.image('bandit_back', A + 'characters/bandit_back.png');
     this.load.image('bandit_side', A + 'characters/bandit_side.png');
@@ -210,6 +214,14 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_front_' + i, cv));
     keyAndTrimFrames(this.textures.get('hero_walk_back').getSourceImage(), 4, 0.94)
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
+    // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
+    for (const T of Object.values(ENEMY_TYPES)) {
+      if (!T.walkBright) continue;
+      for (const dir of ['side', 'front', 'back']) {
+        keyAndTrimFrames(this.textures.get(T.tex + '_walk_' + dir).getSourceImage(), 4, T.walkBright[dir])
+          .forEach((cv, i) => this.textures.addCanvas(T.tex + '_walk_' + dir + '_' + i, cv));
+      }
+    }
     this.keyTex('bandit_front', 'bandit_down');
     this.keyTex('bandit_back', 'bandit_up');
     this.keyTex('bandit_side', 'bandit_side_k');
@@ -840,7 +852,15 @@ class VillageScene extends Phaser.Scene {
 
       // 圖片、陰影、驚嘆號
       if (b.state !== 'dead' || b.sprite.alpha > 0) {
-        const key = b.facing === 'up' ? b.t.tex + '_up'
+        // 移動中（追、繞、逼近）播走路動畫；蓄力、出刀、防禦等維持原本姿勢
+        const wdt = time - (b.lastT === undefined ? time : b.lastT); b.lastT = time;
+        const sp = Math.hypot(vx, vy);
+        const moving = sp > 8 && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause');
+        if (moving) b.walkT = (b.walkT || 0) + wdt * Math.max(0.5, Math.min(1, sp / b.t.speed)); else b.walkT = 0;
+        const wf = Math.floor(b.walkT / WALK_FRAME_MS) % 4;
+        const wdir = b.facing === 'up' ? 'back' : (b.facing === 'left' || b.facing === 'right') ? 'side' : 'front';
+        const key = moving ? b.t.tex + '_walk_' + wdir + '_' + wf
+                  : b.facing === 'up' ? b.t.tex + '_up'
                   : (b.facing === 'left' || b.facing === 'right') ? b.t.tex + '_side_k'
                   : b.t.tex + '_down';
         if (b.sprite.texture.key !== key) this.setSpriteTex(b.sprite, key, b.t.h);
