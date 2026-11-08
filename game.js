@@ -13,7 +13,7 @@ const ATK_DUR = 240;        // 揮劍動作長度
 const ATK_HIT_FROM = 60, ATK_HIT_TO = 200;   // 動作中可以打到人的時間窗
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
-const ATK_MOVE_MUL = 0.35;  // 揮劍時移動速度倍率
+const ATK_MOVE_MUL = 0.6;   // 揮劍時移動速度倍率
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // 木人樁（底部中心座標）
@@ -191,6 +191,7 @@ class VillageScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
     this.joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, x: 0, y: 0, active: false };
+    this.input.addPointer(2);   // 允許左手搖桿、右手攻擊同時按
     this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
     this.input.keyboard.on('keydown-SPACE', () => this.tryAttack(this.nowT || 0));
     this.input.keyboard.on('keydown-J', () => this.tryAttack(this.nowT || 0));
