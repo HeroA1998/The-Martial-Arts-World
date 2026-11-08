@@ -7,7 +7,7 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.3';   // 每次更新請加一
+const VERSION = 'v0.4.4';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 300;      // 揮劍動作本身的長度
@@ -58,13 +58,13 @@ const BANDIT_AGGRO = 120;     // 玩家進入這個距離就會追
 const BANDIT_LOSE = 260;      // 玩家跑超過這個距離就放棄
 const BANDIT_RANGE = 56;      // 這個距離內開始蓄力出刀
 const BANDIT_WINDUP = 650;    // 蓄力時間：看清楚、閃避的時機
-const BANDIT_WINDUP_FAST = 450;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
+const BANDIT_WINDUP_FAST = 700;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
 const BANDIT_AIM_LOCK = 200;  // 出刀前最後這段時間鎖定方向
 const BANDIT_STRIKE = 200;    // 出刀（衝刺）時間
 const BANDIT_HIT_AT = 130;     // 出刀後幾毫秒才判定命中（留給你的反應時間）
 const BANDIT_LUNGE = 280;     // 出刀時往前衝的速度
 const BANDIT_RECOVER = 1300;  // 出完刀的破綻，是你反擊的機會
-const BANDIT_COMBO_P = 0.45;  // 連擊兩刀的機率
+const BANDIT_COMBO_P = 0.2;    // 連擊兩刀的機率
 const BANDIT_DMG = 16;
 const BANDIT_POISE = 36;      // 架勢值：被打到會減少，歸零才會被打斷
 const BANDIT_STUN = 600;      // 架勢被打破後的僵直
