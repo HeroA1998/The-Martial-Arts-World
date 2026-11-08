@@ -6,6 +6,24 @@ const SPEED = 200;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
+// 戰鬥
+const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
+const ATK_CD = 380;         // 兩次攻擊的最短間隔（毫秒）
+const ATK_DUR = 240;        // 揮劍動作長度
+const ATK_HIT_FROM = 60, ATK_HIT_TO = 200;   // 動作中可以打到人的時間窗
+const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
+const ATK_RADIUS = 26;      // 劍的判定圈半徑
+const ATK_MOVE_MUL = 0.35;  // 揮劍時移動速度倍率
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+// 木人樁（底部中心座標）
+const DUMMIES = [
+  { x: 240, y: 335 },
+  { x: 580, y: 335 },
+  { x: 410, y: 470 },
+];
+const DUMMY_HP = 60;
+
 // 小鎮配置：x、y 為底部中心；w 為顯示寬度
 const PROPS = [
   { kind: 'house', x: 300, y: 255, w: 110 },
@@ -109,6 +127,19 @@ class VillageScene extends Phaser.Scene {
       this.obstacles.add(z);
     }
 
+    // 木人樁：練習目標，可被打、可擋路
+    this.makeDummyTexture();
+    this.dummies = [];
+    for (const d of DUMMIES) {
+      const shadow = this.add.ellipse(d.x, d.y, 30, 10, 0x000000, 0.28).setDepth(-10);
+      const sprite = this.add.image(d.x, d.y, 'dummy').setOrigin(0.5, 1).setDepth(d.y);
+      const z = this.add.zone(d.x, d.y - 4, 14, 8);
+      this.physics.add.existing(z, true);
+      this.obstacles.add(z);
+      this.world.push(shadow, sprite);
+      this.dummies.push({ x: d.x, y: d.y, sprite, hp: DUMMY_HP, dead: false });
+    }
+
     // 主角：物理碰撞用的腳底框（看不見），圖片跟著它走
     this.playerBody = this.add.zone(410, 330, 14, 8);
     this.physics.add.existing(this.playerBody);
@@ -123,6 +154,14 @@ class VillageScene extends Phaser.Scene {
     this.setHeroTexture('hero_down');
     this.world.push(this.heroShadow, this.hero);
 
+    // 戰鬥特效用的繪圖層（劍光、血條）
+    this.slashGfx = this.add.graphics().setDepth(5000);
+    this.barGfx = this.add.graphics().setDepth(6000);
+    this.world.push(this.slashGfx, this.barGfx);
+    this.atk = null;          // 目前的揮劍：{ start, dx, dy, hit:Set }
+    this.lastAtk = -1e9;
+    this.btn = { id: null, held: false };
+
     // 鏡頭
     const cam = this.cameras.main;
     cam.setBounds(0, 0, MAP_W, MAP_H);
@@ -133,11 +172,16 @@ class VillageScene extends Phaser.Scene {
     // 螢幕固定的 UI 用另一個鏡頭，避免被縮放
     this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.joyGfx = this.add.graphics().setDepth(1000);
-    this.hintText = this.add.text(this.scale.width / 2, 14, '左半邊拖曳移動 · 電腦用 WASD 或方向鍵', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
+    this.btnGfx = this.add.graphics().setDepth(1000);
+    this.btnText = this.add.text(0, 0, '攻', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '26px', color: '#e6f0dc',
       stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(1001);
+    this.hintText = this.add.text(this.scale.width / 2, 14, '左半邊拖曳移動 · 右下角按「攻」出招\n電腦：WASD 移動、空白鍵攻擊', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
+      stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
-    this.ui.push(this.joyGfx, this.hintText);
+    this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -147,7 +191,16 @@ class VillageScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
     this.joy = { id: null, ox: 0, oy: 0, dx: 0, dy: 0, x: 0, y: 0, active: false };
+    this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
+    this.input.keyboard.on('keydown-SPACE', () => this.tryAttack(this.nowT || 0));
+    this.input.keyboard.on('keydown-J', () => this.tryAttack(this.nowT || 0));
     this.input.on('pointerdown', p => {
+      const b = this.btnPos();
+      if (this.btn.id === null && Math.hypot(p.x - b.x, p.y - b.y) <= BTN_R * 1.4) {
+        this.btn.id = p.id; this.btn.held = true;
+        this.tryAttack(this.nowT || 0);   // 按下當下就出招，輕點也不會漏
+        return;
+      }
       if (this.joy.id === null && p.x < this.scale.width * 0.5) {
         this.joy.id = p.id; this.joy.active = true;
         this.joy.ox = p.x; this.joy.oy = p.y;
@@ -156,6 +209,7 @@ class VillageScene extends Phaser.Scene {
     });
     this.input.on('pointermove', p => { if (p.id === this.joy.id) this.setJoy(p); });
     const endJoy = p => {
+      if (p.id === this.btn.id) { this.btn.id = null; this.btn.held = false; return; }
       if (p.id !== this.joy.id) return;
       this.joy.id = null; this.joy.active = false;
       this.joy.x = 0; this.joy.y = 0; this.joy.dx = 0; this.joy.dy = 0;
@@ -208,12 +262,21 @@ class VillageScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    this.nowT = time;
     const { x, y, m } = this.readInput();
-    this.playerBody.body.setVelocity(x * SPEED, y * SPEED);
+
+    // 出招：按住攻擊鍵或空白鍵會連續出招，但受冷卻限制
+    if (this.btn.held || this.atkKeys.SPACE.isDown || this.atkKeys.J.isDown) this.tryAttack(time);
+    if (this.atk && time - this.atk.start > ATK_DUR) this.atk = null;
+
+    const speed = SPEED * (this.atk ? ATK_MOVE_MUL : 1);
+    this.playerBody.body.setVelocity(x * speed, y * speed);
 
     if (m > 0.05) {
-      if (Math.abs(x) > Math.abs(y)) this.facing = x > 0 ? 'right' : 'left';
-      else this.facing = y > 0 ? 'down' : 'up';
+      if (!this.atk) {   // 揮劍中不改變朝向
+        if (Math.abs(x) > Math.abs(y)) this.facing = x > 0 ? 'right' : 'left';
+        else this.facing = y > 0 ? 'down' : 'up';
+      }
       this.walk += delta / 80;
     } else {
       this.walk = 0;
@@ -227,13 +290,152 @@ class VillageScene extends Phaser.Scene {
               : 'hero_down';
     if (this.hero.texture.key !== key) this.setHeroTexture(key);
     this.hero.setFlipX(this.facing === 'left');
-    this.hero.setPosition(fx, fy - bob).setDepth(fy);
+
+    // 揮劍時身體往前頂一下
+    let lx = 0, ly = 0;
+    if (this.atk) {
+      const t = (time - this.atk.start) / ATK_DUR;
+      const lunge = Math.sin(Math.min(1, t * 1.6) * Math.PI) * 4;
+      lx = this.atk.dx * lunge; ly = this.atk.dy * lunge * 0.6;
+    }
+    this.hero.setPosition(fx + lx, fy - bob + ly).setDepth(fy);
     this.heroShadow.setPosition(fx, fy).setDisplaySize(HERO_H * 0.8, HERO_H * 0.22);
 
-    this.drawJoy();
+    this.processAttack(time, fx, fy);
+    this.drawSlash(time, fx, fy);
+    this.drawBars();
+    this.drawUI();
   }
 
-  drawJoy() {
+  // ---------- 戰鬥 ----------
+  tryAttack(time) {
+    if (time - this.lastAtk < ATK_CD) return;
+    this.lastAtk = time;
+    const [dx, dy] = DIRS[this.facing];
+    this.atk = { start: time, dx, dy, hit: new Set() };
+  }
+
+  // 揮劍的有效時間窗內，判定圈碰到的木人樁會受傷（一次揮劍每個目標只打一次）
+  processAttack(time, fx, fy) {
+    if (!this.atk) return;
+    const t = time - this.atk.start;
+    if (t < ATK_HIT_FROM || t > ATK_HIT_TO) return;
+    const cx = fx + this.atk.dx * ATK_REACH;
+    const cy = fy - 14 + this.atk.dy * ATK_REACH;
+    for (const d of this.dummies) {
+      if (d.dead || this.atk.hit.has(d)) continue;
+      if (Math.hypot(cx - d.x, cy - (d.y - 18)) < ATK_RADIUS + 11) {
+        this.atk.hit.add(d);
+        this.hitDummy(d, this.atk.dx, this.atk.dy);
+      }
+    }
+  }
+
+  hitDummy(d, dx, dy) {
+    const dmg = 10 + Math.floor(Math.random() * 6);
+    d.hp -= dmg;
+    this.spawnDamage(d.x, d.y - 52, dmg);
+
+    // 受擊：往後晃一下並閃紅
+    this.tweens.add({ targets: d.sprite, x: d.x + dx * 3, duration: 50, yoyo: true });
+    d.sprite.setTint(0xff9a8a);
+    this.time.delayedCall(90, () => d.sprite.clearTint());
+
+    if (d.hp <= 0) {
+      d.dead = true;
+      const dir = dx >= 0 ? 1 : -1;
+      this.tweens.add({ targets: d.sprite, angle: dir * 85, duration: 260, ease: 'Quad.easeIn' });
+      this.time.delayedCall(1800, () => {
+        d.sprite.setAngle(0);
+        d.hp = DUMMY_HP;
+        d.dead = false;
+      });
+    }
+  }
+
+  spawnDamage(x, y, n) {
+    const t = this.add.text(x, y, String(n), {
+      fontFamily: 'system-ui, sans-serif', fontSize: '12px', fontStyle: 'bold',
+      color: '#ffe9a8', stroke: '#000000', strokeThickness: 3, resolution: 3,
+    }).setOrigin(0.5).setDepth(7000);
+    this.uiCam.ignore(t);
+    this.tweens.add({
+      targets: t, y: y - 22, alpha: 0, duration: 700, ease: 'Quad.easeOut',
+      onComplete: () => t.destroy(),
+    });
+  }
+
+  // 劍光：沿面對的方向掃過一道弧線
+  drawSlash(time, fx, fy) {
+    const g = this.slashGfx;
+    g.clear();
+    if (!this.atk) return;
+    const t = (time - this.atk.start) / ATK_DUR;
+    if (t < 0 || t > 1) return;
+    const { dx, dy } = this.atk;
+    const mid = Math.atan2(dy, dx);
+    const span = 2.4;
+    const startA = mid - span / 2;
+    const p = Math.min(1, t / 0.55);
+    const curA = startA + span * (1 - (1 - p) * (1 - p));
+    const cx = fx + dx * 6, cy = fy - 14 + dy * 6, r = ATK_REACH + 8;
+    g.setDepth(this.facing === 'up' ? fy - 1 : fy + 1);
+    g.lineStyle(8, 0xcfe8d8, (1 - t) * 0.35);
+    g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
+    g.lineStyle(3, 0xffffff, 1 - t);
+    g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
+  }
+
+  drawBars() {
+    const g = this.barGfx;
+    g.clear();
+    for (const d of this.dummies) {
+      if (d.dead || d.hp >= DUMMY_HP) continue;
+      const w = 24, x = d.x - w / 2, y = d.y - 60;
+      g.fillStyle(0x000000, 0.6); g.fillRect(x - 1, y - 1, w + 2, 5);
+      g.fillStyle(0xc0503a, 1); g.fillRect(x, y, w * Math.max(0, d.hp) / DUMMY_HP, 3);
+    }
+  }
+
+  btnPos() {
+    return { x: this.scale.width - 70, y: this.scale.height - 100 };
+  }
+
+  // 用程式畫一個低彩度像素風的木人樁
+  makeDummyTexture() {
+    const c = document.createElement('canvas');
+    c.width = 28; c.height = 46;
+    const g = c.getContext('2d');
+    const R = (col, x, y, w, h) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    R('#2f322d', 6, 42, 16, 4); R('#4d514a', 7, 41, 14, 2);        // 石座
+    R('#2a2018', 11, 10, 6, 32); R('#6b5238', 12, 10, 4, 32);      // 立柱
+    R('#8a6b48', 12, 10, 1, 32);
+    R('#2a2018', 3, 18, 22, 6); R('#6b5238', 4, 19, 20, 4);        // 橫木
+    R('#8a6b48', 4, 19, 20, 1);
+    R('#2a2018', 9, 1, 10, 10); R('#8b7a50', 10, 2, 8, 8);         // 草人頭
+    R('#a8966a', 10, 2, 8, 2);
+    R('#4a3a22', 10, 9, 8, 2);                                      // 繩結
+    R('#9c8a56', 2, 24, 3, 4); R('#9c8a56', 23, 24, 3, 4);         // 草束
+    this.textures.addCanvas('dummy', c);
+    this.textures.get('dummy').setFilter(Phaser.Textures.FilterMode.NEAREST);
+  }
+
+  drawUI() {
+    // 攻擊鍵
+    const b = this.btnPos(), bg = this.btnGfx;
+    bg.clear();
+    bg.fillStyle(0x16201a, this.btn.held ? 0.7 : 0.45); bg.fillCircle(b.x, b.y, BTN_R);
+    bg.lineStyle(3, 0xe6f0dc, this.btn.held ? 0.9 : 0.55); bg.strokeCircle(b.x, b.y, BTN_R);
+    const left = Math.max(0, ATK_CD - ((this.nowT || 0) - this.lastAtk)) / ATK_CD;
+    if (left > 0 && left <= 1) {
+      bg.lineStyle(4, 0xd9b45a, 0.9);
+      bg.beginPath();
+      bg.arc(b.x, b.y, BTN_R + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left, false);
+      bg.strokePath();
+    }
+    this.btnText.setPosition(b.x, b.y);
+
+    // 搖桿
     const g = this.joyGfx;
     g.clear();
     if (this.joy.active) {
