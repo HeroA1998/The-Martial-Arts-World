@@ -7,7 +7,7 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.4';   // 每次更新請加一
+const VERSION = 'v0.4.5';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 300;      // 揮劍動作本身的長度
@@ -16,7 +16,7 @@ const ATK_HIT_FROM = 120, ATK_HIT_TO = 280;   // 動作中可以打到人的時�
 const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
-const ATK_MOVE_MUL = 0.4;   // 揮劍時移動速度倍率
+const ATK_MOVE_MUL = 0;     // 揮劍時完全不能移動（只能用翻滾閃避）
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // 木人樁（底部中心座標）
@@ -43,7 +43,7 @@ const ATK_COST = 20;
 const ROLL_COST = 24;
 const ROLL_DUR = 480;           // 翻滾總長度
 const ROLL_IFRAMES = 320;       // 翻滾前段無敵時間，之後是收招硬直
-const ROLL_SPEED = 330;
+const ROLL_SPEED = 190;          // 翻滾速度（短距離，像黑魂的小翻滾）
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
 // 山賊
@@ -412,7 +412,7 @@ class VillageScene extends Phaser.Scene {
     if (time < this.pk.until) {          // 被擊退中：不受操作影響
       this.playerBody.body.setVelocity(this.pk.vx, this.pk.vy);
     } else if (this.roll) {              // 翻滾：前段快速位移，後段是收招的小滑行
-      const f = time - this.roll.start < ROLL_IFRAMES ? 1 : 0.35;
+      const f = time - this.roll.start < ROLL_IFRAMES ? 1 : 0.15;
       this.playerBody.body.setVelocity(this.roll.dx * ROLL_SPEED * f, this.roll.dy * ROLL_SPEED * f);
     } else {
       const stiff = this.atk && time - this.atk.start > ATK_SWING;   // 揮完刀的硬直
