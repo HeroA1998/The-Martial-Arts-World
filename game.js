@@ -4,6 +4,7 @@
 const MAP_W = 820, MAP_H = 660;
 const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
+const ATK_SRC_BODY_H = 360;   // 揮刀圖裡，頭頂到腳底的像素高度（對應 HERO_H）
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 const WALK_FRAME_MS = 150;   // 走路動畫每幀的長度（毫秒，全速時）
 const ACCEL_MS = 100;   // 起步約這麼久加到全速
@@ -12,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.10';   // 每次更新請加一
+const VERSION = 'v0.7.11';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -210,6 +211,35 @@ function keyAndTrimFrames(img, n, bright = 1) {
   return out;
 }
 
+// 揮刀用：每格以「格子中心」為身體中心，裁成左右對稱，避免刀伸出去時身體跟著位移
+function keyAndTrimFramesCentered(img, n, bright = 1) {
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+  const cw = Math.floor(c.width / n), mid = cw / 2;
+  let minY = 1e9, maxY = -1, half = 0;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < cw * n; x++) {
+      const i = (y * c.width + x) * 4;
+      if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) { p[i + 3] = 0; continue; }
+      p[i] *= bright; p[i + 1] *= bright; p[i + 2] *= bright;
+      half = Math.max(half, Math.abs((x % cw) + 0.5 - mid));
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+  }
+  g.putImageData(d, 0, 0);
+  const hw = Math.ceil(half), w = hw * 2, h = maxY - minY + 1, out = [];
+  for (let f = 0; f < n; f++) {
+    const o = document.createElement('canvas');
+    o.width = w; o.height = h;
+    o.getContext('2d').drawImage(c, f * cw + Math.round(mid) - hw, minY, w, h, 0, 0, w, h);
+    out.push(o);
+  }
+  return out;
+}
+
 class VillageScene extends Phaser.Scene {
   constructor() { super('village'); }
 
@@ -221,6 +251,8 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
+    this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
+    this.load.image('hero_attack_front', A + 'characters/hero_attack_front.png');
     this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
     this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
     this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
@@ -250,6 +282,11 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_front_' + i, cv));
     keyAndTrimFrames(this.textures.get('hero_walk_back').getSourceImage(), 4, 0.94)
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
+    // 揮刀動畫（側面、正面各 3 幀：舉刀 → 出刀 → 收刀）；背面還沒有圖
+    keyAndTrimFramesCentered(this.textures.get('hero_attack_side').getSourceImage(), 3, 0.85)
+      .forEach((cv, i) => this.textures.addCanvas('hero_atk_side_' + i, cv));
+    keyAndTrimFramesCentered(this.textures.get('hero_attack_front').getSourceImage(), 3, 0.85)
+      .forEach((cv, i) => this.textures.addCanvas('hero_atk_front_' + i, cv));
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
       const wk = T.walkTex || T.tex;
@@ -498,7 +535,9 @@ class VillageScene extends Phaser.Scene {
   setHeroTexture(key) {
     const tex = this.textures.get(key).getSourceImage();
     this.hero.setTexture(key);
-    this.hero.setDisplaySize(HERO_H * tex.width / tex.height, HERO_H);
+    // 揮刀圖的裁切框比身體高（刀舉高），要用「身體 360px = HERO_H」的同一比例，主角才不會縮小
+    const H = key.startsWith('hero_atk_') ? HERO_H * tex.height / ATK_SRC_BODY_H : HERO_H;
+    this.hero.setDisplaySize(H * tex.width / tex.height, H);
     this.heroSx = this.hero.scaleX; this.heroSy = this.hero.scaleY;
   }
 
@@ -598,7 +637,14 @@ class VillageScene extends Phaser.Scene {
     const walking = (side || this.facing === 'down' || this.facing === 'up') && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
     if (walking) this.walkT = (this.walkT || 0) + delta * spd; else this.walkT = 0;
     const walkFrame = Math.floor(this.walkT / WALK_FRAME_MS) % 4;
-    const key = this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
+    // 揮刀：依時間選幀（舉刀 → 出刀（判定時間窗）→ 收刀）；朝上沒有圖，維持背面靜止圖
+    let atkFrame = -1;
+    if (this.atk && this.facing !== 'up') {
+      const at = time - this.atk.start;
+      atkFrame = at < this.atk.hitFrom ? 0 : at <= this.atk.hitTo ? 1 : 2;
+    }
+    const key = atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : 'front_') + atkFrame
+              : this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
               : walking && this.facing === 'down' ? 'hero_walk_front_' + walkFrame
               : walking ? 'hero_walk_side_' + walkFrame
               : side ? 'hero_side_k'
@@ -1197,9 +1243,10 @@ class VillageScene extends Phaser.Scene {
     const curA = startA + span * (1 - (1 - p) * (1 - p));
     const cx = fx + dx * 6, cy = fy - 14 + dy * 6, r = ATK_REACH + 8;
     g.setDepth(this.facing === 'up' ? fy - 1 : fy + 1);
-    g.lineStyle(8, 0xcfe8d8, (1 - t) * 0.35);
+    const k = this.facing === 'up' ? 1 : 0.5;   // 有揮刀圖的方向，劍光淡一點，不蓋住刀
+    g.lineStyle(8, 0xcfe8d8, (1 - t) * 0.35 * k);
     g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
-    g.lineStyle(3, 0xffffff, 1 - t);
+    g.lineStyle(3, 0xffffff, (1 - t) * k);
     g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
   }
 
