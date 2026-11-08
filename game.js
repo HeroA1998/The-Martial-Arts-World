@@ -7,7 +7,7 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.5.2';   // 每次更新請加一
+const VERSION = 'v0.5.3';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -76,7 +76,7 @@ const BANDIT_STRIKE = 200;    // 出刀（衝刺）時間
 const BANDIT_HIT_AT = 130;     // 出刀後幾毫秒才判定命中（留給你的反應時間）
 const BANDIT_LUNGE = 280;     // 出刀時往前衝的速度
 const BANDIT_RECOVER = 1300;  // 出完刀的破綻，是你反擊的機會（開頭會閃白光）
-const BANDIT_REST = 800;      // 破綻結束後，先繞著你走一陣子再進攻
+const BANDIT_REST = 1200;     // 破綻結束後，先繞著你走一陣子再進攻
 // 山賊的防禦與閃避：看到你出刀時有機會反應
 const REACT_RANGE = 90;       // 你出刀時，這個距離內的山賊才可能反應
 const REACT_CD = 2500;        // 每個山賊反應過一次後的冷卻
@@ -89,6 +89,14 @@ const GUARD_BREAK_STUN = 900;
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的夾角（內積）門檻，側面與背後擋不到
 const DODGE_DUR = 220, DODGE_DIST = 36, DODGE_CD = 3000;
 const DODGE_COUNTER_WINDUP = 480;   // 閃完立刻反擊的蓄力
+// 普通揮砍：原地起手、不衝刺、沒有紅線；衝刺攻擊（紅線）變成少見的拉近招式
+const BANDIT_SLASH_WINDUP = 550, BANDIT_SLASH_WINDUP_FAST = 400;
+const BANDIT_SLASH_AIM_LOCK = 150;
+const BANDIT_SLASH_STRIKE = 180, BANDIT_SLASH_HIT_AT = 60;
+const BANDIT_SLASH_DMG = 12;
+const BANDIT_SLASH_RECOVER = 900;
+const BANDIT_SLASH_REACH = 18, BANDIT_SLASH_R = 28;
+const BANDIT_ATK_GAP = 600;   // 一個山賊出完招後，其他山賊至少隔這麼久才能出手
 const STALK_DIST = 105;         // 進入這個距離先停下來盯著你繞步
 const BANDIT_ORBIT_R = 100;   // 輪不到進攻的山賊在這個距離外繞圈等
 const BANDIT_COMBO_P = 0.2;    // 連擊兩刀的機率
@@ -668,7 +676,7 @@ class VillageScene extends Phaser.Scene {
         vx = b.kx; vy = b.ky;
         if (time >= b.until) { b.state = this.down ? 'idle' : 'chase'; b.poise = BANDIT_POISE; }
       } else if (b.state === 'idle') {
-        if (!this.down && dist < BANDIT_AGGRO) { b.state = 'chase'; b.stalked = false; }
+        if (!this.down && dist < BANDIT_AGGRO) { b.state = 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'chase') {
         if (this.down || dist > BANDIT_LOSE) {
           b.state = 'idle';
@@ -682,11 +690,24 @@ class VillageScene extends Phaser.Scene {
             // 逼近後先停下來盯著你繞步，不直接衝上來
             b.state = 'stalk'; b.t0 = time; b.stalkFor = 700 + Math.random() * 700;
             b.orbitDir = Math.random() < 0.5 ? 1 : -1;
-          } else if (dist > BANDIT_RANGE) {
+          } else if (dist > (b.closeIn ? 38 : BANDIT_RANGE)) {
             vx = ux * BANDIT_SPEED; vy = uy * BANDIT_SPEED;
           } else {
-            // 進入攻擊距離後，先頓一下（長度不固定）才蓄力，沒辦法靠節奏背時機
-            b.state = 'pause'; b.t0 = time; b.pauseFor = 60 + Math.random() * 420;
+            // 選招：貼身多半普通揮砍，偶爾衝刺或只是繞步；中距離才常用衝刺拉近
+            let kind = b.nextKind; b.nextKind = null;
+            if (!kind) {
+              const r = Math.random();
+              kind = dist <= 40 ? (r < 0.7 ? 'slash' : r < 0.8 ? 'lunge' : 'feint') : (r < 0.4 ? 'lunge' : 'slash');
+            }
+            b.closeIn = false;
+            if (kind === 'feint') {
+              b.state = 'rest'; b.t0 = time; b.stalked = true; b.orbitDir = Math.random() < 0.5 ? 1 : -1;
+            } else if (kind === 'slash' && dist > 40) {
+              b.nextKind = 'slash'; b.closeIn = true;      // 先走近再揮
+            } else {
+              // 先頓一下（長度不固定）才蓄力，沒辦法靠節奏背時機
+              b.kind = kind; b.state = 'pause'; b.t0 = time; b.pauseFor = 60 + Math.random() * 420;
+            }
           }
         }
       } else if (b.state === 'guard') {
@@ -701,7 +722,7 @@ class VillageScene extends Phaser.Scene {
         if (dt >= REACT_DELAY) { const sp = DODGE_DIST / (DODGE_DUR / 1000); vx = b.gdx * sp; vy = b.gdy * sp; }
         if (time >= b.until) {
           if (this.down) b.state = 'idle';
-          else { this.startWindup(b, time, true, ux, uy); b.windup = DODGE_COUNTER_WINDUP; }
+          else { this.startWindup(b, time, true, ux, uy, 'lunge'); b.windup = DODGE_COUNTER_WINDUP; }
         }
       } else if (b.state === 'stalk') {
         faceToward();
@@ -713,27 +734,31 @@ class VillageScene extends Phaser.Scene {
         if (this.down || dist > BANDIT_LOSE) b.state = 'idle';
         else if (dist > BANDIT_RANGE + 14) b.state = 'chase';
         else if (!this.tokenFree(b)) [vx, vy] = this.orbit(b, ux, uy, dist, BANDIT_ORBIT_R, BANDIT_SPEED * 0.6);
-        else if (time - b.t0 >= b.pauseFor) this.startWindup(b, time, false, ux, uy);
+        else if (time - b.t0 >= b.pauseFor) this.startWindup(b, time, false, ux, uy, b.kind);
       } else if (b.state === 'windup') {
         // 蓄力：持續瞄準玩家，出刀前最後一小段鎖定方向，之後朝鎖定方向衝出去
         const wt = time - b.t0;
-        if (wt < b.windup - BANDIT_AIM_LOCK) { b.adx = ux; b.ady = uy; }
+        if (wt < b.windup - (b.kind === 'slash' ? BANDIT_SLASH_AIM_LOCK : BANDIT_AIM_LOCK)) { b.adx = ux; b.ady = uy; }
         b.facing = Math.abs(b.adx) > Math.abs(b.ady) ? (b.adx > 0 ? 'right' : 'left') : (b.ady > 0 ? 'down' : 'up');
         if (wt >= b.windup) { b.state = 'strike'; b.t0 = time; b.strikeAt = time; b.did = false; }
       } else if (b.state === 'strike') {
-        vx = b.adx * BANDIT_LUNGE; vy = b.ady * BANDIT_LUNGE;
-        if (!b.did && time - b.t0 >= BANDIT_HIT_AT) {
-          const cx = bx + b.adx * 14, cy = by - 14 + b.ady * 14;
-          if (Math.hypot(cx - px, cy - (py - 14)) < 29 && this.hurtPlayer(BANDIT_DMG, bx, by, time)) b.did = true;
+        const slash = b.kind === 'slash';
+        if (slash) { if (time - b.t0 < 80) { vx = b.adx * 40; vy = b.ady * 40; } }   // 普通揮砍：只踏半步
+        else { vx = b.adx * BANDIT_LUNGE; vy = b.ady * BANDIT_LUNGE; }
+        if (!b.did && time - b.t0 >= (slash ? BANDIT_SLASH_HIT_AT : BANDIT_HIT_AT)) {
+          const off = slash ? BANDIT_SLASH_REACH : 14;
+          const cx = bx + b.adx * off, cy = by - 14 + b.ady * off;
+          if (Math.hypot(cx - px, cy - (py - 14)) < (slash ? BANDIT_SLASH_R : 29)
+              && this.hurtPlayer(slash ? BANDIT_SLASH_DMG : BANDIT_DMG, bx, by, time)) b.did = true;
         }
-        if (time - b.t0 >= BANDIT_STRIKE) {
+        if (time - b.t0 >= (slash ? BANDIT_SLASH_STRIKE : BANDIT_STRIKE)) {
           if (b.combo > 0 && !this.down) { b.combo--; this.startWindup(b, time, true, ux, uy); }
           else { b.state = 'recover'; b.t0 = time; }
         }
       } else if (b.state === 'recover') {
-        if (time - b.t0 >= BANDIT_RECOVER) {
+        if (time - b.t0 >= (b.kind === 'slash' ? BANDIT_SLASH_RECOVER : BANDIT_RECOVER)) {
           if (this.down) b.state = 'idle';
-          else { b.state = 'rest'; b.t0 = time; b.orbitDir = Math.random() < 0.5 ? 1 : -1; }
+          else { this.atkGapUntil = time + BANDIT_ATK_GAP; b.state = 'rest'; b.t0 = time; b.orbitDir = Math.random() < 0.5 ? 1 : -1; }
         }
       } else if (b.state === 'rest') {
         // 喘息：出完刀後繞著玩家走，給雙方空檔；不佔用進攻名額
@@ -758,7 +783,7 @@ class VillageScene extends Phaser.Scene {
         let ox = 0, oy = 0;
         const [fdx, fdy] = DIRS[b.facing];
         if (b.state === 'windup') {                       // 蓄力：身體微微後仰
-          const k = Math.min(1, (time - b.t0) / BANDIT_WINDUP);
+          const k = Math.min(1, (time - b.t0) / b.windup);
           ox = -fdx * 3 * k; oy = -fdy * 2 * k;
         } else if (b.state === 'strike') {                // 出刀：往前一頂
           ox = b.adx * 6; oy = b.ady * 4;
@@ -776,13 +801,14 @@ class VillageScene extends Phaser.Scene {
         else b.sprite.clearTint();
 
         if (b.state !== 'dead') b.sprite.setAlpha(b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1);
-        b.alert.setVisible(b.state === 'windup').setPosition(bx, by - BANDIT_H - 2);
+        b.alert.setVisible(b.state === 'windup' && b.kind === 'lunge').setPosition(bx, by - BANDIT_H - 2);
       }
     }
   }
 
   // 一次只讓一個山賊進攻（蓄力、出刀、破綻都算進攻中）
   tokenFree(b) {
+    if ((this.nowT || 0) < (this.atkGapUntil || 0)) return false;
     return !this.bandits.some(o => o !== b && (o.state === 'windup' || o.state === 'strike' || o.state === 'recover'));
   }
 
@@ -797,10 +823,17 @@ class VillageScene extends Phaser.Scene {
     return [vx, vy];
   }
 
-  startWindup(b, time, fast, ux, uy) {
+  startWindup(b, time, fast, ux, uy, kind) {
     b.state = 'windup'; b.t0 = time;
-    b.windup = fast ? BANDIT_WINDUP_FAST : BANDIT_WINDUP;
-    if (!fast) b.combo = Math.random() < BANDIT_COMBO_P ? 1 : 0;
+    if (kind) b.kind = kind;
+    if (!b.kind) b.kind = 'lunge';
+    if (b.kind === 'slash') {
+      b.windup = fast ? BANDIT_SLASH_WINDUP_FAST : BANDIT_SLASH_WINDUP;
+      if (!fast) b.combo = Math.random() < 0.3 ? 1 : 0;       // 偶爾連揮兩下
+    } else {
+      b.windup = fast ? BANDIT_WINDUP_FAST : BANDIT_WINDUP;
+      b.combo = 0;                                             // 衝刺不連擊
+    }
     b.adx = ux; b.ady = uy;
   }
 
@@ -929,7 +962,7 @@ class VillageScene extends Phaser.Scene {
         g.beginPath(); g.arc(gx, gy, 16, mid - 0.95, mid + 0.95, false); g.strokePath();
       }
       // 蓄力時在地上畫出衝刺路線；最後一小段鎖定後變白，這時才是翻滾的時機
-      if (b.state === 'windup') {
+      if (b.state === 'windup' && b.kind === 'lunge') {
         const wt = time - b.t0, k = Math.min(1, wt / b.windup);
         const locked = wt >= b.windup - BANDIT_AIM_LOCK;
         const len = BANDIT_LUNGE * BANDIT_STRIKE / 1000 + 14 + 22;
