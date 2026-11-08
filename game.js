@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.11';   // 每次更新請加一
+const VERSION = 'v0.7.12';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -58,6 +58,7 @@ const ROLL_DUR = 520;           // 翻滾總長度（含收招）
 const ROLL_MOVE = 380;          // 位移時間：速度由快漸慢，之後原地站穩
 const ROLL_DIST = 58;           // 位移距離（約 1.3 個身位）
 const ROLL_I_FROM = 30, ROLL_I_TO = 300;   // 無敵時間窗
+const ROLL_CROUCH_MS = 70;      // 翻滾動畫：前幾毫秒是蹲伏蹬地，之後進入翻滾
 // 沒推搖桿時的小退步：更短、更便宜
 const BACK_COST = 18;
 const BACK_DUR = 430, BACK_MOVE = 300, BACK_DIST = 34;
@@ -253,6 +254,8 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
     this.load.image('hero_attack_front', A + 'characters/hero_attack_front.png');
+    this.load.image('hero_attack_back', A + 'characters/hero_attack_back.png');
+    this.load.image('hero_roll_side', A + 'characters/hero_roll_side.png');
     this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
     this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
     this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
@@ -282,11 +285,16 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_front_' + i, cv));
     keyAndTrimFrames(this.textures.get('hero_walk_back').getSourceImage(), 4, 0.94)
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
-    // 揮刀動畫（側面、正面各 3 幀：舉刀 → 出刀 → 收刀）；背面還沒有圖
+    // 揮刀動畫（側面、正面、背面各 3 幀：舉刀 → 出刀 → 收刀）
     keyAndTrimFramesCentered(this.textures.get('hero_attack_side').getSourceImage(), 3, 0.85)
       .forEach((cv, i) => this.textures.addCanvas('hero_atk_side_' + i, cv));
     keyAndTrimFramesCentered(this.textures.get('hero_attack_front').getSourceImage(), 3, 0.85)
       .forEach((cv, i) => this.textures.addCanvas('hero_atk_front_' + i, cv));
+    keyAndTrimFramesCentered(this.textures.get('hero_attack_back').getSourceImage(), 3, 0.94)
+      .forEach((cv, i) => this.textures.addCanvas('hero_atk_back_' + i, cv));
+    // 翻滾動畫（側面 3 幀：蹲伏蹬地 → 翻滾 → 起身）；上下方向與小退步還沒有圖，沿用壓扁表現
+    keyAndTrimFramesCentered(this.textures.get('hero_roll_side').getSourceImage(), 3, 0.85)
+      .forEach((cv, i) => this.textures.addCanvas('hero_roll_side_' + i, cv));
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
       const wk = T.walkTex || T.tex;
@@ -536,7 +544,7 @@ class VillageScene extends Phaser.Scene {
     const tex = this.textures.get(key).getSourceImage();
     this.hero.setTexture(key);
     // 揮刀圖的裁切框比身體高（刀舉高），要用「身體 360px = HERO_H」的同一比例，主角才不會縮小
-    const H = key.startsWith('hero_atk_') ? HERO_H * tex.height / ATK_SRC_BODY_H : HERO_H;
+    const H = (key.startsWith('hero_atk_') || key.startsWith('hero_roll_')) ? HERO_H * tex.height / ATK_SRC_BODY_H : HERO_H;
     this.hero.setDisplaySize(H * tex.width / tex.height, H);
     this.heroSx = this.hero.scaleX; this.heroSy = this.hero.scaleY;
   }
@@ -637,13 +645,21 @@ class VillageScene extends Phaser.Scene {
     const walking = (side || this.facing === 'down' || this.facing === 'up') && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
     if (walking) this.walkT = (this.walkT || 0) + delta * spd; else this.walkT = 0;
     const walkFrame = Math.floor(this.walkT / WALK_FRAME_MS) % 4;
-    // 揮刀：依時間選幀（舉刀 → 出刀（判定時間窗）→ 收刀）；朝上沒有圖，維持背面靜止圖
+    // 揮刀：依時間選幀（舉刀 → 出刀（判定時間窗）→ 收刀）
     let atkFrame = -1;
-    if (this.atk && this.facing !== 'up') {
+    if (this.atk) {
       const at = time - this.atk.start;
       atkFrame = at < this.atk.hitFrom ? 0 : at <= this.atk.hitTo ? 1 : 2;
     }
-    const key = atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : 'front_') + atkFrame
+    // 翻滾（左右方向）：蹲伏 → 無敵時間內翻滾 → 起身；小退步與上下翻滾沒有圖，仍用靜止圖壓扁
+    const rollSprite = !!this.roll && !this.roll.back && side;
+    let rollFrame = 0;
+    if (rollSprite) {
+      const rt = time - this.roll.start;
+      rollFrame = rt < ROLL_CROUCH_MS ? 0 : rt < this.roll.iTo ? 1 : 2;
+    }
+    const key = atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + atkFrame
+              : rollSprite ? 'hero_roll_side_' + rollFrame
               : this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
               : walking && this.facing === 'down' ? 'hero_walk_front_' + walkFrame
               : walking ? 'hero_walk_side_' + walkFrame
@@ -662,11 +678,12 @@ class VillageScene extends Phaser.Scene {
     this.hero.setPosition(fx + lx, fy - bob + ly).setDepth(fy);
     // 翻滾：身體壓扁並留下殘影
     if (this.roll) {
-      this.hero.setScale(this.heroSx * 1.1, this.heroSy * 0.72);
+      const sx = rollSprite ? this.heroSx : this.heroSx * 1.1, sy = rollSprite ? this.heroSy : this.heroSy * 0.72;
+      this.hero.setScale(sx, sy);
       if (time - this.roll.lastGhost > 55) {
         this.roll.lastGhost = time;
         const gh = this.add.image(fx, fy, this.hero.texture.key).setOrigin(0.5, 1)
-          .setScale(this.heroSx * 1.1, this.heroSy * 0.72).setFlipX(this.facing === 'left')
+          .setScale(sx, sy).setFlipX(this.facing === 'left')
           .setAlpha(0.4).setTint(0x9fc7b0).setDepth(fy - 1);
         this.uiCam.ignore(gh);
         this.tweens.add({ targets: gh, alpha: 0, duration: 260, onComplete: () => gh.destroy() });
