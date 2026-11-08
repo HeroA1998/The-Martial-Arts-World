@@ -2,18 +2,18 @@
 'use strict';
 
 const MAP_W = 820, MAP_H = 660;
-const SPEED = 200;      // 世界單位 / 秒
+const SPEED = 150;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.1';   // 每次更新請加一
+const VERSION = 'v0.4.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
-const ATK_CD = 420;         // 兩次攻擊的最短間隔（毫秒）
-const ATK_SWING = 230;      // 揮劍動作本身的長度
-const ATK_DUR = 360;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
-const ATK_HIT_FROM = 90, ATK_HIT_TO = 210;   // 動作中可以打到人的時間窗
-const ATK_ROLL_CANCEL = 250;                 // 揮劍多久之後可以用翻滾取消收招
+const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
+const ATK_SWING = 300;      // 揮劍動作本身的長度
+const ATK_DUR = 480;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
+const ATK_HIT_FROM = 120, ATK_HIT_TO = 280;   // 動作中可以打到人的時間窗
+const ATK_ROLL_CANCEL = 330;                 // 揮劍多久之後可以用翻滾取消收招
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
 const ATK_MOVE_MUL = 0.4;   // 揮劍時移動速度倍率
@@ -41,7 +41,7 @@ const STAM_DELAY = 600;         // 用完耐力後多久才開始回復
 const STAM_DELAY_EMPTY = 1100;  // 耐力見底時要等更久
 const ATK_COST = 20;
 const ROLL_COST = 24;
-const ROLL_DUR = 420;           // 翻滾總長度
+const ROLL_DUR = 480;           // 翻滾總長度
 const ROLL_IFRAMES = 250;       // 前段無敵時間，之後是收招硬直
 const ROLL_SPEED = 330;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
@@ -53,16 +53,16 @@ const BANDITS = [
 ];
 const BANDIT_H = HERO_H;      // 與主角等高
 const BANDIT_HP = 70;
-const BANDIT_SPEED = 130;
+const BANDIT_SPEED = 95;
 const BANDIT_AGGRO = 120;     // 玩家進入這個距離就會追
 const BANDIT_LOSE = 260;      // 玩家跑超過這個距離就放棄
 const BANDIT_RANGE = 56;      // 這個距離內開始蓄力出刀
-const BANDIT_WINDUP = 500;    // 蓄力時間：看清楚、閃避的時機
-const BANDIT_WINDUP_FAST = 320;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
-const BANDIT_AIM_LOCK = 150;  // 出刀前最後這段時間鎖定方向
-const BANDIT_STRIKE = 150;    // 出刀（衝刺）時間
+const BANDIT_WINDUP = 650;    // 蓄力時間：看清楚、閃避的時機
+const BANDIT_WINDUP_FAST = 450;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
+const BANDIT_AIM_LOCK = 200;  // 出刀前最後這段時間鎖定方向
+const BANDIT_STRIKE = 200;    // 出刀（衝刺）時間
 const BANDIT_LUNGE = 280;     // 出刀時往前衝的速度
-const BANDIT_RECOVER = 1100;  // 出完刀的破綻，是你反擊的機會
+const BANDIT_RECOVER = 1300;  // 出完刀的破綻，是你反擊的機會
 const BANDIT_COMBO_P = 0.45;  // 連擊兩刀的機率
 const BANDIT_DMG = 16;
 const BANDIT_POISE = 36;      // 架勢值：被打到會減少，歸零才會被打斷
@@ -635,7 +635,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   hitBandit(b, dx, dy, time) {
-    const dmg = 12 + Math.floor(Math.random() * 7);
+    const dmg = 8 + Math.floor(Math.random() * 5);
     b.hp -= dmg;
     b.lastHit = time;
     this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 4, dmg);
@@ -742,7 +742,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   hitDummy(d, dx, dy) {
-    const dmg = 10 + Math.floor(Math.random() * 6);
+    const dmg = 8 + Math.floor(Math.random() * 5);
     d.hp -= dmg;
     this.spawnDamage(d.x, d.y - 52, dmg);
 
