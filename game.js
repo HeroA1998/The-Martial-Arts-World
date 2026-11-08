@@ -7,7 +7,7 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.2.1';   // 每次更新請加一
+const VERSION = 'v0.3.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 380;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_DUR = 240;        // 揮劍動作長度
@@ -24,6 +24,32 @@ const DUMMIES = [
   { x: 410, y: 470 },
 ];
 const DUMMY_HP = 60;
+
+// 玩家
+const PLAYER_HP = 100;
+const INVULN_MS = 800;        // 被打中後的無敵時間
+const PLAYER_KNOCK = 150;     // 被擊退的速度
+const PLAYER_KNOCK_MS = 130;
+const PLAYER_RESPAWN_MS = 2000;
+
+// 山賊
+const BANDITS = [
+  { x: 650, y: 200 },
+  { x: 170, y: 480 },
+];
+const BANDIT_H = 50;          // 山賊在世界中的高度
+const BANDIT_HP = 50;
+const BANDIT_SPEED = 90;
+const BANDIT_AGGRO = 120;     // 玩家進入這個距離就會追
+const BANDIT_LOSE = 260;      // 玩家跑超過這個距離就放棄
+const BANDIT_RANGE = 30;      // 這個距離內開始出刀
+const BANDIT_WINDUP = 380;    // 出刀前的預備（可以趁機閃）
+const BANDIT_STRIKE = 100;
+const BANDIT_RECOVER = 650;
+const BANDIT_DMG = 12;
+const BANDIT_STUN = 260;      // 被打中後的僵直
+const BANDIT_KNOCK = 140;     // 被擊退的速度
+const BANDIT_RESPAWN_MS = 6000;
 
 // 小鎮配置：x、y 為底部中心；w 為顯示寬度
 const PROPS = [
@@ -76,6 +102,9 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_front', A + 'characters/hero_front.png');
     this.load.image('hero_back', A + 'characters/hero_back.png');
     this.load.image('hero_side', A + 'characters/hero_side.png');
+    this.load.image('bandit_front', A + 'characters/bandit_front.png');
+    this.load.image('bandit_back', A + 'characters/bandit_back.png');
+    this.load.image('bandit_side', A + 'characters/bandit_side.png');
     this.load.image('stone', A + 'tiles/stone_floor.png');
     this.load.image('house', A + 'buildings/house_01.png');
     this.load.image('tree', A + 'props/tree_01.png');
@@ -86,6 +115,9 @@ class VillageScene extends Phaser.Scene {
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
     this.keyTex('hero_side', 'hero_side_k');
+    this.keyTex('bandit_front', 'bandit_down');
+    this.keyTex('bandit_back', 'bandit_up');
+    this.keyTex('bandit_side', 'bandit_side_k');
     this.keyTex('house', 'house_k');
     this.keyTex('tree', 'tree_k');
 
@@ -155,6 +187,46 @@ class VillageScene extends Phaser.Scene {
     this.setHeroTexture('hero_down');
     this.world.push(this.heroShadow, this.hero);
 
+    // 玩家狀態
+    this.php = PLAYER_HP;
+    this.invulnUntil = 0;
+    this.pk = { vx: 0, vy: 0, until: 0 };   // 被擊退
+    this.heroFlashUntil = 0;
+    this.down = false;
+    this.respawnAt = 0;
+
+    // 山賊：追擊、出刀、受傷、倒下、重生
+    this.bandits = [];
+    for (const h of BANDITS) {
+      const shadow = this.add.ellipse(h.x, h.y, 42, 12, 0x000000, 0.28).setDepth(-10);
+      const sprite = this.add.image(h.x, h.y, 'bandit_down').setOrigin(0.5, 1).setDepth(h.y);
+      const alert = this.add.text(h.x, h.y - BANDIT_H - 4, '!', {
+        fontFamily: 'system-ui, sans-serif', fontSize: '16px', fontStyle: 'bold',
+        color: '#ff7a5a', stroke: '#000000', strokeThickness: 3, resolution: 3,
+      }).setOrigin(0.5, 1).setDepth(8000).setVisible(false);
+      const body = this.add.zone(h.x, h.y - 4, 14, 8);
+      this.physics.add.existing(body);
+      body.body.setImmovable(true);
+      body.body.setCollideWorldBounds(true);
+      this.physics.add.collider(body, this.obstacles);
+      this.physics.add.collider(this.playerBody, body);
+      this.world.push(shadow, sprite, alert);
+      this.setSpriteTex(sprite, 'bandit_down', BANDIT_H);
+      this.bandits.push({
+        home: { x: h.x, y: h.y }, body, sprite, shadow, alert,
+        hp: BANDIT_HP, state: 'idle', facing: 'down', dead: false,
+        t0: 0, until: 0, kx: 0, ky: 0, flashUntil: 0,
+        strikeAt: -1e9, did: false, adx: 0, ady: 1, respawnAt: 0,
+      });
+    }
+    for (let i = 0; i < this.bandits.length; i++) {
+      for (let j = i + 1; j < this.bandits.length; j++) {
+        this.physics.add.collider(this.bandits[i].body, this.bandits[j].body);
+      }
+    }
+    this.enemyGfx = this.add.graphics().setDepth(5000);
+    this.world.push(this.enemyGfx);
+
     // 戰鬥特效用的繪圖層（劍光、血條）
     this.slashGfx = this.add.graphics().setDepth(5000);
     this.barGfx = this.add.graphics().setDepth(6000);
@@ -178,7 +250,16 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '26px', color: '#e6f0dc',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(1001);
-    this.hintText = this.add.text(this.scale.width / 2, 14, '左半邊拖曳移動 · 右下角按「攻」出招\n電腦：WASD 移動、空白鍵攻擊', {
+    this.hpGfx = this.add.graphics().setDepth(1000);
+    this.hpText = this.add.text(14, 30, '氣血', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#e6f0dc',
+      stroke: '#000000', strokeThickness: 3,
+    }).setDepth(1001);
+    this.downText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 40, '倒下了…', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#e8c8b8',
+      stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(1002).setVisible(false);
+    this.hintText = this.add.text(this.scale.width / 2, 52, '左半邊拖曳移動 · 右下角按「攻」出招\n電腦：WASD 移動、空白鍵攻擊', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
@@ -186,7 +267,8 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#d8e0cf', alpha: 0.6,
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(1, 0).setDepth(1001);
-    this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText);
+    this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText,
+                 this.hpGfx, this.hpText, this.downText);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -228,6 +310,7 @@ class VillageScene extends Phaser.Scene {
       this.applyZoom();
       this.hintText.setX(this.scale.width / 2);
       this.verText.setX(this.scale.width - 6);
+      this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
     });
   }
 
@@ -270,14 +353,18 @@ class VillageScene extends Phaser.Scene {
 
   update(time, delta) {
     this.nowT = time;
-    const { x, y, m } = this.readInput();
+    const { x, y, m } = this.down ? { x: 0, y: 0, m: 0 } : this.readInput();
 
     // 出招：按住攻擊鍵或空白鍵會連續出招，但受冷卻限制
-    if (this.btn.held || this.atkKeys.SPACE.isDown || this.atkKeys.J.isDown) this.tryAttack(time);
+    if (!this.down && (this.btn.held || this.atkKeys.SPACE.isDown || this.atkKeys.J.isDown)) this.tryAttack(time);
     if (this.atk && time - this.atk.start > ATK_DUR) this.atk = null;
 
-    const speed = SPEED * (this.atk ? ATK_MOVE_MUL : 1);
-    this.playerBody.body.setVelocity(x * speed, y * speed);
+    if (time < this.pk.until) {          // 被擊退中：不受操作影響
+      this.playerBody.body.setVelocity(this.pk.vx, this.pk.vy);
+    } else {
+      const speed = SPEED * (this.atk ? ATK_MOVE_MUL : 1);
+      this.playerBody.body.setVelocity(x * speed, y * speed);
+    }
 
     if (m > 0.05) {
       if (!this.atk) {   // 揮劍中不改變朝向
@@ -308,7 +395,14 @@ class VillageScene extends Phaser.Scene {
     this.hero.setPosition(fx + lx, fy - bob + ly).setDepth(fy);
     this.heroShadow.setPosition(fx, fy).setDisplaySize(HERO_H * 0.8, HERO_H * 0.22);
 
+    // 受傷表現：閃紅、無敵時間內閃爍
+    if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else this.hero.clearTint();
+    this.hero.setAlpha(!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1);
+
     this.processAttack(time, fx, fy);
+    this.updateBandits(time);
+    if (this.down && time >= this.respawnAt) this.respawnPlayer(time);
+    this.drawEnemyFx(time);
     this.drawSlash(time, fx, fy);
     this.drawBars();
     this.drawUI();
@@ -316,7 +410,7 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 戰鬥 ----------
   tryAttack(time) {
-    if (time - this.lastAtk < ATK_CD) return;
+    if (this.down || time - this.lastAtk < ATK_CD) return;
     this.lastAtk = time;
     const [dx, dy] = DIRS[this.facing];
     this.atk = { start: time, dx, dy, hit: new Set() };
@@ -335,6 +429,185 @@ class VillageScene extends Phaser.Scene {
         this.atk.hit.add(d);
         this.hitDummy(d, this.atk.dx, this.atk.dy);
       }
+    }
+    for (const b of this.bandits) {
+      if (b.dead || this.atk.hit.has(b)) continue;
+      const bx = b.body.x, by = b.body.y + 4;     // 山賊腳底
+      if (Math.hypot(cx - bx, cy - (by - 20)) < ATK_RADIUS + 12) {
+        this.atk.hit.add(b);
+        this.hitBandit(b, this.atk.dx, this.atk.dy, time);
+      }
+    }
+  }
+
+  // ---------- 山賊 ----------
+  setSpriteTex(sprite, key, h) {
+    const tex = this.textures.get(key).getSourceImage();
+    sprite.setTexture(key);
+    sprite.setDisplaySize(h * tex.width / tex.height, h);
+  }
+
+  updateBandits(time) {
+    const px = this.playerBody.x, py = this.playerBody.y + 4;
+    for (const b of this.bandits) {
+      const bd = b.body.body;
+      const bx = b.body.x, by = b.body.y + 4;
+      const dx = px - bx, dy = py - by, dist = Math.hypot(dx, dy) || 1;
+      const ux = dx / dist, uy = dy / dist;
+      const faceToward = () => {
+        b.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      };
+      let vx = 0, vy = 0;
+
+      if (b.state === 'dead') {
+        if (time >= b.respawnAt) this.reviveBandit(b);
+      } else if (b.state === 'hurt') {
+        vx = b.kx; vy = b.ky;
+        if (time >= b.until) b.state = this.down ? 'idle' : 'chase';
+      } else if (b.state === 'idle') {
+        if (!this.down && dist < BANDIT_AGGRO) b.state = 'chase';
+      } else if (b.state === 'chase') {
+        if (this.down || dist > BANDIT_LOSE) {
+          b.state = 'idle';
+        } else {
+          faceToward();
+          if (dist > BANDIT_RANGE) {
+            vx = ux * BANDIT_SPEED; vy = uy * BANDIT_SPEED;
+          } else {
+            b.state = 'windup'; b.t0 = time;
+          }
+        }
+      } else if (b.state === 'windup') {
+        faceToward();
+        if (time - b.t0 >= BANDIT_WINDUP) {
+          b.state = 'strike'; b.t0 = time; b.strikeAt = time; b.did = false;
+          [b.adx, b.ady] = DIRS[b.facing];
+        }
+      } else if (b.state === 'strike') {
+        if (!b.did) {
+          b.did = true;
+          const cx = bx + b.adx * 18, cy = by - 14 + b.ady * 18;
+          if (Math.hypot(cx - px, cy - (py - 14)) < 22 + 9) this.hurtPlayer(BANDIT_DMG, bx, by, time);
+        }
+        if (time - b.t0 >= BANDIT_STRIKE) { b.state = 'recover'; b.t0 = time; }
+      } else if (b.state === 'recover') {
+        if (time - b.t0 >= BANDIT_RECOVER) b.state = this.down ? 'idle' : 'chase';
+      }
+
+      bd.setVelocity(vx, vy);
+
+      // 圖片、陰影、驚嘆號
+      if (b.state !== 'dead' || b.sprite.alpha > 0) {
+        const key = b.facing === 'up' ? 'bandit_up'
+                  : (b.facing === 'left' || b.facing === 'right') ? 'bandit_side_k'
+                  : 'bandit_down';
+        if (b.sprite.texture.key !== key) this.setSpriteTex(b.sprite, key, BANDIT_H);
+        b.sprite.setFlipX(b.facing === 'left');
+
+        let ox = 0, oy = 0;
+        const [fdx, fdy] = DIRS[b.facing];
+        if (b.state === 'windup') {                       // 蓄力：身體微微後仰
+          const k = Math.min(1, (time - b.t0) / BANDIT_WINDUP);
+          ox = -fdx * 3 * k; oy = -fdy * 2 * k;
+        } else if (b.state === 'strike') {                // 出刀：往前一頂
+          ox = b.adx * 6; oy = b.ady * 4;
+        }
+        if (b.state !== 'dead') b.sprite.setPosition(bx + ox, by + oy).setDepth(by);
+        b.shadow.setPosition(bx, by);
+        b.shadow.setAlpha(b.state === 'dead' ? 0 : 1);
+
+        if (b.state === 'dead') b.sprite.clearTint();
+        else if (time < b.flashUntil) b.sprite.setTint(0xff9a8a);
+        else if (b.state === 'windup' && Math.floor(time / 70) % 2) b.sprite.setTint(0xffd27a);
+        else b.sprite.clearTint();
+
+        b.alert.setVisible(b.state === 'windup').setPosition(bx, by - BANDIT_H - 2);
+      }
+    }
+  }
+
+  hitBandit(b, dx, dy, time) {
+    const dmg = 12 + Math.floor(Math.random() * 7);
+    b.hp -= dmg;
+    this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 4, dmg);
+    b.flashUntil = time + 110;
+    if (b.hp <= 0) { this.killBandit(b, dx, time); return; }
+    // 被打中：僵直並後退（出刀預備會被打斷）
+    b.state = 'hurt'; b.until = time + BANDIT_STUN;
+    const m = Math.hypot(dx, dy) || 1;
+    b.kx = dx / m * BANDIT_KNOCK; b.ky = dy / m * BANDIT_KNOCK;
+    this.cameras.main.shake(60, 0.002);
+  }
+
+  killBandit(b, dx, time) {
+    b.state = 'dead'; b.dead = true;
+    b.body.body.setVelocity(0, 0);
+    b.body.body.enable = false;
+    b.alert.setVisible(false);
+    b.respawnAt = time + BANDIT_RESPAWN_MS;
+    const dir = dx >= 0 ? 1 : -1;
+    this.tweens.add({ targets: b.sprite, angle: dir * 85, duration: 280, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: b.sprite, alpha: 0, delay: 2600, duration: 900 });
+  }
+
+  reviveBandit(b) {
+    this.tweens.killTweensOf(b.sprite);
+    b.body.body.reset(b.home.x, b.home.y - 4);
+    b.body.body.enable = true;
+    b.sprite.setAngle(0).setAlpha(1);
+    b.hp = BANDIT_HP; b.dead = false; b.state = 'idle'; b.facing = 'down';
+    b.sprite.setPosition(b.home.x, b.home.y);
+  }
+
+  // ---------- 玩家受傷與倒下 ----------
+  hurtPlayer(dmg, sx, sy, time) {
+    if (this.down || time < this.invulnUntil) return;
+    this.php = Math.max(0, this.php - dmg);
+    this.invulnUntil = time + INVULN_MS;
+    this.heroFlashUntil = time + 140;
+    this.atk = null;                                  // 被打中會打斷自己的揮劍
+    const px = this.playerBody.x, py = this.playerBody.y + 4;
+    const m = Math.hypot(px - sx, py - sy) || 1;
+    this.pk = { vx: (px - sx) / m * PLAYER_KNOCK, vy: (py - sy) / m * PLAYER_KNOCK, until: time + PLAYER_KNOCK_MS };
+    this.spawnDamage(px, py - HERO_H - 4, dmg, '#ff9a8a');
+    this.cameras.main.shake(120, 0.005);
+    if (this.php <= 0) {
+      this.down = true;
+      this.respawnAt = time + PLAYER_RESPAWN_MS;
+      this.hero.setAngle(this.facing === 'left' ? -85 : 85);
+      this.downText.setVisible(true);
+    }
+  }
+
+  respawnPlayer(time) {
+    this.down = false;
+    this.php = PLAYER_HP;
+    this.invulnUntil = time + 1500;
+    this.hero.setAngle(0);
+    this.downText.setVisible(false);
+    this.playerBody.body.reset(410, 330);
+    for (const b of this.bandits) {
+      if (!b.dead) { b.state = 'idle'; b.hp = BANDIT_HP; }
+    }
+  }
+
+  // 山賊出刀的紅色劍光
+  drawEnemyFx(time) {
+    const g = this.enemyGfx;
+    g.clear();
+    for (const b of this.bandits) {
+      const t = (time - b.strikeAt) / 240;
+      if (b.dead || t < 0 || t > 1) continue;
+      const bx = b.body.x, by = b.body.y + 4;
+      const mid = Math.atan2(b.ady, b.adx), span = 2.2, startA = mid - span / 2;
+      const p = Math.min(1, t / 0.5);
+      const curA = startA + span * (1 - (1 - p) * (1 - p));
+      const cx = bx + b.adx * 6, cy = by - 14 + b.ady * 6, r = 26;
+      g.setDepth(by + 1);
+      g.lineStyle(7, 0xe8a090, (1 - t) * 0.35);
+      g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
+      g.lineStyle(3, 0xffe2d8, 1 - t);
+      g.beginPath(); g.arc(cx, cy, r, startA, curA, false); g.strokePath();
     }
   }
 
@@ -360,10 +633,10 @@ class VillageScene extends Phaser.Scene {
     }
   }
 
-  spawnDamage(x, y, n) {
+  spawnDamage(x, y, n, color = '#ffe9a8') {
     const t = this.add.text(x, y, String(n), {
       fontFamily: 'system-ui, sans-serif', fontSize: '12px', fontStyle: 'bold',
-      color: '#ffe9a8', stroke: '#000000', strokeThickness: 3, resolution: 3,
+      color, stroke: '#000000', strokeThickness: 3, resolution: 3,
     }).setOrigin(0.5).setDepth(7000);
     this.uiCam.ignore(t);
     this.tweens.add({
@@ -402,6 +675,12 @@ class VillageScene extends Phaser.Scene {
       g.fillStyle(0x000000, 0.6); g.fillRect(x - 1, y - 1, w + 2, 5);
       g.fillStyle(0xc0503a, 1); g.fillRect(x, y, w * Math.max(0, d.hp) / DUMMY_HP, 3);
     }
+    for (const b of this.bandits) {
+      if (b.dead || b.hp >= BANDIT_HP) continue;
+      const w = 28, x = b.body.x - w / 2, y = b.body.y + 4 - BANDIT_H - 10;
+      g.fillStyle(0x000000, 0.6); g.fillRect(x - 1, y - 1, w + 2, 5);
+      g.fillStyle(0xc0503a, 1); g.fillRect(x, y, w * Math.max(0, b.hp) / BANDIT_HP, 3);
+    }
   }
 
   btnPos() {
@@ -428,6 +707,14 @@ class VillageScene extends Phaser.Scene {
   }
 
   drawUI() {
+    // 玩家血條（左上角）
+    const hg = this.hpGfx, hw = 110;
+    hg.clear();
+    hg.fillStyle(0x000000, 0.55); hg.fillRect(13, 13, hw + 2, 14);
+    hg.fillStyle(0x4a2a24, 1); hg.fillRect(14, 14, hw, 12);
+    hg.fillStyle(this.php / PLAYER_HP > 0.3 ? 0x7fae5a : 0xc0503a, 1);
+    hg.fillRect(14, 14, hw * Math.max(0, this.php) / PLAYER_HP, 12);
+
     // 攻擊鍵
     const b = this.btnPos(), bg = this.btnGfx;
     bg.clear();
