@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.8';   // 每次更新請加一
+const VERSION = 'v0.7.9';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -345,7 +345,7 @@ class VillageScene extends Phaser.Scene {
     for (const h of ENEMY_SPAWNS) {
       const T = ENEMY_TYPES[h.type];
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
-      const sprite = this.add.image(h.x, h.y, T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
+      const sprite = this.add.image(h.x, h.y, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
       const alert = this.add.text(h.x, h.y - T.h - 4, '!', {
         fontFamily: 'system-ui, sans-serif', fontSize: '16px', fontStyle: 'bold',
         color: '#ff7a5a', stroke: '#000000', strokeThickness: 3, resolution: 3,
@@ -361,7 +361,7 @@ class VillageScene extends Phaser.Scene {
       this.physics.add.collider(body, this.obstacles);
       this.physics.add.collider(this.playerBody, body);
       this.world.push(shadow, sprite, alert, nameTag);
-      this.setSpriteTex(sprite, T.tex + '_down', T.h);
+      this.setSpriteTex(sprite, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down', T.h);
       this.bandits.push({
         home: { x: h.x, y: h.y }, body, sprite, shadow, alert,
         t: T, nameTag, hp: T.hp, state: 'idle', facing: 'down', dead: false,
@@ -769,6 +769,13 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ---------- 山賊 ----------
+  // 敵人靜止時的貼圖：有自己走路圖的種類用走路圖第 2 幀（雙腳併攏），不再誤用山賊的圖
+  stillKey(T, facing) {
+    const dir = facing === 'up' ? 'back' : (facing === 'left' || facing === 'right') ? 'side' : 'front';
+    if (T.walkTex) return T.walkTex + '_walk_' + dir + '_1';
+    return facing === 'up' ? T.tex + '_up' : (facing === 'left' || facing === 'right') ? T.tex + '_side_k' : T.tex + '_down';
+  }
+
   setSpriteTex(sprite, key, h) {
     const tex = this.textures.get(key).getSourceImage();
     sprite.setTexture(key);
@@ -920,9 +927,7 @@ class VillageScene extends Phaser.Scene {
         const wf = Math.floor(b.walkT / WALK_FRAME_MS) % 4;
         const wdir = b.facing === 'up' ? 'back' : (b.facing === 'left' || b.facing === 'right') ? 'side' : 'front';
         const key = moving ? (b.t.walkTex || b.t.tex) + '_walk_' + wdir + '_' + wf
-                  : b.facing === 'up' ? b.t.tex + '_up'
-                  : (b.facing === 'left' || b.facing === 'right') ? b.t.tex + '_side_k'
-                  : b.t.tex + '_down';
+                  : this.stillKey(b.t, b.facing);
         if (b.sprite.texture.key !== key) this.setSpriteTex(b.sprite, key, b.t.h);
         b.sprite.setFlipX(b.facing === 'left');
 
