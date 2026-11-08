@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.15';   // 每次更新請加一
+const VERSION = 'v0.7.16';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -322,6 +322,11 @@ class VillageScene extends Phaser.Scene {
     this.keyTex('bandit_side', 'bandit_side_k');
     this.keyTex('house', 'house_k');
     this.keyTex('tree', 'tree_k');
+    // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
+    for (const k of this.textures.getTextureKeys()) {
+      if (k.startsWith('__') || k === 'stone') continue;
+      if (this.textures.get(k).getSourceImage() instanceof HTMLImageElement) this.textures.remove(k);
+    }
 
     this.world = [];   // 世界物件，會被鏡頭看到
     this.ui = [];      // 螢幕固定物件
@@ -718,6 +723,12 @@ class VillageScene extends Phaser.Scene {
     this.drawSlash(time, fx, fy);
     this.drawBars();
     this.drawUI();
+    // 版本號旁顯示幀率（每 0.5 秒更新一次），方便在手機上判斷是否掉幀
+    this.fpsN = (this.fpsN || 0) + 1;
+    if (realTime - (this.fpsT || realTime) >= 500) {
+      this.verText.setText(VERSION + ' · ' + Math.round(this.fpsN * 1000 / (realTime - this.fpsT)) + 'fps');
+      this.fpsN = 0; this.fpsT = realTime;
+    } else if (!this.fpsT) { this.fpsT = realTime; }
   }
 
   // ---------- 戰鬥 ----------
