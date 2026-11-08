@@ -5,11 +5,13 @@ const MAP_W = 820, MAP_H = 660;
 const SPEED = 150;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
+const ACCEL_MS = 100;   // 起步約這麼久加到全速
+const DECEL_MS = 120;   // 放手後約這麼久停下來
 const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.5';   // 每次更新請加一
+const VERSION = 'v0.5.6';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -247,6 +249,7 @@ class VillageScene extends Phaser.Scene {
     // 玩家狀態
     this.php = PLAYER_HP;
     this.invulnUntil = 0;
+    this.mv = { x: 0, y: 0 };               // 目前的走路速度（有慣性）
     this.pk = { vx: 0, vy: 0, until: 0 };   // 被擊退
     this.heroFlashUntil = 0;
     this.down = false;
@@ -463,15 +466,27 @@ class VillageScene extends Phaser.Scene {
     if (this.roll && time - this.roll.start >= this.roll.dur) this.roll = null;
 
     if (time < this.pk.until) {          // 被擊退中：不受操作影響
+      this.mv.x = 0; this.mv.y = 0;
       this.playerBody.body.setVelocity(this.pk.vx, this.pk.vy);
     } else if (this.roll) {              // 翻滾：方向鎖定，速度由快漸慢，之後原地收招
+      this.mv.x = 0; this.mv.y = 0;
       const r = this.roll, rt = time - r.start;
       const v = rt < r.move ? r.v0 * (1 - rt / r.move) : 0;
       this.playerBody.body.setVelocity(r.dx * v, r.dy * v);
     } else {
-      const stiff = this.atk && time - this.atk.start > this.atk.swing;   // 揮完刀的硬直
-    const speed = stiff ? 0 : SPEED * (this.atk ? ATK_MOVE_MUL : 1);
-      this.playerBody.body.setVelocity(x * speed, y * speed);
+      if (this.atk) {                    // 揮劍、硬直中不能移動
+        this.mv.x = 0; this.mv.y = 0;
+        this.playerBody.body.setVelocity(0, 0);
+      } else {
+        // 起步、停步、轉向都有一點慣性：速度朝目標速度逐步靠近
+        const tx = x * SPEED, ty = y * SPEED;
+        const rate = SPEED / ((m > 0.05 ? ACCEL_MS : DECEL_MS) / 1000);   // 每秒可改變的速度
+        const dvx = tx - this.mv.x, dvy = ty - this.mv.y, dm = Math.hypot(dvx, dvy);
+        const step = rate * delta / 1000;
+        if (dm <= step) { this.mv.x = tx; this.mv.y = ty; }
+        else { this.mv.x += dvx / dm * step; this.mv.y += dvy / dm * step; }
+        this.playerBody.body.setVelocity(this.mv.x, this.mv.y);
+      }
     }
 
     if (m > 0.05) {
@@ -479,14 +494,15 @@ class VillageScene extends Phaser.Scene {
         if (Math.abs(x) > Math.abs(y)) this.facing = x > 0 ? 'right' : 'left';
         else this.facing = y > 0 ? 'down' : 'up';
       }
-      this.walk += delta / 80;
+      this.walk += delta / 80 * (0.5 + 0.5 * Math.min(1, Math.hypot(this.mv.x, this.mv.y) / SPEED));
     } else {
       this.walk = 0;
     }
 
     // 圖片跟著腳底框；朝向換貼圖
     const fx = this.playerBody.x, fy = this.playerBody.y + 4;
-    const bob = m > 0.05 ? Math.abs(Math.sin(this.walk * Math.PI)) * 1.5 : 0;
+    const spd = Math.min(1, Math.hypot(this.mv.x, this.mv.y) / SPEED);
+    const bob = spd > 0.1 ? Math.abs(Math.sin(this.walk * Math.PI)) * 3 * spd : 0;   // 踏步頓挫
     const key = this.facing === 'up' ? 'hero_up'
               : (this.facing === 'left' || this.facing === 'right') ? 'hero_side_k'
               : 'hero_down';
