@@ -7,13 +7,14 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.5';   // 每次更新請加一
+const VERSION = 'v0.4.6';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 300;      // 揮劍動作本身的長度
 const ATK_DUR = 480;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
 const ATK_HIT_FROM = 120, ATK_HIT_TO = 280;   // 動作中可以打到人的時間窗
 const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
+const LOCK_RANGE = 80;      // 揮劍時自動鎖定這個距離內最近的目標
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
 const ATK_MOVE_MUL = 0;     // 揮劍時完全不能移動（只能用翻滾閃避）
@@ -256,6 +257,7 @@ class VillageScene extends Phaser.Scene {
     this.atk = null;          // 目前的揮劍：{ start, dx, dy, hit:Set }
     this.lastAtk = -1e9;
     this.btn = { id: null, held: false };
+    this.vt = 0; this.realT = 0; this.hitstopUntil = 0;   // 遊戲時間（打擊停頓時不前進）
     this.btn2 = { id: null };              // 閃避鍵
     this.stam = STAM_MAX; this.stamRegenAt = 0; this.stamFlash = 0;
     this.roll = null;                      // 翻滾中：{ start, dx, dy, lastGhost }
@@ -394,7 +396,15 @@ class VillageScene extends Phaser.Scene {
     return { x, y, m: Math.hypot(x, y) };
   }
 
-  update(time, delta) {
+  update(realTime, delta) {
+    this.realT = realTime;
+    if (realTime < this.hitstopUntil) {   // 打擊停頓：全場凍結一瞬間，動作計時也一起停
+      this.playerBody.body.setVelocity(0, 0);
+      for (const b of this.bandits) b.body.body.setVelocity(0, 0);
+      return;
+    }
+    this.vt += delta;
+    const time = this.vt;
     this.nowT = time;
     const { x, y, m } = this.down ? { x: 0, y: 0, m: 0 } : this.readInput();
 
@@ -482,9 +492,41 @@ class VillageScene extends Phaser.Scene {
     if (this.stam <= 0) { this.stamFlash = time + 300; return false; }
     this.useStamina(ATK_COST, time);
     this.lastAtk = time;
-    const [dx, dy] = DIRS[this.facing];
+    // 軟鎖定：附近有目標就自動轉向它，沒有才朝面對的方向揮
+    let dx, dy;
+    const tg = this.pickTarget(LOCK_RANGE);
+    if (tg) {
+      const fx = this.playerBody.x, fy = this.playerBody.y + 4;
+      const vx = tg.x - fx, vy = tg.y - fy, m = Math.hypot(vx, vy) || 1;
+      dx = vx / m; dy = vy / m;
+      this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    } else {
+      [dx, dy] = DIRS[this.facing];
+    }
     this.atk = { start: time, dx, dy, hit: new Set() };
     return true;
+  }
+
+  // 找距離內最近、還活著的目標（山賊或木人樁）
+  pickTarget(range) {
+    const fx = this.playerBody.x, fy = this.playerBody.y + 4;
+    let best = null, bd = range;
+    for (const b of this.bandits) {
+      if (b.dead) continue;
+      const d = Math.hypot(b.body.x - fx, b.body.y + 4 - fy);
+      if (d < bd) { bd = d; best = { x: b.body.x, y: b.body.y + 4 }; }
+    }
+    for (const d of this.dummies) {
+      if (d.dead) continue;
+      const dd = Math.hypot(d.x - fx, d.y - fy);
+      if (dd < bd) { bd = dd; best = { x: d.x, y: d.y }; }
+    }
+    return best;
+  }
+
+  // 打擊停頓：命中的瞬間凍結一下，打擊感的關鍵
+  hitstop(ms) {
+    this.hitstopUntil = Math.max(this.hitstopUntil, this.realT + ms);
   }
 
   useStamina(n, time) {
@@ -639,10 +681,11 @@ class VillageScene extends Phaser.Scene {
     const dmg = 8 + Math.floor(Math.random() * 5);
     b.hp -= dmg;
     b.lastHit = time;
+    this.hitstop(b.hp <= 0 ? 130 : 75);
     this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 4, dmg);
     b.flashUntil = time + 110;
     if (b.hp <= 0) { this.killBandit(b, dx, time); return; }
-    this.cameras.main.shake(60, 0.002);
+    this.cameras.main.shake(90, 0.003);
     // 架勢值：連續被打才會破勢；破勢之前他不會被打斷，仍會出刀
     b.poise -= dmg;
     if (b.poise <= 0) {
@@ -685,7 +728,8 @@ class VillageScene extends Phaser.Scene {
     const m = Math.hypot(px - sx, py - sy) || 1;
     this.pk = { vx: (px - sx) / m * PLAYER_KNOCK, vy: (py - sy) / m * PLAYER_KNOCK, until: time + PLAYER_KNOCK_MS };
     this.spawnDamage(px, py - HERO_H - 4, dmg, '#ff9a8a');
-    this.cameras.main.shake(120, 0.005);
+    this.hitstop(90);
+    this.cameras.main.shake(130, 0.006);
     if (this.php <= 0) {
       this.down = true;
       this.respawnAt = time + PLAYER_RESPAWN_MS;
@@ -745,6 +789,7 @@ class VillageScene extends Phaser.Scene {
   hitDummy(d, dx, dy) {
     const dmg = 8 + Math.floor(Math.random() * 5);
     d.hp -= dmg;
+    this.hitstop(55);
     this.spawnDamage(d.x, d.y - 52, dmg);
 
     // 受擊：往後晃一下並閃紅
