@@ -7,13 +7,13 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.4.2';   // 每次更新請加一
+const VERSION = 'v0.4.3';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 300;      // 揮劍動作本身的長度
 const ATK_DUR = 480;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
 const ATK_HIT_FROM = 120, ATK_HIT_TO = 280;   // 動作中可以打到人的時間窗
-const ATK_ROLL_CANCEL = 330;                 // 揮劍多久之後可以用翻滾取消收招
+const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
 const ATK_MOVE_MUL = 0.4;   // 揮劍時移動速度倍率
@@ -42,7 +42,7 @@ const STAM_DELAY_EMPTY = 1100;  // 耐力見底時要等更久
 const ATK_COST = 20;
 const ROLL_COST = 24;
 const ROLL_DUR = 480;           // 翻滾總長度
-const ROLL_IFRAMES = 250;       // 前段無敵時間，之後是收招硬直
+const ROLL_IFRAMES = 320;       // 翻滾前段無敵時間，之後是收招硬直
 const ROLL_SPEED = 330;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
@@ -61,6 +61,7 @@ const BANDIT_WINDUP = 650;    // 蓄力時間：看清楚、閃避的時機
 const BANDIT_WINDUP_FAST = 450;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
 const BANDIT_AIM_LOCK = 200;  // 出刀前最後這段時間鎖定方向
 const BANDIT_STRIKE = 200;    // 出刀（衝刺）時間
+const BANDIT_HIT_AT = 130;     // 出刀後幾毫秒才判定命中（留給你的反應時間）
 const BANDIT_LUNGE = 280;     // 出刀時往前衝的速度
 const BANDIT_RECOVER = 1300;  // 出完刀的破綻，是你反擊的機會
 const BANDIT_COMBO_P = 0.45;  // 連擊兩刀的機率
@@ -313,7 +314,7 @@ class VillageScene extends Phaser.Scene {
     this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
     this.input.keyboard.on('keydown-SPACE', () => this.tryAttack(this.nowT || 0));
     this.input.keyboard.on('keydown-J', () => this.tryAttack(this.nowT || 0));
-    const dodgeKey = () => { const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 220; };
+    const dodgeKey = () => { const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
     this.input.keyboard.on('keydown-SHIFT', dodgeKey);
     this.input.keyboard.on('keydown-K', dodgeKey);
     this.input.on('pointerdown', p => {
@@ -583,7 +584,7 @@ class VillageScene extends Phaser.Scene {
         if (wt >= b.windup) { b.state = 'strike'; b.t0 = time; b.strikeAt = time; b.did = false; }
       } else if (b.state === 'strike') {
         vx = b.adx * BANDIT_LUNGE; vy = b.ady * BANDIT_LUNGE;
-        if (!b.did) {
+        if (!b.did && time - b.t0 >= BANDIT_HIT_AT) {
           const cx = bx + b.adx * 14, cy = by - 14 + b.ady * 14;
           if (Math.hypot(cx - px, cy - (py - 14)) < 29 && this.hurtPlayer(BANDIT_DMG, bx, by, time)) b.did = true;
         }
