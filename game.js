@@ -2,7 +2,7 @@
 'use strict';
 
 const MAP_W = 820, MAP_H = 660;
-const SPEED = 150;      // 世界單位 / 秒
+const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 const WALK_FRAME_MS = 120;   // 走路動畫每幀的長度（毫秒，全速時）
@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.8';   // 每次更新請加一
+const VERSION = 'v0.5.9';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -537,7 +537,7 @@ class VillageScene extends Phaser.Scene {
     // 圖片跟著腳底框；朝向換貼圖
     const fx = this.playerBody.x, fy = this.playerBody.y + 4;
     const spd = Math.min(1, Math.hypot(this.mv.x, this.mv.y) / SPEED);
-    const bob = spd > 0.1 && !(this.facing === 'left' || this.facing === 'right') ? Math.abs(Math.sin(this.walk * Math.PI)) * 3 * spd : 0;   // 踏步頓挫
+    const bob = spd > 0.1 ? Math.abs(Math.sin(this.walk * Math.PI)) * 3 * spd : 0;   // 踏步頓挫
     const side = this.facing === 'left' || this.facing === 'right';
     // 側面走路用 4 幀動畫（速度越快播得越快）；其他情況用靜止圖
     const walking = side && spd > 0.1 && !this.atk && !this.roll && !this.down && time >= this.pk.until;
