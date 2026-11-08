@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.3';   // 每次更新請加一
+const VERSION = 'v0.7.4';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -107,7 +107,7 @@ const ENEMY_TYPES = {
 };
 // 小兵（黃巾軍）：血少、慢、很少防禦；可多人同時進攻
 ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
-  tint: 0xe6c86a,            // 暫用山賊貼圖加黃色，圖到了再換
+  walkTex: 'turban', walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
   h: Math.round(HERO_H * 0.9),   // 小兵縮小約 10%
   hp: 12, speed: 70, aggro: 140, lose: 300, stalkDist: 0, orbitR: 90,
@@ -227,6 +227,9 @@ class VillageScene extends Phaser.Scene {
     this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
     this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
     this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
+    this.load.image('turban_walk_side', A + 'characters/turban_walk_side.png');
+    this.load.image('turban_walk_front', A + 'characters/turban_walk_front.png');
+    this.load.image('turban_walk_back', A + 'characters/turban_walk_back.png');
     this.load.image('bandit_front', A + 'characters/bandit_front.png');
     this.load.image('bandit_back', A + 'characters/bandit_back.png');
     this.load.image('bandit_side', A + 'characters/bandit_side.png');
@@ -249,10 +252,11 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
-      if (!T.walkBright || this.textures.exists(T.tex + '_walk_side_0')) continue;
+      const wk = T.walkTex || T.tex;
+      if (!T.walkBright || this.textures.exists(wk + '_walk_side_0')) continue;
       for (const dir of ['side', 'front', 'back']) {
-        keyAndTrimFrames(this.textures.get(T.tex + '_walk_' + dir).getSourceImage(), 4, T.walkBright[dir])
-          .forEach((cv, i) => this.textures.addCanvas(T.tex + '_walk_' + dir + '_' + i, cv));
+        keyAndTrimFrames(this.textures.get(wk + '_walk_' + dir).getSourceImage(), 4, T.walkBright[dir])
+          .forEach((cv, i) => this.textures.addCanvas(wk + '_walk_' + dir + '_' + i, cv));
       }
     }
     this.keyTex('bandit_front', 'bandit_down');
@@ -897,7 +901,7 @@ class VillageScene extends Phaser.Scene {
         if (moving) b.walkT = (b.walkT || 0) + wdt * Math.max(0.5, Math.min(1, sp / b.t.speed)); else b.walkT = 0;
         const wf = Math.floor(b.walkT / WALK_FRAME_MS) % 4;
         const wdir = b.facing === 'up' ? 'back' : (b.facing === 'left' || b.facing === 'right') ? 'side' : 'front';
-        const key = moving ? b.t.tex + '_walk_' + wdir + '_' + wf
+        const key = moving ? (b.t.walkTex || b.t.tex) + '_walk_' + wdir + '_' + wf
                   : b.facing === 'up' ? b.t.tex + '_up'
                   : (b.facing === 'left' || b.facing === 'right') ? b.t.tex + '_side_k'
                   : b.t.tex + '_down';
