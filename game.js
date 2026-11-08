@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.13';   // 每次更新請加一
+const VERSION = 'v0.7.14';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -108,9 +108,9 @@ const ENEMY_TYPES = {
     // 架勢與受擊
     poise: 48, stun: 600, knock: 120,
     // 反制「打了就退」：被打中後有機率立刻轉向反擊（蓄力縮短，仍有預備動作）
-    counterOnHit: 0.5, counterWindup: 320, counterRange: 70,
+    counterOnHit: 1, counterWindup: 320, counterRange: 70,
     // 搶先出刀：玩家快速逼近或已出刀時，距離內有機率先動手（蓄力時間不縮短，動作仍可辨識）
-    preempt: true, preemptDist: 85, pPreempt: 0.55, preemptCdMs: 1800, preemptCloseSpd: 70,
+    preempt: true, preemptDist: 85, pPreempt: 1, preemptCdMs: 1800, preemptCloseSpd: 70,
     respawnMs: 6000,
   },
 };
