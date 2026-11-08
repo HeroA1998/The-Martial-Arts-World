@@ -7,6 +7,7 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
+const VERSION = 'v0.2.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 380;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_DUR = 240;        // 揮劍動作長度
@@ -181,7 +182,11 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
-    this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText);
+    this.verText = this.add.text(this.scale.width - 6, 6, VERSION, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#d8e0cf', alpha: 0.6,
+      stroke: '#000000', strokeThickness: 2,
+    }).setOrigin(1, 0).setDepth(1001);
+    this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -222,6 +227,7 @@ class VillageScene extends Phaser.Scene {
       this.uiCam.setSize(this.scale.width, this.scale.height);
       this.applyZoom();
       this.hintText.setX(this.scale.width / 2);
+      this.verText.setX(this.scale.width - 6);
     });
   }
 
