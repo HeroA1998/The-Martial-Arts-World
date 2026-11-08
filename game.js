@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.1';   // 每次更新請加一
+const VERSION = 'v0.7.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -103,6 +103,33 @@ const ENEMY_TYPES = {
     respawnMs: 6000,
   },
 };
+// 小兵（黃巾軍）：血少、慢、很少防禦；可多人同時進攻
+ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
+  tint: 0xe6c86a,            // 暫用山賊貼圖加黃色，圖到了再換
+  hp: 12, speed: 70, aggro: 140, lose: 300, stalkDist: 0, orbitR: 90,
+  attackSlots: 3, atkGap: 250,
+  slashWindup: 700, slashWindupFast: 520, slashRecover: 1000, rest: 1800, dmgSlash: 6,
+  pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
+  pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
+  poise: 10, stun: 500, knock: 140, respawnMs: 20000,
+});
+// 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
+ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
+  tint: 0x9fb2cc,
+  hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
+  attackSlots: 2, atkGap: 400,
+  dmgLunge: 16, dmgSlash: 9, rest: 1400,
+  pSlashClose: 0.65, pLungeClose: 0.1, pLungeMid: 0.25,
+  pGuard: 0.15, pDodge: 0.08,
+  poise: 28, stun: 500, respawnMs: 15000,
+});
+// 測試用大戰場：網址加 &battle=1 會多出一群小兵與精兵
+const BATTLE_SPAWNS = [
+  { type: 'turban', x: 100, y: 310 }, { type: 'turban', x: 100, y: 350 },
+  { type: 'turban', x: 720, y: 310 }, { type: 'turban', x: 720, y: 350 },
+  { type: 'turban', x: 410, y: 120 }, { type: 'turban', x: 410, y: 180 },
+  { type: 'hansoldier', x: 410, y: 580 }, { type: 'hansoldier', x: 410, y: 520 },
+];
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
 const DODGE_DUR = 220, DODGE_DIST = 36;
@@ -216,7 +243,7 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_back_' + i, cv));
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
-      if (!T.walkBright) continue;
+      if (!T.walkBright || this.textures.exists(T.tex + '_walk_side_0')) continue;
       for (const dir of ['side', 'front', 'back']) {
         keyAndTrimFrames(this.textures.get(T.tex + '_walk_' + dir).getSourceImage(), 4, T.walkBright[dir])
           .forEach((cv, i) => this.textures.addCanvas(T.tex + '_walk_' + dir + '_' + i, cv));
@@ -305,7 +332,8 @@ class VillageScene extends Phaser.Scene {
 
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
-    for (const h of ENEMY_SPAWNS) {
+    const spawns = ENEMY_SPAWNS.concat(/[?&]battle=/.test(location.search) ? BATTLE_SPAWNS : []);
+    for (const h of spawns) {
       const T = ENEMY_TYPES[h.type];
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, 0x000000, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
@@ -884,6 +912,7 @@ class VillageScene extends Phaser.Scene {
         else if (b.state === 'guard') b.sprite.setTint(0x9fb8d8);
         else if (time < b.flashUntil) b.sprite.setTint(0xff9a8a);
         else if (b.state === 'windup' && Math.floor(time / 70) % 2) b.sprite.setTint(0xffd27a);
+        else if (b.t.tint) b.sprite.setTint(b.t.tint);   // 種類色調（暫代用）
         else b.sprite.clearTint();
 
         if (b.state !== 'dead') b.sprite.setAlpha(b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1);
