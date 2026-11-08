@@ -5,9 +5,11 @@ const MAP_W = 820, MAP_H = 660;
 const SPEED = 150;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
+const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
+const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.3';   // 每次更新請加一
+const VERSION = 'v0.5.4';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -304,7 +306,7 @@ class VillageScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, MAP_W, MAP_H);
     cam.setBackgroundColor('#16201a');
-    cam.startFollow(this.playerBody, true, 0.12, 0.12);
+    cam.startFollow(this.playerBody, true, 0.22, 0.22);
     this.applyZoom();
 
     // 螢幕固定的 UI 用另一個鏡頭，避免被縮放
@@ -415,8 +417,11 @@ class VillageScene extends Phaser.Scene {
   setJoy(p) {
     const dx = p.x - this.joy.ox, dy = p.y - this.joy.oy;
     const m = Math.hypot(dx, dy), k = m > JOY_R ? JOY_R / m : 1;
-    this.joy.dx = dx * k; this.joy.dy = dy * k;
-    this.joy.x = this.joy.dx / JOY_R; this.joy.y = this.joy.dy / JOY_R;
+    this.joy.dx = dx * k; this.joy.dy = dy * k;       // 畫面上搖桿頭的位置
+    // 速度：小死區之後很快加到全速，輕輕一拖就起步
+    const mag = Math.max(0, Math.min(1, (m - JOY_DEAD) / (JOY_FULL - JOY_DEAD)));
+    const ux = m > 0 ? dx / m : 0, uy = m > 0 ? dy / m : 0;
+    this.joy.x = ux * mag; this.joy.y = uy * mag;
   }
 
   readInput() {
