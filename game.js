@@ -7,22 +7,24 @@ const HERO_H = 46;      // 主角在世界中的高度
 const JOY_R = 60;       // 搖桿半徑（螢幕像素）
 
 // 戰鬥
-const VERSION = 'v0.5.0';   // 每次更新請加一
+const VERSION = 'v0.6.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
-const ATK_CD = 540;         // 兩次攻擊的最短間隔（毫秒）
-const ATK_SWING = 300;      // 揮劍動作本身的長度
-const ATK_DUR = 480;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
-const ATK_HIT_FROM = 120, ATK_HIT_TO = 280;   // 動作中可以打到人的時間窗
+// 熱血式三連擊：每一下命中都會讓對方硬直，第三下打飛倒地
+// dur 總長；swing 之後是收招；chain 之後按攻擊可直接接下一下；dmg 傷害範圍；
+// stun 對方硬直；knock 擊退；down 是否擊倒；step 揮劍時往前踏的速度（前 100 毫秒）
+const COMBO = [
+  { dur: 270, swing: 200, chain: 130, hitFrom: 50, hitTo: 140, dmg: [8, 10],  stun: 400, knock: 70,  down: false, step: 70 },
+  { dur: 270, swing: 200, chain: 130, hitFrom: 50, hitTo: 140, dmg: [9, 11],  stun: 400, knock: 90,  down: false, step: 70 },
+  { dur: 450, swing: 340, chain: 9999, hitFrom: 90, hitTo: 210, dmg: [11, 14], stun: 0,   knock: 220, down: true,  step: 90 },
+];
+const COMBO_WINDOW = 240;   // 一下打完後，這段時間內再按會接下一下，否則重新從第一下開始
+const COMBO_END_LAG = 220;  // 三連擊打完的收招，期間不能開新的連擊
+const BANDIT_DOWN = 750;    // 山賊倒地時間
+const BANDIT_GETUP_INV = 350;   // 起身瞬間的無敵
 const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
 const LOCK_RANGE = 80;      // 揮劍時自動鎖定這個距離內最近的目標
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
-const ATK_MOVE_MUL = 0;     // 揮劍時完全不能移動（只能用翻滾閃避）
-// 翻滾攻擊：翻滾無敵結束後立刻按攻擊，出一刀較短較快的反擊
-const QATK_COST = 16;
-const QATK_SWING = 220, QATK_DUR = 380;
-const QATK_HIT_FROM = 60, QATK_HIT_TO = 190;
-const PLAYER_DMG_MIN = 10, PLAYER_DMG_RNG = 5;   // 傷害 10~14
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // 木人樁（底部中心座標）
@@ -35,7 +37,7 @@ const DUMMY_HP = 60;
 
 // 玩家
 const PLAYER_HP = 100;
-const INVULN_MS = 500;        // 被打中後的無敵時間
+const INVULN_MS = 400;       // 被打中後的無敵時間
 const PLAYER_KNOCK = 150;     // 被擊退的速度
 const PLAYER_KNOCK_MS = 130;
 const PLAYER_RESPAWN_MS = 2000;
@@ -64,25 +66,22 @@ const BANDITS = [
   { x: 170, y: 480 },
 ];
 const BANDIT_H = HERO_H;      // 與主角等高
-const BANDIT_HP = 50;
+const BANDIT_HP = 40;
 const BANDIT_SPEED = 95;
 const BANDIT_AGGRO = 120;     // 玩家進入這個距離就會追
 const BANDIT_LOSE = 260;      // 玩家跑超過這個距離就放棄
-const BANDIT_RANGE = 56;      // 這個距離內開始蓄力出刀
-const BANDIT_WINDUP = 650;    // 蓄力時間：看清楚、閃避的時機
-const BANDIT_WINDUP_FAST = 700;   // 連擊第二刀的蓄力（節奏不同，亂翻會吃到）
-const BANDIT_AIM_LOCK = 200;  // 出刀前最後這段時間鎖定方向
-const BANDIT_STRIKE = 200;    // 出刀（衝刺）時間
-const BANDIT_HIT_AT = 130;     // 出刀後幾毫秒才判定命中（留給你的反應時間）
-const BANDIT_LUNGE = 280;     // 出刀時往前衝的速度
-const BANDIT_RECOVER = 1200;  // 出完刀的破綻，是你反擊的機會（開頭會閃白光）
-const BANDIT_REST = 800;      // 破綻結束後，先繞著你走一陣子再進攻
+const BANDIT_RANGE = 52;      // 這個距離內開始蓄力出刀
+const BANDIT_WINDUP = 380;    // 蓄力時間：短促的起手，看得到才閃得掉
+const BANDIT_WINDUP_FAST = 260;   // 連擊第二刀的蓄力
+const BANDIT_AIM_LOCK = 130;  // 出刀前最後這段時間鎖定方向
+const BANDIT_STRIKE = 150;    // 出刀（衝刺）時間
+const BANDIT_HIT_AT = 80;     // 出刀後幾毫秒才判定命中（留給你的反應時間）
+const BANDIT_LUNGE = 230;     // 出刀時往前衝的速度
+const BANDIT_RECOVER = 520;   // 出完刀的破綻：夠你衝上去打一兩下
+const BANDIT_REST = 350;      // 破綻結束後，短暫繞步再進攻
 const BANDIT_ORBIT_R = 100;   // 輪不到進攻的山賊在這個距離外繞圈等
-const BANDIT_COMBO_P = 0.2;    // 連擊兩刀的機率
-const BANDIT_DMG = 16;
-const BANDIT_POISE = 36;      // 架勢值：被打到會減少，歸零才會被打斷
-const BANDIT_STUN = 600;      // 架勢被打破後的僵直
-const BANDIT_KNOCK = 120;     // 被打破架勢時的後退速度
+const BANDIT_COMBO_P = 0.35;    // 連擊兩刀的機率
+const BANDIT_DMG = 9;
 const BANDIT_RESPAWN_MS = 6000;
 
 // 小鎮配置：x、y 為底部中心；w 為顯示寬度
@@ -228,6 +227,9 @@ class VillageScene extends Phaser.Scene {
     this.heroFlashUntil = 0;
     this.down = false;
     this.respawnAt = 0;
+    this.stunUntil = 0;     // 被打中的硬直：期間不能出招與翻滾
+    this.atkLock = 0;       // 三連擊打完的收招
+    this.comboNext = 1; this.comboUntil = 0;
 
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
@@ -251,7 +253,7 @@ class VillageScene extends Phaser.Scene {
         hp: BANDIT_HP, state: 'idle', facing: 'down', dead: false,
         t0: 0, until: 0, kx: 0, ky: 0, flashUntil: 0,
         strikeAt: -1e9, did: false, adx: 0, ady: 1, respawnAt: 0,
-        poise: BANDIT_POISE, lastHit: 0, windup: BANDIT_WINDUP, combo: 0,
+        lastHit: 0, windup: BANDIT_WINDUP, combo: 0, invulnUntil: 0, downDir: 1,
       });
     }
     for (let i = 0; i < this.bandits.length; i++) {
@@ -307,7 +309,7 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#e8c8b8',
       stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5).setDepth(1002).setVisible(false);
-    this.hintText = this.add.text(this.scale.width / 2, 52, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾（前段無敵）\n翻滾後立刻按「攻」＝翻滾攻擊\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
+    this.hintText = this.add.text(this.scale.width / 2, 52, '左半邊拖曳移動 · 右下「攻」連點三連擊 · 「閃」翻滾脫身\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
@@ -441,9 +443,12 @@ class VillageScene extends Phaser.Scene {
       const v = rt < r.move ? r.v0 * (1 - rt / r.move) : 0;
       this.playerBody.body.setVelocity(r.dx * v, r.dy * v);
     } else {
-      const stiff = this.atk && time - this.atk.start > this.atk.swing;   // 揮完刀的硬直
-    const speed = stiff ? 0 : SPEED * (this.atk ? ATK_MOVE_MUL : 1);
-      this.playerBody.body.setVelocity(x * speed, y * speed);
+      if (this.atk) {   // 揮劍：前 100 毫秒往前踏一步，之後原地
+        const st = time - this.atk.start < 100 ? this.atk.st.step : 0;
+        this.playerBody.body.setVelocity(this.atk.dx * st, this.atk.dy * st);
+      } else {
+        this.playerBody.body.setVelocity(x * SPEED, y * SPEED);
+      }
     }
 
     if (m > 0.05) {
@@ -510,34 +515,41 @@ class VillageScene extends Phaser.Scene {
   }
 
   tryAttack(time) {
-    if (this.down || this.atk) return false;
-    let quick = false;
-    if (this.roll) {
-      if (time - this.roll.start < this.roll.iTo) return false;   // 翻滾無敵還沒結束
-      quick = true;                                                // 翻滾攻擊
-    } else if (time - this.lastAtk < ATK_CD) {
-      return false;
+    if (this.down || time < this.stunUntil) return false;
+    let step = 1;
+    if (this.atk) {
+      // 揮劍中：過了「可接招點」才能直接接下一下
+      if (this.atk.step >= 3 || time - this.atk.start < this.atk.st.chain) return false;
+      step = this.atk.step + 1;
+    } else if (this.roll) {
+      if (time - this.roll.start < this.roll.iTo) return false;   // 翻滾無敵還沒結束，先緩衝
+    } else {
+      if (time < this.atkLock) return false;
+      step = time < this.comboUntil ? this.comboNext : 1;
     }
-    if (this.stam <= 0) { this.stamFlash = time + 300; return false; }
-    this.useStamina(quick ? QATK_COST : ATK_COST, time);
-    this.lastAtk = quick ? time - (ATK_CD - QATK_DUR) : time;
-    // 軟鎖定：附近有目標就自動轉向它，沒有才朝面對（或翻滾）的方向揮
+    const st = COMBO[step - 1];
+    // 方向：附近有目標就自動轉向；否則看搖桿；再不然用翻滾方向或面對的方向
     let dx, dy;
+    const inp = this.readInput();
     const tg = this.pickTarget(LOCK_RANGE);
     if (tg) {
       const fx = this.playerBody.x, fy = this.playerBody.y + 4;
       const vx = tg.x - fx, vy = tg.y - fy, m = Math.hypot(vx, vy) || 1;
       dx = vx / m; dy = vy / m;
-      this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    } else if (inp.m > 0.3) {
+      dx = inp.x / inp.m; dy = inp.y / inp.m;
     } else if (this.roll && !this.roll.back) {
       dx = this.roll.dx; dy = this.roll.dy;
     } else {
       [dx, dy] = DIRS[this.facing];
     }
+    this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
     this.roll = null;
-    this.atk = quick
-      ? { start: time, dx, dy, hit: new Set(), quick, dur: QATK_DUR, swing: QATK_SWING, hitFrom: QATK_HIT_FROM, hitTo: QATK_HIT_TO }
-      : { start: time, dx, dy, hit: new Set(), quick, dur: ATK_DUR, swing: ATK_SWING, hitFrom: ATK_HIT_FROM, hitTo: ATK_HIT_TO };
+    this.atk = { start: time, dx, dy, hit: new Set(), step, st, dur: st.dur, swing: st.swing, hitFrom: st.hitFrom, hitTo: st.hitTo };
+    this.comboNext = step >= 3 ? 1 : step + 1;
+    this.comboUntil = time + st.dur + COMBO_WINDOW;
+    if (step >= 3) this.atkLock = time + st.dur + COMBO_END_LAG;
+    this.lastAtk = time;
     return true;
   }
 
@@ -570,7 +582,7 @@ class VillageScene extends Phaser.Scene {
 
   // 翻滾：往搖桿方向；沒推搖桿就往後退。前段無敵，亂翻會耗光耐力
   tryRoll(time) {
-    if (this.down || this.roll) return false;
+    if (this.down || this.roll || time < this.stunUntil) return false;
     if (this.atk && time - this.atk.start < ATK_ROLL_CANCEL) return false;
     if (this.stam <= 0) { this.stamFlash = time + 300; return false; }
     const inp = this.readInput();
@@ -606,15 +618,15 @@ class VillageScene extends Phaser.Scene {
       if (d.dead || this.atk.hit.has(d)) continue;
       if (Math.hypot(cx - d.x, cy - (d.y - 18)) < ATK_RADIUS + 11) {
         this.atk.hit.add(d);
-        this.hitDummy(d, this.atk.dx, this.atk.dy);
+        this.hitDummy(d, this.atk.dx, this.atk.dy, this.atk.st);
       }
     }
     for (const b of this.bandits) {
-      if (b.dead || this.atk.hit.has(b)) continue;
+      if (b.dead || b.state === 'down' || time < b.invulnUntil || this.atk.hit.has(b)) continue;
       const bx = b.body.x, by = b.body.y + 4;     // 山賊腳底
       if (Math.hypot(cx - bx, cy - (by - 20)) < ATK_RADIUS + 12) {
         this.atk.hit.add(b);
-        this.hitBandit(b, this.atk.dx, this.atk.dy, time);
+        this.hitBandit(b, this.atk.dx, this.atk.dy, time, this.atk.st);
       }
     }
   }
@@ -638,13 +650,16 @@ class VillageScene extends Phaser.Scene {
       };
       let vx = 0, vy = 0;
 
-      if (b.state !== 'hurt' && b.poise < BANDIT_POISE && time - b.lastHit > 2500) b.poise = BANDIT_POISE;
-
       if (b.state === 'dead') {
         if (time >= b.respawnAt) this.reviveBandit(b);
       } else if (b.state === 'hurt') {
-        vx = b.kx; vy = b.ky;
-        if (time >= b.until) { b.state = this.down ? 'idle' : 'chase'; b.poise = BANDIT_POISE; }
+        const k = Math.max(0, 1 - (time - b.t0) / (b.until - b.t0));   // 擊退越來越慢
+        vx = b.kx * k; vy = b.ky * k;
+        if (time >= b.until) b.state = this.down ? 'idle' : 'chase';
+      } else if (b.state === 'down') {
+        const k = Math.max(0, 1 - (time - b.t0) / 260);                // 被打飛：滑出去一小段後躺平
+        vx = b.kx * k; vy = b.ky * k;
+        if (time >= b.until) { b.state = this.down ? 'idle' : 'chase'; b.invulnUntil = time + BANDIT_GETUP_INV; }
       } else if (b.state === 'idle') {
         if (!this.down && dist < BANDIT_AGGRO) b.state = 'chase';
       } else if (b.state === 'chase') {
@@ -652,7 +667,7 @@ class VillageScene extends Phaser.Scene {
           b.state = 'idle';
         } else {
           faceToward();
-          const busy = !this.tokenFree(b);
+          const busy = false;   // 熱血模式：不限制同時進攻的人數
           if (busy && dist < BANDIT_ORBIT_R + 20) {
             // 同伴正在進攻：我在外圈繞著等，輪到我才上
             [vx, vy] = this.orbit(b, ux, uy, dist, BANDIT_ORBIT_R, BANDIT_SPEED * 0.6);
@@ -711,13 +726,15 @@ class VillageScene extends Phaser.Scene {
         } else if (b.state === 'strike') {                // 出刀：往前一頂
           ox = b.adx * 6; oy = b.ady * 4;
         }
-        if (b.state !== 'dead') b.sprite.setPosition(bx + ox, by + oy).setDepth(by);
+        if (b.state !== 'dead') {
+          b.sprite.setPosition(bx + ox, by + oy).setDepth(by);
+          b.sprite.setAngle(b.state === 'down' ? b.downDir * 85 : 0);
+        }
         b.shadow.setPosition(bx, by);
         b.shadow.setAlpha(b.state === 'dead' ? 0 : 1);
 
         if (b.state === 'dead') b.sprite.clearTint();
-        else if (b.state === 'recover' && time - b.t0 < 160) b.sprite.setTintFill(0xffffff);   // 破綻提示：白光一閃
-        else if (time < b.flashUntil) b.sprite.setTint(0xff9a8a);
+        else if (time < b.flashUntil || time < b.invulnUntil) b.sprite.setTint(0xff9a8a);
         else if (b.state === 'windup' && Math.floor(time / 70) % 2) b.sprite.setTint(0xffd27a);
         else b.sprite.clearTint();
 
@@ -749,22 +766,24 @@ class VillageScene extends Phaser.Scene {
     b.adx = ux; b.ady = uy;
   }
 
-  hitBandit(b, dx, dy, time) {
-    const dmg = PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG);
+  hitBandit(b, dx, dy, time, st) {
+    const dmg = st.dmg[0] + Math.floor(Math.random() * (st.dmg[1] - st.dmg[0] + 1));
     b.hp -= dmg;
     b.lastHit = time;
-    this.hitstop(b.hp <= 0 ? 130 : 75);
+    this.hitstop(b.hp <= 0 ? 130 : st.down ? 110 : 70);
     this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 4, dmg);
     b.flashUntil = time + 110;
     if (b.hp <= 0) { this.killBandit(b, dx, time); return; }
-    this.cameras.main.shake(90, 0.003);
-    // 架勢值：連續被打才會破勢；破勢之前他不會被打斷，仍會出刀
-    b.poise -= dmg;
-    if (b.poise <= 0) {
-      b.state = 'hurt'; b.until = time + BANDIT_STUN;
-      const m = Math.hypot(dx, dy) || 1;
-      b.kx = dx / m * BANDIT_KNOCK; b.ky = dy / m * BANDIT_KNOCK;
-      this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 18, '破勢', '#9fd8ff');
+    this.cameras.main.shake(st.down ? 140 : 80, st.down ? 0.005 : 0.003);
+    // 每一下都會打斷他的動作；第三下直接擊倒
+    const m = Math.hypot(dx, dy) || 1;
+    b.kx = dx / m * st.knock; b.ky = dy / m * st.knock;
+    b.t0 = time; b.strikeAt = -1e9; b.combo = 0;
+    if (st.down) {
+      b.state = 'down'; b.until = time + BANDIT_DOWN; b.downDir = dx >= 0 ? 1 : -1;
+      this.spawnDamage(b.body.x, b.body.y - BANDIT_H - 18, '擊倒', '#9fd8ff');
+    } else {
+      b.state = 'hurt'; b.until = time + st.stun;
     }
   }
 
@@ -784,7 +803,7 @@ class VillageScene extends Phaser.Scene {
     b.body.body.reset(b.home.x, b.home.y - 4);
     b.body.body.enable = true;
     b.sprite.setAngle(0).setAlpha(1);
-    b.hp = BANDIT_HP; b.dead = false; b.state = 'idle'; b.facing = 'down';
+    b.hp = BANDIT_HP; b.dead = false; b.state = 'idle'; b.facing = 'down'; b.invulnUntil = 0;
     b.sprite.setPosition(b.home.x, b.home.y);
   }
 
@@ -795,6 +814,8 @@ class VillageScene extends Phaser.Scene {
     this.roll = null;
     this.invulnUntil = time + INVULN_MS;
     this.heroFlashUntil = time + 140;
+    this.stunUntil = time + 260;                      // 挨打硬直：互毆要搶節奏
+    this.comboUntil = 0;
     this.atk = null;                                  // 被打中會打斷自己的揮劍
     const px = this.playerBody.x, py = this.playerBody.y + 4;
     const m = Math.hypot(px - sx, py - sy) || 1;
@@ -858,8 +879,8 @@ class VillageScene extends Phaser.Scene {
     }
   }
 
-  hitDummy(d, dx, dy) {
-    const dmg = PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG);
+  hitDummy(d, dx, dy, st) {
+    const dmg = st.dmg[0] + Math.floor(Math.random() * (st.dmg[1] - st.dmg[0] + 1));
     d.hp -= dmg;
     this.hitstop(55);
     this.spawnDamage(d.x, d.y - 52, dmg);
@@ -980,7 +1001,7 @@ class VillageScene extends Phaser.Scene {
     bg.clear();
     bg.fillStyle(0x16201a, this.btn.held ? 0.7 : 0.45); bg.fillCircle(b.x, b.y, BTN_R);
     bg.lineStyle(3, 0xe6f0dc, this.btn.held ? 0.9 : 0.55); bg.strokeCircle(b.x, b.y, BTN_R);
-    const left = Math.max(0, ATK_CD - ((this.nowT || 0) - this.lastAtk)) / ATK_CD;
+    const left = Math.max(0, this.atkLock - (this.nowT || 0)) / (COMBO_END_LAG + 450);
     if (left > 0 && left <= 1) {
       bg.lineStyle(4, 0xd9b45a, 0.9);
       bg.beginPath();
