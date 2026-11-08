@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.7';   // 每次更新請加一
+const VERSION = 'v0.5.8';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -155,7 +155,7 @@ function keyAndTrim(img) {
 }
 
 // 動畫橫排圖：去洋紅背景，所有幀用同一個裁切框（保持幀與幀之間的位置一致）
-function keyAndTrimFrames(img, n) {
+function keyAndTrimFrames(img, n, bright = 1) {
   const c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
   const g = c.getContext('2d');
@@ -167,6 +167,7 @@ function keyAndTrimFrames(img, n) {
     for (let x = 0; x < cw * n; x++) {
       const i = (y * c.width + x) * 4;
       if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) { p[i + 3] = 0; continue; }
+      p[i] *= bright; p[i + 1] *= bright; p[i + 2] *= bright;   // 調整亮度，與靜止圖一致
       const lx = x % cw;
       if (lx < minX) minX = lx; if (lx > maxX) maxX = lx;
       if (y < minY) minY = y; if (y > maxY) maxY = y;
@@ -206,7 +207,7 @@ class VillageScene extends Phaser.Scene {
     this.keyTex('hero_back', 'hero_up');
     this.keyTex('hero_side', 'hero_side_k');
     // 側面走路動畫：4 幀
-    keyAndTrimFrames(this.textures.get('hero_walk_side').getSourceImage(), 4)
+    keyAndTrimFrames(this.textures.get('hero_walk_side').getSourceImage(), 4, 0.85)
       .forEach((cv, i) => this.textures.addCanvas('hero_walk_side_' + i, cv));
     this.keyTex('bandit_front', 'bandit_down');
     this.keyTex('bandit_back', 'bandit_up');
