@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.2';   // 每次更新請加一
+const VERSION = 'v0.7.3';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -73,8 +73,10 @@ const ENEMY_SPAWNS = [
 const ENEMY_TYPES = {
   bandit: {
     tex: 'bandit',            // 貼圖前綴：bandit_up / bandit_down / bandit_side_k
+    name: '山賊頭目', showName: true,   // 武將：常駐名字與血條
+    shadowColor: 0x000000,
     walkBright: { side: 0.87, front: 0.92, back: 0.94 },   // 走路圖亮度校正（與靜止圖一致）
-    h: HERO_H,                // 顯示高度（與主角等高）
+    h: Math.round(HERO_H * 1.15),   // 武將放大約 15%
     hp: 50,
     speed: 82,
     aggro: 120,               // 玩家進入這個距離就會追
@@ -106,6 +108,8 @@ const ENEMY_TYPES = {
 // 小兵（黃巾軍）：血少、慢、很少防禦；可多人同時進攻
 ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   tint: 0xe6c86a,            // 暫用山賊貼圖加黃色，圖到了再換
+  name: '黃巾', showName: false, shadowColor: 0x000000,
+  h: Math.round(HERO_H * 0.9),   // 小兵縮小約 10%
   hp: 12, speed: 70, aggro: 140, lose: 300, stalkDist: 0, orbitR: 90,
   attackSlots: 3, atkGap: 250,
   slashWindup: 700, slashWindupFast: 520, slashRecover: 1000, rest: 1800, dmgSlash: 6,
@@ -116,6 +120,8 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   tint: 0x9fb2cc,
+  name: '官軍', showName: false, shadowColor: 0x000000,
+  h: HERO_H,   // 與主角等高
   hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
   attackSlots: 2, atkGap: 400,
   dmgLunge: 16, dmgSlash: 9, rest: 1400,
@@ -335,23 +341,27 @@ class VillageScene extends Phaser.Scene {
     const spawns = ENEMY_SPAWNS.concat(/[?&]battle=/.test(location.search) ? BATTLE_SPAWNS : []);
     for (const h of spawns) {
       const T = ENEMY_TYPES[h.type];
-      const shadow = this.add.ellipse(h.x, h.y, 42, 12, 0x000000, 0.28).setDepth(-10);
+      const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
       const alert = this.add.text(h.x, h.y - T.h - 4, '!', {
         fontFamily: 'system-ui, sans-serif', fontSize: '16px', fontStyle: 'bold',
         color: '#ff7a5a', stroke: '#000000', strokeThickness: 3, resolution: 3,
       }).setOrigin(0.5, 1).setDepth(8000).setVisible(false);
+      const nameTag = this.add.text(h.x, h.y - T.h - 16, T.name || '', {
+        fontFamily: 'system-ui, sans-serif', fontSize: '11px', fontStyle: 'bold',
+        color: '#f0e6c8', stroke: '#000000', strokeThickness: 3, resolution: 3,
+      }).setOrigin(0.5, 1).setDepth(8000).setVisible(!!T.showName);
       const body = this.add.zone(h.x, h.y - 4, 14, 8);
       this.physics.add.existing(body);
       body.body.setImmovable(true);
       body.body.setCollideWorldBounds(true);
       this.physics.add.collider(body, this.obstacles);
       this.physics.add.collider(this.playerBody, body);
-      this.world.push(shadow, sprite, alert);
+      this.world.push(shadow, sprite, alert, nameTag);
       this.setSpriteTex(sprite, T.tex + '_down', T.h);
       this.bandits.push({
         home: { x: h.x, y: h.y }, body, sprite, shadow, alert,
-        t: T, hp: T.hp, state: 'idle', facing: 'down', dead: false,
+        t: T, nameTag, hp: T.hp, state: 'idle', facing: 'down', dead: false,
         t0: 0, until: 0, kx: 0, ky: 0, flashUntil: 0,
         strikeAt: -1e9, did: false, adx: 0, ady: 1, respawnAt: 0,
         poise: T.poise, lastHit: 0, windup: T.windup, combo: 0,
@@ -917,6 +927,7 @@ class VillageScene extends Phaser.Scene {
 
         if (b.state !== 'dead') b.sprite.setAlpha(b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1);
         b.alert.setVisible(b.state === 'windup' && b.kind === 'lunge').setPosition(bx, by - b.t.h - 2);
+        b.nameTag.setVisible(!b.dead && b.t.showName).setPosition(bx, by - b.t.h - 16);
       }
     }
   }
@@ -1014,7 +1025,7 @@ class VillageScene extends Phaser.Scene {
     b.state = 'dead'; b.dead = true;
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
-    b.alert.setVisible(false);
+    b.alert.setVisible(false); b.nameTag.setVisible(false);
     b.respawnAt = time + b.t.respawnMs;
     const dir = dx >= 0 ? 1 : -1;
     this.tweens.add({ targets: b.sprite, angle: dir * 85, duration: 280, ease: 'Quad.easeIn' });
@@ -1172,7 +1183,7 @@ class VillageScene extends Phaser.Scene {
       g.fillStyle(0xc0503a, 1); g.fillRect(x, y, w * Math.max(0, d.hp) / DUMMY_HP, 3);
     }
     for (const b of this.bandits) {
-      if (b.dead || b.hp >= b.t.hp) continue;
+      if (b.dead || (b.hp >= b.t.hp && !b.t.showName)) continue;   // 武將常駐血條
       const w = 28, x = b.body.x - w / 2, y = b.body.y + 4 - b.t.h - 10;
       g.fillStyle(0x000000, 0.6); g.fillRect(x - 1, y - 1, w + 2, 5);
       g.fillStyle(0xc0503a, 1); g.fillRect(x, y, w * Math.max(0, b.hp) / b.t.hp, 3);
