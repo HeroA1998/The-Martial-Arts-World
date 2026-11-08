@@ -12,7 +12,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.6';   // 每次更新請加一
+const VERSION = 'v0.7.7';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -63,10 +63,13 @@ const BACK_DUR = 430, BACK_MOVE = 300, BACK_DIST = 34;
 const BACK_I_FROM = 20, BACK_I_TO = 210;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
-// 敵人出生點與種類
+// 敵人出生點與種類：左邊只有一個山賊頭目（武將），右邊是一群小兵與精兵
 const ENEMY_SPAWNS = [
-  { type: 'bandit', x: 650, y: 200 },
   { type: 'bandit', x: 170, y: 480 },
+  { type: 'turban', x: 600, y: 310 }, { type: 'turban', x: 640, y: 335 },
+  { type: 'turban', x: 600, y: 355 }, { type: 'turban', x: 680, y: 320 },
+  { type: 'turban', x: 700, y: 355 }, { type: 'turban', x: 660, y: 300 },
+  { type: 'hansoldier', x: 720, y: 305 }, { type: 'hansoldier', x: 570, y: 335 },
 ];
 
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
@@ -131,13 +134,6 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   pGuard: 0.15, pDodge: 0.08,
   poise: 28, stun: 500, respawnMs: 15000,
 });
-// 測試用大戰場：網址加 &battle=1 會多出一群小兵與精兵
-const BATTLE_SPAWNS = [
-  { type: 'turban', x: 100, y: 310 }, { type: 'turban', x: 100, y: 350 },
-  { type: 'turban', x: 720, y: 310 }, { type: 'turban', x: 720, y: 350 },
-  { type: 'turban', x: 410, y: 120 }, { type: 'turban', x: 410, y: 180 },
-  { type: 'hansoldier', x: 410, y: 580 }, { type: 'hansoldier', x: 410, y: 520 },
-];
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
 const DODGE_DUR = 220, DODGE_DIST = 36;
@@ -347,8 +343,7 @@ class VillageScene extends Phaser.Scene {
 
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
-    const spawns = ENEMY_SPAWNS.concat(/[?&]battle=/.test(location.search) ? BATTLE_SPAWNS : []);
-    for (const h of spawns) {
+    for (const h of ENEMY_SPAWNS) {
       const T = ENEMY_TYPES[h.type];
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
