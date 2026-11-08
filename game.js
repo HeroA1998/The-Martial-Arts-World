@@ -9,7 +9,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.5.4';   // 每次更新請加一
+const VERSION = 'v0.5.5';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -410,7 +410,8 @@ class VillageScene extends Phaser.Scene {
   }
 
   applyZoom() {
-    const z = Math.max(1.0, Math.min(2.2, Math.min(this.scale.width / 330, this.scale.height / 480)));
+    // 視野約寬 230、高 460（世界單位）：拉近，上下也會跟著移動
+    const z = Math.max(1.0, Math.min(2.2, Math.min(this.scale.width / 230, this.scale.height / 460)));
     this.cameras.main.setZoom(z);
   }
 
