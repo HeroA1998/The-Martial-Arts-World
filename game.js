@@ -1,7 +1,23 @@
-// 大江湖 · 第 1 步：可走動的小鎮（Phaser 3）
+// 大江湖 · 森林小道伏擊（Phaser 3）
 'use strict';
 
-const MAP_W = 820, MAP_H = 660;
+const MAP_W = 460, MAP_H = 1120;   // 直向的森林小道
+
+// ---------- 森林小道 ----------
+// 小道中心線（略為彎曲）、中段的林間空地（戰場）、左右兩條側小徑（伏兵從這裡衝出）
+const PATH_HW = 50;                                     // 小道半寬
+const pathCX = y => 230 + 16 * Math.sin(y / 170);       // 小道中心 x
+const CLEAR = { x: 230, y: 560, rx: 175, ry: 120 };     // 林間空地（橢圓）
+const SIDE_Y0 = 535, SIDE_Y1 = 595;                     // 左右側小徑的上下緣
+const START = { x: pathCX(1060), y: 1060 };             // 主角起點（小道最下方）
+const AMBUSH_Y = 690;                                   // 主角往上走到這裡（空地下緣）觸發伏擊
+const EXIT_Y = 50;                                      // 擊退伏兵後，走到小道最上方＝本段結束
+function walkable(x, y) {
+  if (y < 6 || y > MAP_H - 6) return false;
+  if (Math.abs(x - pathCX(y)) < PATH_HW) return true;
+  if (((x - CLEAR.x) / CLEAR.rx) ** 2 + ((y - CLEAR.y) / CLEAR.ry) ** 2 < 1) return true;
+  return y > SIDE_Y0 && y < SIDE_Y1 && x > 8 && x < MAP_W - 8;
+}
 const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const ATK_SRC_BODY_H = 360;   // 揮刀圖裡，頭頂到腳底的像素高度（對應 HERO_H）
@@ -13,7 +29,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.21';   // 每次更新請加一
+const VERSION = 'v0.8.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -33,11 +49,7 @@ const PLAYER_DMG_MIN = 10, PLAYER_DMG_RNG = 5;   // 傷害 10~14
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // 木人樁（底部中心座標）
-const DUMMIES = [
-  { x: 240, y: 335 },
-  { x: 580, y: 335 },
-  { x: 410, y: 470 },
-];
+const DUMMIES = [];   // 森林小道不放木人樁
 const DUMMY_HP = 60;
 
 // 玩家
@@ -68,19 +80,20 @@ const BACK_I_FROM = 20, BACK_I_TO = 210;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
 // 敵人出生點與種類：左邊只有一個黃巾渠帥（武將），右邊是一群小兵與精兵
+// 伏兵：一開始藏在兩側樹林（看不到），主角走到空地時從左右側小徑衝出
+// delay：觸發後幾毫秒才現身；ex, ey：衝進空地的落點
 const ENEMY_SPAWNS = [
-  { type: 'bandit', x: 170, y: 480 },
-  { type: 'turban', x: 600, y: 310 }, { type: 'turban', x: 640, y: 335 },
-  { type: 'turban', x: 600, y: 355 }, { type: 'turban', x: 680, y: 320 },
-  { type: 'turban', x: 700, y: 355 }, { type: 'turban', x: 660, y: 300 },
-  { type: 'hansoldier', x: 720, y: 305 }, { type: 'hansoldier', x: 570, y: 335 },
+  { type: 'turban', x: 14,  y: 572, delay: 0,    ex: 120, ey: 585 },
+  { type: 'bandit', x: 14,  y: 556, delay: 2000, ex: 140, ey: 548 },
+  { type: 'turban', x: 446, y: 552, delay: 200,  ex: 330, ey: 545 },
+  { type: 'turban', x: 446, y: 580, delay: 500,  ex: 345, ey: 595 },
 ];
 
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
 const ENEMY_TYPES = {
   bandit: {
-    tex: 'hangeneral',        // 貼圖前綴（武將專屬圖：走路、站立、揮砍、受擊、倒下）
-    walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',   // animTex：有揮砍／受擊／倒下動畫
+    tex: 'yturban',           // 暫代：盜賊圖把頭巾染成土黃（之後換成 Codex 的正式黃巾武將）
+    walkTex: 'yturban', standTex: 'yturban', animTex: null,   // 暫代圖沒有揮砍／受擊／倒下動畫
     name: '黃巾渠帥', showName: true,   // 武將：常駐名字與血條
     shadowColor: 0x000000,
     walkBright: { side: 1, front: 1, back: 1 },            // 走路圖亮度校正（Codex 圖已與參考一致）
@@ -161,21 +174,8 @@ const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
 const DODGE_DUR = 240, DODGE_DIST = 46;   // 敵人後閃：距離拉長一點，才看得出來
 
-// 小鎮配置：x、y 為底部中心；w 為顯示寬度
-const PROPS = [
-  { kind: 'house', x: 300, y: 255, w: 110 },
-  { kind: 'house', x: 520, y: 255, w: 110 },
-  { kind: 'house', x: 300, y: 610, w: 110 },
-  { kind: 'house', x: 520, y: 610, w: 110 },
-  { kind: 'tree', x: 90,  y: 130, w: 95 },
-  { kind: 'tree', x: 730, y: 120, w: 95 },
-  { kind: 'tree', x: 90,  y: 520, w: 90 },
-  { kind: 'tree', x: 740, y: 540, w: 95 },
-  { kind: 'tree', x: 300, y: 70,  w: 85 },
-  { kind: 'tree', x: 520, y: 80,  w: 85 },
-  { kind: 'tree', x: 330, y: 650, w: 85 },
-  { kind: 'tree', x: 520, y: 690, w: 80 },
-];
+// 固定擺設（森林小道的樹改由程式自動種，這裡留空）
+const PROPS = [];
 
 // 去掉洋紅背景（#FF00FF）並裁切到圖案範圍，回傳 canvas
 function keyAndTrim(img) {
@@ -285,9 +285,9 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_hurt_back', A + 'characters/hero_hurt_back.png');
     this.load.image('hero_down_side', A + 'characters/hero_down_side.png');
     this.load.image('hero_down_front', A + 'characters/hero_down_front.png');
-    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back',
-                     'attack_side', 'attack_front', 'attack_back', 'hurt_side', 'down_side']) {
-      this.load.image('hangeneral_' + f, A + 'characters/hangeneral_' + f + '.png');
+    // 黃巾渠帥（暫代圖）；官兵武將圖 hangeneral_* 保留在資料夾，之後給官軍將領用
+    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back']) {
+      this.load.image('yturban_' + f, A + 'characters/yturban_' + f + '.png');
     }
     for (const p of ['turban', 'hansoldier']) {
       for (const d of ['side', 'front', 'back']) this.load.image(p + '_stand_' + d, A + 'characters/' + p + '_stand_' + d + '.png');
@@ -298,8 +298,6 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hansoldier_walk_side', A + 'characters/hansoldier_walk_side.png');
     this.load.image('hansoldier_walk_front', A + 'characters/hansoldier_walk_front.png');
     this.load.image('hansoldier_walk_back', A + 'characters/hansoldier_walk_back.png');
-    this.load.image('stone', A + 'tiles/stone_floor.png');
-    this.load.image('house', A + 'buildings/house_01.png');
     this.load.image('tree', A + 'props/tree_01.png');
   }
 
@@ -358,7 +356,6 @@ class VillageScene extends Phaser.Scene {
           .forEach((cv, i) => this.textures.addCanvas(P + '_' + dst + '_' + i, cv));
       }
     }
-    this.keyTex('house', 'house_k');
     this.keyTex('tree', 'tree_k');
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
@@ -369,23 +366,9 @@ class VillageScene extends Phaser.Scene {
     this.world = [];   // 世界物件，會被鏡頭看到
     this.ui = [];      // 螢幕固定物件
 
-    // 地面
-    this.world.push(this.add.rectangle(0, 0, MAP_W, MAP_H, 0x33442f).setOrigin(0).setDepth(-20));
-    let seed = 7;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 420; i++) {
-      const r = 2 + rnd() * 4;
-      this.world.push(this.add.rectangle(rnd() * MAP_W, rnd() * MAP_H, r, r * 0.6, 0x2a3828, 0.5 + rnd() * 0.4).setDepth(-19));
-    }
-    // 石板路（十字）
-    for (const [x, y, w, h] of [[0, 280, MAP_W, 90], [360, 0, 100, MAP_H]]) {
-      const ts = this.add.tileSprite(x, y, w, h, 'stone').setOrigin(0).setDepth(-15);
-      ts.tileScaleX = 0.16; ts.tileScaleY = 0.16;
-      this.world.push(ts);
-    }
+    this.buildForest();
 
-    // 建築與大樹：障礙、陰影、排序
-    this.obstacles = this.physics.add.staticGroup();
+    // 固定擺設（目前沒有）：障礙、陰影、排序；this.obstacles 已在 buildForest 建好
     for (const p of PROPS) {
       const isHouse = p.kind === 'house';
       const key = isHouse ? 'house_k' : 'tree_k';
@@ -419,7 +402,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // 主角：物理碰撞用的腳底框（看不見），圖片跟著它走
-    this.playerBody = this.add.zone(410, 330, 14, 8);
+    this.playerBody = this.add.zone(START.x, START.y, 14, 8);
     this.physics.add.existing(this.playerBody);
     this.playerBody.body.setCollideWorldBounds(true);
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
@@ -444,7 +427,8 @@ class VillageScene extends Phaser.Scene {
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
     for (const h of ENEMY_SPAWNS) {
-      const T = ENEMY_TYPES[h.type];
+      // 伏擊戰：被觸發後一路追到底（不會因距離放棄），倒下不重生
+      const T = Object.assign({}, ENEMY_TYPES[h.type], { aggro: 600, lose: 1200, respawnMs: Infinity });
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
       const alert = this.add.text(h.x, h.y - T.h - 4, '!', {
@@ -472,8 +456,11 @@ class VillageScene extends Phaser.Scene {
         reactCd: 0, dodgeCd: 0, guardHits: 0, gdx: 0, gdy: 1,
         preemptCd: 0, pRoll: false, pd: undefined, pt: 0,
         lastKind: null, feintAt: 0, sx: h.x, sy: h.y, ghostT: 0,
+        spawn: h, hidden: false,
       });
     }
+    for (const b of this.bandits) this.hideBandit(b);
+    this.stage = { phase: 'walk', t0: 0 };   // walk：往上走 → fight：伏兵出現 → cleared：擊退 → end：本段結束
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
         this.physics.add.collider(this.bandits[i].body, this.bandits[j].body);
@@ -529,6 +516,10 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#e8c8b8',
       stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5).setDepth(1002).setVisible(false);
+    this.bannerText = this.add.text(this.scale.width / 2, this.scale.height * 0.3, '', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#f0d890',
+      stroke: '#000000', strokeThickness: 5, align: 'center',
+    }).setOrigin(0.5).setDepth(1002).setVisible(false);
     this.hintText = this.add.text(this.scale.width / 2, 52, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾（前段無敵）\n翻滾後立刻按「攻」＝翻滾攻擊\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
@@ -538,7 +529,7 @@ class VillageScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(1, 0).setDepth(1001);
     this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText,
-                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText);
+                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.bannerText);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -598,6 +589,7 @@ class VillageScene extends Phaser.Scene {
       this.hintText.setX(this.scale.width / 2);
       this.verText.setX(this.scale.width - 6);
       this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
+      this.bannerText.setPosition(this.scale.width / 2, this.scale.height * 0.3);
     });
   }
 
@@ -776,6 +768,8 @@ class VillageScene extends Phaser.Scene {
     this.hero.setAlpha(!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1);
 
     this.processAttack(time, fx, fy);
+    this.updateStage(time);
+    this.fadeTrees(time);
     this.updateBandits(time);
     if (this.down && time >= this.respawnAt) this.respawnPlayer(time);
     this.drawEnemyFx(time);
@@ -974,6 +968,7 @@ class VillageScene extends Phaser.Scene {
     const px = this.playerBody.x, py = this.playerBody.y + 4;
     for (const b of this.bandits) {
       const bd = b.body.body;
+      if (b.state === 'hidden') { bd.setVelocity(0, 0); continue; }   // 還藏在樹林裡
       const bx = b.body.x, by = b.body.y + 4;
       const dx = px - bx, dy = py - by, dist = Math.hypot(dx, dy) || 1;
       const ux = dx / dist, uy = dy / dist;
@@ -1021,6 +1016,12 @@ class VillageScene extends Phaser.Scene {
           b.facing = Math.abs(ux) > Math.abs(uy) ? (ux > 0 ? 'left' : 'right') : (uy > 0 ? 'up' : 'down');
           if (time - b.t0 >= b.fleeFor) { b.state = 'rest'; b.t0 = time; b.orbitDir = Math.random() < 0.5 ? 1 : -1; b.stalked = true; }
         }
+      } else if (b.state === 'enter') {
+        // 從側小徑衝進空地：朝落點跑，到了（或跑太久）就開始圍攻
+        const ex = b.spawn.ex - bx, ey = b.spawn.ey - by, ed = Math.hypot(ex, ey) || 1;
+        vx = ex / ed * b.t.speed * 1.25; vy = ey / ed * b.t.speed * 1.25;
+        b.facing = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up');
+        if (ed < 10 || time - b.t0 > 3000) { b.state = this.down ? 'idle' : 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'idle') {
         if (!this.down && dist < b.t.aggro) { b.state = 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'chase') {
@@ -1155,7 +1156,7 @@ class VillageScene extends Phaser.Scene {
         // 移動中（追、繞、逼近）播走路動畫；蓄力、出刀、防禦等維持原本姿勢
         const wdt = time - (b.lastT === undefined ? time : b.lastT); b.lastT = time;
         const sp = Math.hypot(vx, vy);
-        const walkable = b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee';
+        const walkable = b.state === 'enter' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee';
         if (!walkable) b.moveOn = false;
         else if (sp > 8) b.moveOn = true;
         else if (sp < 3) b.moveOn = false;
@@ -1436,9 +1437,141 @@ class VillageScene extends Phaser.Scene {
     this.stam = STAM_MAX; this.roll = null;
     this.hero.setAngle(0);
     this.downText.setVisible(false);
-    this.playerBody.body.reset(410, 330);
-    for (const b of this.bandits) {
-      if (!b.dead) { b.state = 'idle'; b.hp = b.t.hp; }
+    this.playerBody.body.reset(START.x, START.y);
+    // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
+    for (const b of this.bandits) this.hideBandit(b);
+    this.stage = { phase: 'walk', t0: 0 };
+    this.bannerText.setVisible(false);
+  }
+
+  // ---------- 森林小道：伏擊流程 ----------
+  updateStage(time) {
+    const st = this.stage, py = this.playerBody.y;
+    if (st.phase === 'walk' && !this.down && py < AMBUSH_Y) {
+      st.phase = 'fight'; st.t0 = time;
+      this.banner('有埋伏！', 1600);
+    }
+    if (st.phase === 'fight') {
+      for (const b of this.bandits) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
+      if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; this.banner('擊退伏兵\n往北前進', 2800); }
+    }
+    if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
+      st.phase = 'end'; st.t0 = time;
+      this.banner('本段結束', 3000);
+    }
+    if (st.phase === 'end' && time - st.t0 > 3400) this.respawnPlayer(time);   // 自動重來，方便反覆測試
+  }
+
+  // 擋在角色前面的樹變半透明，打鬥時看得到人（每 0.1 秒檢查一次）
+  fadeTrees(time) {
+    if (time - (this.fadeT || 0) < 100) return;
+    this.fadeT = time;
+    const who = [{ x: this.playerBody.x, y: this.playerBody.y + 4, h: HERO_H }];
+    for (const b of this.bandits) if (!b.hidden && b.state !== 'dead') who.push({ x: b.body.x, y: b.body.y + 4, h: b.t.h });
+    for (const t of this.forestTrees) {
+      let cover = false;
+      for (const u of who) {
+        if (u.y < t.y && u.y > t.y - t.h - 4 && Math.abs(u.x - t.x) < t.hw + 8) { cover = true; break; }
+      }
+      if (cover !== t.faded) { t.faded = cover; t.img.setAlpha(cover ? 0.4 : 1); }
+    }
+  }
+
+  banner(msg, ms) {
+    const t = this.bannerText;
+    this.tweens.killTweensOf(t);
+    t.setText(msg).setAlpha(1).setVisible(true);
+    this.hintText.setVisible(false);   // 不和操作說明疊在一起
+    this.tweens.add({ targets: t, alpha: 0, delay: ms, duration: 500, onComplete: () => t.setVisible(false) });
+  }
+
+  // 伏兵藏起來：看不到、碰不到、打不到（dead 旗標讓所有鎖定與判定都跳過）
+  hideBandit(b) {
+    this.tweens.killTweensOf(b.sprite);
+    b.hidden = true; b.dead = true; b.state = 'hidden';
+    b.hp = b.t.hp; b.poise = b.t.poise; b.combo = 0; b.feintAt = 0; b.lastKind = null;
+    b.body.body.reset(b.spawn.x, b.spawn.y - 4); b.body.body.enable = false;
+    b.sprite.setVisible(false).setAngle(0).setAlpha(1).clearTint();
+    b.shadow.setVisible(false);
+    b.alert.setVisible(false); b.nameTag.setVisible(false);
+    b.respawnAt = Infinity;
+    if (this.lockTarget === b) this.lockTarget = null;
+  }
+
+  revealBandit(b, time) {
+    b.hidden = false; b.dead = false; b.state = 'enter'; b.t0 = time;
+    b.body.body.enable = true; b.body.body.reset(b.spawn.x, b.spawn.y - 4);
+    b.sprite.setVisible(true); b.shadow.setVisible(true);
+    b.reactCd = time + 600; b.preemptCd = time + 600;   // 剛衝出來先不防禦、不搶先出刀
+  }
+
+  // ---------- 森林小道：地面、樹、看不見的牆 ----------
+  buildForest() {
+    let seed = 11;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    // 1. 先決定樹的位置：小道與空地以外，錯開的格子＋隨機偏移
+    const trees = [];
+    for (let gy = 10, row = 0; gy < MAP_H + 60; gy += 34, row++) {
+      for (let gx = (row % 2) * 22 - 10; gx < MAP_W + 30; gx += 44) {
+        const x = gx + (rnd() - 0.5) * 22, y = gy + (rnd() - 0.5) * 16;
+        if (walkable(x, y) || walkable(x, y - 8) || walkable(x - 10, y) || walkable(x + 10, y)) continue;
+        trees.push({ x, y, w: 78 + rnd() * 30, flip: rnd() < 0.5, shade: 0.72 + rnd() * 0.28 });
+      }
+    }
+    // 2. 地面畫在一張畫布上（只畫一次，之後當一張圖，手機比較省）
+    const C = 3, cw = Math.ceil(MAP_W / C), ch = Math.ceil(MAP_H / C);
+    const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    const g = cv.getContext('2d');
+    const near = (x, y, r) => !walkable(x - r, y) || !walkable(x + r, y) || !walkable(x, y - r) || !walkable(x, y + r);
+    for (let j = 0; j < ch; j++) {
+      for (let i = 0; i < cw; i++) {
+        const x = i * C + 1.5, y = j * C + 1.5, n = rnd();
+        let col;
+        if (walkable(x, y)) {
+          if (near(x, y, 7)) col = n < 0.5 ? '#3d4630' : '#454a33';            // 小道邊緣：泥土混著草
+          else col = n < 0.12 ? '#3f3a2a' : n < 0.8 ? '#4b4332' : '#544a37';  // 泥土
+          if (n > 0.985) col = '#6a5f48';                                        // 小石子
+        } else {
+          col = n < 0.2 ? '#243020' : n < 0.85 ? '#2b3826' : '#33422c';        // 林地
+          if (n > 0.975) col = '#4a4a2c';                                        // 落葉
+        }
+        g.fillStyle = col; g.fillRect(i, j, 1, 1);
+      }
+    }
+    g.fillStyle = 'rgba(0,0,0,0.30)';
+    for (const t of trees) { g.beginPath(); g.ellipse(t.x / C, t.y / C, t.w * 0.42 / C, t.w * 0.16 / C, 0, 0, Math.PI * 2); g.fill(); }
+    this.textures.addCanvas('forest_ground', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);   // 放大時保持像素硬邊
+    this.world.push(this.add.image(0, 0, 'forest_ground').setOrigin(0).setScale(C).setDepth(-20));
+    // 3. 樹：依腳底 y 排前後
+    this.forestTrees = [];
+    for (const t of trees) {
+      const tex = this.textures.get('tree_k').getSourceImage(), h = t.w * tex.height / tex.width;
+      const v = Math.round(255 * t.shade), tint = (v << 16) | (v << 8) | v;
+      const img = this.add.image(t.x, t.y, 'tree_k').setOrigin(0.5, 1).setDisplaySize(t.w, h)
+        .setFlipX(t.flip).setTint(tint).setDepth(t.y);
+      this.world.push(img);
+      this.forestTrees.push({ img, x: t.x, y: t.y, hw: t.w * 0.42, h: h * 0.92, faded: false });
+    }
+    // 4. 看不見的牆：小道、空地、側小徑以外都走不進去（每列連續的區段合併，再把上下相同的合併）
+    this.obstacles = this.physics.add.staticGroup();
+    const S = 8, open = [];
+    for (let y = 0; y < MAP_H; y += S) {
+      const runs = []; let x0 = null;
+      for (let x = 0; x <= MAP_W; x += S) {
+        const blocked = x < MAP_W && !walkable(x + S / 2, y + S / 2);
+        if (blocked && x0 === null) x0 = x;
+        if (!blocked && x0 !== null) { runs.push([x0, x]); x0 = null; }
+      }
+      const next = [];
+      for (const r of runs) {
+        const o = open.find(q => q.x0 === r[0] && q.x1 === r[1] && q.y1 === y);
+        if (o) { o.y1 = y + S; next.push(o); } else { const q = { x0: r[0], x1: r[1], y0: y, y1: y + S }; open.push(q); next.push(q); }
+      }
+    }
+    for (const q of open) {
+      const z = this.add.zone((q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2, q.x1 - q.x0, q.y1 - q.y0);
+      this.physics.add.existing(z, true);
+      this.obstacles.add(z);
     }
   }
 
