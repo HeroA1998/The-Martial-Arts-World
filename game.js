@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.19';   // 每次更新請加一
+const VERSION = 'v0.7.20';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -67,7 +67,7 @@ const BACK_DUR = 430, BACK_MOVE = 300, BACK_DIST = 34;
 const BACK_I_FROM = 20, BACK_I_TO = 210;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
-// 敵人出生點與種類：左邊只有一個山賊頭目（武將），右邊是一群小兵與精兵
+// 敵人出生點與種類：左邊只有一個黃巾渠帥（武將），右邊是一群小兵與精兵
 const ENEMY_SPAWNS = [
   { type: 'bandit', x: 170, y: 480 },
   { type: 'turban', x: 600, y: 310 }, { type: 'turban', x: 640, y: 335 },
@@ -81,7 +81,7 @@ const ENEMY_TYPES = {
   bandit: {
     tex: 'hangeneral',        // 貼圖前綴（武將專屬圖：走路、站立、揮砍、受擊、倒下）
     walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',   // animTex：有揮砍／受擊／倒下動畫
-    name: '山賊頭目', showName: true,   // 武將：常駐名字與血條
+    name: '黃巾渠帥', showName: true,   // 武將：常駐名字與血條
     shadowColor: 0x000000,
     walkBright: { side: 1, front: 1, back: 1 },            // 走路圖亮度校正（Codex 圖已與參考一致）
     h: Math.round(HERO_H * 1.2),    // 武將比主角大 20%
