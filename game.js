@@ -30,7 +30,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.8.3';   // 每次更新請加一
+const VERSION = 'v0.9.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -54,7 +54,6 @@ const DUMMIES = [];   // 森林小道不放木人樁
 const DUMMY_HP = 60;
 
 // 玩家
-const PLAYER_HP = 100;
 const INVULN_MS = 500;        // 被打中後的無敵時間
 const PLAYER_KNOCK = 150;     // 被擊退的速度
 const PLAYER_KNOCK_MS = 130;
@@ -62,11 +61,32 @@ const PLAYER_RESPAWN_MS = 2000;
 const HURT_ANIM_MS = 330;     // 主角受擊動畫長度
 
 // 耐力與翻滾（魂系核心：每個動作都要付出代價）
-const STAM_MAX = 100;
 const STAM_REGEN = 36;          // 每秒回復
 const STAM_DELAY = 750;         // 用完耐力後多久才開始回復
 const STAM_DELAY_EMPTY = 1300;  // 耐力見底時要等更久
 const ATK_COST = 22;
+
+// ---------- 能力型成長 ----------
+// 等級上限 99；升下一級所需經驗 = 50 × 目前等級；每級 3 點能力點
+const LV_CAP = 99, PTS_PER_LV = 3;
+const xpNeed = lv => 50 * lv;
+// 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%
+const KILL_XP = { turban: 8, hansoldier: 25, bandit: 120 };
+const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
+const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
+const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
+const STAT_DESC = {
+  hp: p => '氣血上限 ' + statMaxHp(p),
+  sta: p => '氣力上限 ' + statMaxStam(p),
+  atk: p => '傷害 ×' + statAtk(p).toFixed(2),
+  def: p => '減傷 ' + Math.round(statDef(p) * 100) + '%',
+};
+// p = 該項已投入的點數；前 50 點效果完整，之後遞減
+const statMaxHp = p => 100 + 3 * Math.min(p, 50) + 2 * Math.max(0, p - 50);
+const statMaxStam = p => 100 + 5 * Math.min(p, 50) + 2 * Math.max(0, p - 50);
+const statAtk = p => 1 + 0.01 * Math.min(p, 50) + 0.005 * Math.max(0, p - 50);
+const statDef = p => Math.min(0.40, 0.015 * p);
+const SAVE_KEY = 'dajianghu_save_v1';
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
 const ROLL_COST = 26;
 const ROLL_DUR = 520;           // 翻滾總長度（含收招）
@@ -427,7 +447,8 @@ class VillageScene extends Phaser.Scene {
     this.world.push(this.heroShadow, this.hero, this.heroAlert);
 
     // 玩家狀態
-    this.php = PLAYER_HP;
+    this.loadGrowth();
+    this.php = this.maxHp();
     this.invulnUntil = 0;
     this.mv = { x: 0, y: 0 };               // 目前的走路速度（有慣性）
     this.pk = { vx: 0, vy: 0, until: 0 };   // 被擊退
@@ -492,7 +513,7 @@ class VillageScene extends Phaser.Scene {
     this.btn = { id: null, held: false };
     this.vt = 0; this.realT = 0; this.hitstopUntil = 0;   // 遊戲時間（打擊停頓時不前進）
     this.btn2 = { id: null };              // 閃避鍵
-    this.stam = STAM_MAX; this.stamRegenAt = 0; this.stamFlash = 0;
+    this.stam = this.maxStam(); this.stamRegenAt = 0; this.stamFlash = 0;
     this.roll = null;                      // 翻滾中：{ start, dx, dy, lastGhost }
     this.rollIFrom = 0; this.rollIUntil = 0;   // 翻滾無敵的時間窗
     this.atkBuf = 0;                       // 攻擊輸入緩衝（翻滾或揮劍中按下，時機到了自動出招）
@@ -549,6 +570,7 @@ class VillageScene extends Phaser.Scene {
 
     cam.ignore(this.ui);
     this.uiCam.ignore(this.world);
+    this.buildPanel();
 
     // 輸入
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -558,10 +580,11 @@ class VillageScene extends Phaser.Scene {
     this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
     this.input.keyboard.on('keydown-SPACE', () => this.pressAttack());
     this.input.keyboard.on('keydown-J', () => this.pressAttack());
-    const dodgeKey = () => { const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
+    const dodgeKey = () => { if (this.panelOpen) return; const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
     this.input.keyboard.on('keydown-SHIFT', dodgeKey);
     this.input.keyboard.on('keydown-K', dodgeKey);
     this.input.on('pointerdown', p => {
+      if (this.panelPointer(p)) return;
       const dg = this.dodgePos();
       if (this.btn2.id === null && Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) {
         this.btn2.id = p.id;
@@ -580,7 +603,7 @@ class VillageScene extends Phaser.Scene {
         this.setJoy(p);
       }
     });
-    this.input.on('pointermove', p => { if (p.id === this.joy.id) this.setJoy(p); });
+    this.input.on('pointermove', p => { if (!this.panelOpen && p.id === this.joy.id) this.setJoy(p); });
     const endJoy = p => {
       if (p.id === this.btn.id) { this.btn.id = null; this.btn.held = false; return; }
       if (p.id === this.btn2.id) { this.btn2.id = null; return; }
@@ -592,7 +615,7 @@ class VillageScene extends Phaser.Scene {
     this.input.on('pointerupoutside', endJoy);
     // 點擊敵人：鎖定／取消／換目標（很快的輕點、幾乎沒移動才算；按鈕上的觸碰不算）
     this.input.on('pointerup', p => {
-      if (this.down || p.getDuration() > 260 || p.getDistance() > 14) return;
+      if (this.down || this.panelOpen || p.getDuration() > 260 || p.getDistance() > 14) return;
       const bp = this.btnPos(), dg = this.dodgePos();
       if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) return;
       this.tapLock(p);
@@ -605,6 +628,7 @@ class VillageScene extends Phaser.Scene {
       this.verText.setX(this.scale.width - 6);
       this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
       this.bannerText.setPosition(this.scale.width / 2, this.scale.height * 0.3);
+      this.layoutPanel();
     });
   }
 
@@ -659,6 +683,13 @@ class VillageScene extends Phaser.Scene {
       for (const b of this.bandits) b.body.body.setVelocity(0, 0);
       return;
     }
+    if (this.panelOpen) {   // 能力面板開著：整個遊戲暫停
+      this.playerBody.body.setVelocity(0, 0);
+      for (const b of this.bandits) b.body.body.setVelocity(0, 0);
+      this.nowT = this.vt;
+      this.drawUI();
+      return;
+    }
     this.vt += delta;
     const time = this.vt;
     this.nowT = time;
@@ -670,7 +701,7 @@ class VillageScene extends Phaser.Scene {
     if (this.atk && time - this.atk.start > this.atk.dur) this.atk = null;
 
     // 耐力回復（翻滾中不回復）
-    if (time >= this.stamRegenAt && !this.roll) this.stam = Math.min(STAM_MAX, this.stam + STAM_REGEN * delta / 1000);
+    if (time >= this.stamRegenAt && !this.roll) this.stam = Math.min(this.maxStam(), this.stam + STAM_REGEN * delta / 1000);
 
     // 翻滾：緩衝輸入、結束判定
     if (!this.roll && this.rollBuf > time) this.tryRoll(time);
@@ -810,6 +841,7 @@ class VillageScene extends Phaser.Scene {
   // ---------- 戰鬥 ----------
   // 按下攻擊：不能立刻出招時（翻滾無敵中、揮劍中）先記著，時機一到自動接上
   pressAttack() {
+    if (this.panelOpen) return;
     const t = this.nowT || 0;
     if (!this.tryAttack(t) && !this.down && (this.roll || this.atk)) this.atkBuf = t + 350;
   }
@@ -1326,7 +1358,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   hitBandit(b, dx, dy, time) {
-    const dmg = PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG);
+    const dmg = this.playerDmg();
     b.hp -= dmg;
     b.lastHit = time;
     this.hitstop(b.hp <= 0 ? 170 : 105);
@@ -1390,7 +1422,7 @@ class VillageScene extends Phaser.Scene {
 
   // 防禦擋住一下：傷害很少、玩家被彈開；擋滿三下破防
   blockBandit(b, dx, dy, time) {
-    const dmg = Math.max(1, Math.round((PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG)) * b.t.guardDmgMul));
+    const dmg = Math.max(1, Math.round(this.playerDmg() * b.t.guardDmgMul));
     b.hp = Math.max(1, b.hp - dmg);
     b.guardHits++;
     this.hitstop(70);
@@ -1410,6 +1442,7 @@ class VillageScene extends Phaser.Scene {
       // 不再因同伴倒下而退縮
     }
     b.state = 'dead'; b.dead = true;
+    this.gainKillXp(b);
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
     b.alert.setVisible(false); b.nameTag.setVisible(false);
@@ -1429,9 +1462,181 @@ class VillageScene extends Phaser.Scene {
     b.sprite.setPosition(b.home.x, b.home.y);
   }
 
+  // ---------- 能力型成長 ----------
+  loadGrowth() {
+    this.lv = 1; this.xp = 0; this.pts = 0;
+    this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
+    try {
+      const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      if (d && d.lv >= 1 && d.lv <= LV_CAP) {
+        this.lv = d.lv; this.xp = Math.max(0, d.xp | 0);
+        for (const k of STAT_KEYS) this.stats[k] = Math.max(0, (d.stats && d.stats[k]) | 0);
+        const spent = STAT_KEYS.reduce((a, k) => a + this.stats[k], 0);
+        this.pts = Math.max(0, (this.lv - 1) * PTS_PER_LV - spent);   // 以等級反推，防止存檔被改壞
+      }
+    } catch (e) {}
+  }
+
+  saveGrowth() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ lv: this.lv, xp: this.xp, stats: this.stats })); } catch (e) {}
+  }
+
+  maxHp() { return statMaxHp(this.stats.hp); }
+  maxStam() { return statMaxStam(this.stats.sta); }
+  playerDmg() {
+    return Math.max(1, Math.round((PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG)) * statAtk(this.stats.atk)));
+  }
+
+  // 給經驗；回傳升了幾級
+  addXp(n) {
+    if (this.lv >= LV_CAP) return 0;
+    this.xp += Math.round(n);
+    let up = 0;
+    while (this.lv < LV_CAP && this.xp >= xpNeed(this.lv)) {
+      this.xp -= xpNeed(this.lv); this.lv++; this.pts += PTS_PER_LV; up++;
+    }
+    if (this.lv >= LV_CAP) this.xp = 0;
+    if (up) this.banner('升級！等級 ' + this.lv + '\n+' + (up * PTS_PER_LV) + ' 能力點（安全時按左上「能力」）', 2400);
+    this.saveGrowth();
+    return up;
+  }
+
+  // 章節固定經驗（劇情結算時呼叫；不受等級影響）
+  grantChapterXp(i) { return this.addXp(CHAPTER_XP[i] || 0); }
+
+  gainKillXp(b) {
+    const type = b.spawn.type, enemyLv = b.spawn.lv || 1;
+    let xp = (KILL_XP[type] || 5) * enemyLv;
+    if (this.lv >= enemyLv + 10) xp *= 0.25;
+    xp = Math.max(1, Math.round(xp));
+    this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '+' + xp + ' 經驗', '#e8d890');
+    this.addXp(xp);
+  }
+
+  // 能力面板：只在安全時（走路中、擊退伏兵後）可開
+  canOpenPanel() {
+    const ph = this.stage && this.stage.phase;
+    return !this.down && !this.cine && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll;
+  }
+
+  panelBtnRect() { return { x: 13, y: 42, w: 64, h: 24 }; }
+
+  buildPanel() {
+    const mk = (o) => { o.setDepth(1100); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: 3 });
+    this.lvText = mk(this.add.text(82, 45, '', tx(13, '#e8d890')).setDepth(1001));
+    this.lvText.setDepth(1001);
+    this.pnGfx = mk(this.add.graphics());
+    this.pnBtnText = mk(this.add.text(0, 0, '能力', tx(14, '#e6f0dc')).setOrigin(0.5).setDepth(1001));
+    this.pnTitle = mk(this.add.text(0, 0, '', tx(18, '#f0d890')).setOrigin(0.5, 0));
+    this.pnRows = STAT_KEYS.map(k => ({
+      k,
+      name: mk(this.add.text(0, 0, STAT_NAMES[k], tx(17, '#e6f0dc'))),
+      val: mk(this.add.text(0, 0, '', tx(13, '#c8d8c0'))),
+      plus: mk(this.add.text(0, 0, '＋', Object.assign(tx(26, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5)),
+      minus: mk(this.add.text(0, 0, '－', Object.assign(tx(26, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5)),
+    }));
+    this.pnReset = mk(this.add.text(0, 0, '重置', Object.assign(tx(16, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5));
+    this.pnClose = mk(this.add.text(0, 0, '關閉', Object.assign(tx(16, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5));
+    this.pnNote = mk(this.add.text(0, 0, '重置不用錢；點數可隨時重新分配', tx(12, '#a8b8a0')).setOrigin(0.5, 0));
+    this.panelOpen = false;
+    this.layoutPanel();
+    this.setPanelVisible(false);
+  }
+
+  setPanelVisible(v) {
+    this.pnGfx.setVisible(v); this.pnTitle.setVisible(v); this.pnReset.setVisible(v); this.pnClose.setVisible(v); this.pnNote.setVisible(v);
+    for (const r of this.pnRows) { r.name.setVisible(v); r.val.setVisible(v); r.plus.setVisible(v); r.minus.setVisible(v); }
+  }
+
+  // 面板版面（置中；幾何用於繪製與點擊判定）
+  layoutPanel() {
+    const W = this.scale.width, H = this.scale.height;
+    const pw = Math.min(W - 24, 360), rowH = 54, ph = 96 + rowH * 4 + 70;
+    const px = (W - pw) / 2, py = Math.max(12, (H - ph) / 2);
+    this.pn = { px, py, pw, ph, rowH, rows: [] };
+    this.pnTitle.setPosition(W / 2, py + 12);
+    STAT_KEYS.forEach((k, i) => {
+      const y = py + 62 + i * rowH, r = this.pnRows[i];
+      const bx = px + pw - 28, mx = px + pw - 28 - 60;
+      this.pn.rows.push({ k, y, plus: { x: bx, y: y + 20, r: 22 }, minus: { x: mx, y: y + 20, r: 22 } });
+      r.name.setPosition(px + 16, y); r.val.setPosition(px + 16, y + 24);
+      r.plus.setPosition(bx, y + 20); r.minus.setPosition(mx, y + 20);
+    });
+    const by = py + 62 + rowH * 4 + 10;
+    this.pn.reset = { x: px + pw * 0.27, y: by + 18, w: 100, h: 36 };
+    this.pn.close = { x: px + pw * 0.73, y: by + 18, w: 100, h: 36 };
+    this.pnReset.setPosition(this.pn.reset.x, this.pn.reset.y);
+    this.pnClose.setPosition(this.pn.close.x, this.pn.close.y);
+    this.pnNote.setPosition(W / 2, by + 44);
+    this.pnBtnText.setPosition(13 + 32, 42 + 12);
+  }
+
+  openPanel() { this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutPanel(); this.setPanelVisible(true); }
+  closePanel() { this.panelOpen = false; this.setPanelVisible(false); this.saveGrowth(); }
+
+  // 回傳 true 表示這次點擊被面板／能力鈕吃掉
+  panelPointer(p) {
+    if (this.panelOpen) {
+      const hit = (c) => Math.hypot(p.x - c.x, p.y - c.y) <= c.r;
+      const inRect = (r) => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.y - r.y) <= r.h / 2;
+      for (const r of this.pn.rows) {
+        if (hit(r.plus) && this.pts > 0) { this.stats[r.k]++; this.pts--; this.afterStatChange(r.k, true); }
+        else if (hit(r.minus) && this.stats[r.k] > 0) { this.stats[r.k]--; this.pts++; this.afterStatChange(r.k, false); }
+      }
+      if (inRect(this.pn.reset)) {
+        for (const k of STAT_KEYS) { this.pts += this.stats[k]; this.stats[k] = 0; }
+        this.php = Math.min(this.php, this.maxHp()); this.stam = Math.min(this.stam, this.maxStam());
+      }
+      if (inRect(this.pn.close)) this.closePanel();
+      return true;
+    }
+    const r = this.panelBtnRect();
+    if (this.canOpenPanel() && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openPanel(); return true; }
+    return false;
+  }
+
+  afterStatChange(k, plus) {
+    if (k === 'hp') { if (plus) this.php += 3; this.php = Math.min(this.php, this.maxHp()); }   // 加點時順便補上增加的上限
+    if (k === 'sta') { if (plus) this.stam += 5; this.stam = Math.min(this.stam, this.maxStam()); }
+  }
+
+  drawPanelUI() {
+    const g = this.pnGfx, t = this.nowT || 0;
+    g.clear();
+    // 等級與經驗條（耐力條下方）
+    const hg = this.hpGfx, can = this.canOpenPanel();
+    const xr = this.lv >= LV_CAP ? 1 : this.xp / xpNeed(this.lv);
+    hg.fillStyle(0x000000, 0.55); hg.fillRect(13, 38, 62, 4);
+    hg.fillStyle(0x6a8fb8, 1); hg.fillRect(14, 39, 60 * xr, 2);
+    this.lvText.setText('Lv ' + this.lv + (this.pts > 0 ? '  ★' + this.pts : ''));
+    const r = this.panelBtnRect();
+    g.fillStyle(0x16201a, can ? 0.6 : 0.25); g.fillRoundedRect(r.x, r.y, r.w, r.h, 6);
+    g.lineStyle(2, 0xe6f0dc, can ? (this.pts > 0 && Math.floor(t / 500) % 2 ? 1 : 0.6) : 0.25); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 6);
+    this.pnBtnText.setAlpha((can ? 1 : 0.35) * (1 - this.cineK));
+    g.setAlpha(1 - this.cineK);
+    if (!this.panelOpen) return;
+    const P = this.pn;
+    g.fillStyle(0x000000, 0.55); g.fillRect(0, 0, this.scale.width, this.scale.height);
+    g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    this.pnTitle.setText('能力　Lv ' + this.lv + '　剩餘點數 ' + this.pts);
+    for (const row of P.rows) {
+      const rr = this.pnRows.find(o => o.k === row.k), p = this.stats[row.k];
+      rr.val.setText(p + ' 點　' + STAT_DESC[row.k](p));
+      g.lineStyle(1, 0xe6f0dc, 0.15); g.lineBetween(P.px + 12, row.y - 4, P.px + P.pw - 12, row.y - 4);
+      const okP = this.pts > 0, okM = p > 0;
+      g.fillStyle(okP ? 0xd9b45a : 0x555044, 1); g.fillCircle(row.plus.x, row.plus.y, row.plus.r);
+      g.fillStyle(okM ? 0xa8b8a0 : 0x444a40, 1); g.fillCircle(row.minus.x, row.minus.y, row.minus.r);
+    }
+    g.fillStyle(0xa8b8a0, 1); g.fillRoundedRect(P.reset.x - 50, P.reset.y - 18, 100, 36, 8);
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 50, P.close.y - 18, 100, 36, 8);
+  }
+
   // ---------- 玩家受傷與倒下 ----------
   hurtPlayer(dmg, sx, sy, time) {
     if (this.down || this.cine || time < this.invulnUntil || (time >= this.rollIFrom && time < this.rollIUntil)) return false;
+    dmg = Math.max(1, Math.round(dmg * (1 - statDef(this.stats.def))));
     this.php = Math.max(0, this.php - dmg);
     this.roll = null;
     this.invulnUntil = time + INVULN_MS;
@@ -1456,9 +1661,9 @@ class VillageScene extends Phaser.Scene {
   respawnPlayer(time) {
     this.down = false; this.hurtStart = undefined;
     this.lockTarget = null;
-    this.php = PLAYER_HP;
+    this.php = this.maxHp();
     this.invulnUntil = time + 1500;
-    this.stam = STAM_MAX; this.roll = null;
+    this.stam = this.maxStam(); this.roll = null;
     this.hero.setAngle(0);
     this.downText.setVisible(false);
     this.playerBody.body.reset(START.x, START.y);
@@ -1487,7 +1692,7 @@ class VillageScene extends Phaser.Scene {
     const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
     const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
     this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
-    for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText]) o.setAlpha(1 - k);
+    for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
     if (st.phase === 'fight') {
       if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; this.banner('擊退伏兵\n往北前進', 2800); }
     }
@@ -1705,7 +1910,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   hitDummy(d, dx, dy) {
-    const dmg = PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG);
+    const dmg = this.playerDmg();
     d.hp -= dmg;
     this.hitstop(80);
     this.spawnDamage(d.x, d.y - 52, dmg);
@@ -1811,8 +2016,8 @@ class VillageScene extends Phaser.Scene {
     hg.clear();
     hg.fillStyle(0x000000, 0.55); hg.fillRect(13, 13, hw + 2, 14);
     hg.fillStyle(0x4a2a24, 1); hg.fillRect(14, 14, hw, 12);
-    hg.fillStyle(this.php / PLAYER_HP > 0.3 ? 0x7fae5a : 0xc0503a, 1);
-    hg.fillRect(14, 14, hw * Math.max(0, this.php) / PLAYER_HP, 12);
+    hg.fillStyle(this.php / this.maxHp() > 0.3 ? 0x7fae5a : 0xc0503a, 1);
+    hg.fillRect(14, 14, hw * Math.max(0, this.php) / this.maxHp(), 12);
 
     // 耐力條（血條下方）：見底時閃紅
     const nt = this.nowT || 0, sw = 90;
@@ -1820,7 +2025,9 @@ class VillageScene extends Phaser.Scene {
     hg.fillStyle(0x3a3520, 1); hg.fillRect(14, 30, sw, 7);
     const flash = nt < this.stamFlash && Math.floor(nt / 80) % 2;
     hg.fillStyle(flash ? 0xc0503a : 0xd9b45a, 1);
-    hg.fillRect(14, 30, sw * Math.max(0, this.stam) / STAM_MAX, 7);
+    hg.fillRect(14, 30, sw * Math.max(0, this.stam) / this.maxStam(), 7);
+
+    this.drawPanelUI();
 
     // 攻擊鍵
     const b = this.btnPos(), bg = this.btnGfx;
