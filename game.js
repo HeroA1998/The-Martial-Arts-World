@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.10.5';   // 每次更新請加一
+const VERSION = 'v0.11.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -100,6 +100,23 @@ const TOWN_ROAD = { y: 300, hw: 28 };
 const TOWN_START = { x: 90, y: 300 };         // 出生點：大街西端
 const TOWN_GATE = { x: 1330, y: 300 };        // 鎮門：大街東端（往森林）；從森林回來也站這裡
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
+// ---------- 背包與道具 ----------
+const FLASK_MAX = 5;                    // 藥壺容量，參拜祠堂補滿
+const DRINK_MS = 900, DRINK_HEAL_AT = 600;   // 喝藥時間；中途被打中會中斷、不回血
+const DRINK_MOVE = 0.35;                // 喝藥時移動速度倍率
+const ITEM_ORDER = ['flask', 'jc', 'xq', 'cloth'];
+const ITEMS = {
+  flask: { name: '藥壺', desc: '回復氣血 40%；參拜祠堂補滿', kind: 'hp', pct: 0.4 },
+  jc:    { name: '金創藥', desc: '回復氣血 30%', kind: 'hp', pct: 0.3 },
+  xq:    { name: '行氣丹', desc: '回復氣力 60%', kind: 'stam', pct: 0.6 },
+  cloth: { name: '破布', desc: '沒什麼用的雜物', kind: 'misc' },
+};
+// 掉落：[道具, 機率]，每個敵人倒下時各擲一次
+const DROPS = {
+  turban: [['jc', 0.15], ['xq', 0.05]],
+  hansoldier: [['jc', 0.3], ['xq', 0.1]],
+  bandit: [['jc', 1], ['jc', 0.6], ['xq', 0.5]],
+};
 const SAVE_KEY = 'dajianghu_save_v1';
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
 const ROLL_COST = 26;
@@ -619,6 +636,7 @@ class VillageScene extends Phaser.Scene {
     cam.ignore(this.ui);
     this.uiCam.ignore(this.world);
     this.buildPanel();
+    this.buildInv();
 
     // 輸入
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -628,11 +646,14 @@ class VillageScene extends Phaser.Scene {
     this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
     this.input.keyboard.on('keydown-SPACE', () => this.pressAttack());
     this.input.keyboard.on('keydown-J', () => this.pressAttack());
-    const dodgeKey = () => { if (this.panelOpen) return; const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
+    const dodgeKey = () => { if (this.panelOpen || this.invOpen) return; const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
     this.input.keyboard.on('keydown-SHIFT', dodgeKey);
+    this.input.keyboard.on('keydown-E', () => this.pressDrink());
     this.input.keyboard.on('keydown-K', dodgeKey);
     this.input.on('pointerdown', p => {
+      if (this.invPointer(p)) return;
       if (this.panelPointer(p)) return;
+      { const pp = this.potPos(); if (Math.hypot(p.x - pp.x, p.y - pp.y) <= 40) { this.pressDrink(); return; } }
       const dg = this.dodgePos();
       if (this.btn2.id === null && Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) {
         this.btn2.id = p.id;
@@ -651,7 +672,7 @@ class VillageScene extends Phaser.Scene {
         this.setJoy(p);
       }
     });
-    this.input.on('pointermove', p => { if (!this.panelOpen && p.id === this.joy.id) this.setJoy(p); });
+    this.input.on('pointermove', p => { if (!this.panelOpen && !this.invOpen && p.id === this.joy.id) this.setJoy(p); });
     const endJoy = p => {
       if (p.id === this.btn.id) { this.btn.id = null; this.btn.held = false; return; }
       if (p.id === this.btn2.id) { this.btn2.id = null; return; }
@@ -663,7 +684,7 @@ class VillageScene extends Phaser.Scene {
     this.input.on('pointerupoutside', endJoy);
     // 點擊敵人：鎖定／取消／換目標（很快的輕點、幾乎沒移動才算；按鈕上的觸碰不算）
     this.input.on('pointerup', p => {
-      if (this.down || this.panelOpen || p.getDuration() > 260 || p.getDistance() > 14) return;
+      if (this.down || this.panelOpen || this.invOpen || p.getDuration() > 260 || p.getDistance() > 14) return;
       const bp = this.btnPos(), dg = this.dodgePos();
       if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) return;
       this.tapLock(p);
@@ -676,7 +697,7 @@ class VillageScene extends Phaser.Scene {
       this.verText.setX(this.scale.width - 6);
       this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
       this.bannerText.setPosition(this.scale.width / 2, this.scale.height * 0.3);
-      this.layoutPanel();
+      this.layoutPanel(); this.layoutInv();
     };
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', () => this.scale.off('resize', this.onResize));
@@ -739,7 +760,7 @@ class VillageScene extends Phaser.Scene {
       this.playerBody.body.setVelocity(0, 0);
       return;
     }
-    if (this.panelOpen) {   // 能力面板開著：整個遊戲暫停
+    if (this.panelOpen || this.invOpen) {   // 面板開著：整個遊戲暫停
       this.playerBody.body.setVelocity(0, 0);
       for (const b of this.bandits) b.body.body.setVelocity(0, 0);
       this.nowT = this.vt;
@@ -777,7 +798,8 @@ class VillageScene extends Phaser.Scene {
         this.playerBody.body.setVelocity(0, 0);
       } else {
         // 起步、停步、轉向都有一點慣性：速度朝目標速度逐步靠近
-        const tx = x * SPEED, ty = y * SPEED;
+        const dm0 = this.drink ? DRINK_MOVE : 1;
+        const tx = x * SPEED * dm0, ty = y * SPEED * dm0;
         const rate = SPEED / ((m > 0.05 ? ACCEL_MS : DECEL_MS) / 1000);   // 每秒可改變的速度
         const dvx = tx - this.mv.x, dvy = ty - this.mv.y, dm = Math.hypot(dvx, dvy);
         const step = rate * delta / 1000;
@@ -873,9 +895,11 @@ class VillageScene extends Phaser.Scene {
     this.heroShadow.setPosition(fx, fy).setDisplaySize(HERO_H * 0.8, HERO_H * 0.22);
 
     // 受傷表現：閃紅、無敵時間內閃爍
-    if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else this.hero.clearTint();
+    if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else if (this.drink) this.hero.setTint(0xbfe8a8); else this.hero.clearTint();
     this.hero.setAlpha(!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1);
 
+    this.updateDrink(time);
+    this.updateDrops(time);
     this.processAttack(time, fx, fy);
     this.updateStage(time);
     this.checkExits();
@@ -899,13 +923,13 @@ class VillageScene extends Phaser.Scene {
   // ---------- 戰鬥 ----------
   // 按下攻擊：不能立刻出招時（翻滾無敵中、揮劍中）先記著，時機一到自動接上
   pressAttack() {
-    if (this.panelOpen) return;
+    if (this.panelOpen || this.invOpen) return;
     const t = this.nowT || 0;
     if (!this.tryAttack(t) && !this.down && (this.roll || this.atk)) this.atkBuf = t + 350;
   }
 
   tryAttack(time) {
-    if (this.down || this.atk || this.cine) return false;
+    if (this.down || this.atk || this.cine || this.drink) return false;
     let quick = false;
     if (this.roll) {
       if (time - this.roll.start < this.roll.iTo) return false;   // 翻滾無敵還沒結束
@@ -997,7 +1021,7 @@ class VillageScene extends Phaser.Scene {
 
   // 翻滾：往搖桿方向；沒推搖桿就往後退。前段無敵，亂翻會耗光耐力
   tryRoll(time) {
-    if (this.down || this.roll || this.cine) return false;
+    if (this.down || this.roll || this.cine || this.drink) return false;
     if (this.atk && time - this.atk.start < ATK_ROLL_CANCEL) return false;
     if (this.stam <= 0) { this.stamFlash = time + 300; return false; }
     const inp = this.readInput();
@@ -1501,6 +1525,7 @@ class VillageScene extends Phaser.Scene {
     }
     b.state = 'dead'; b.dead = true;
     this.gainKillXp(b);
+    this.rollDrops(b);
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
     b.alert.setVisible(false); b.nameTag.setVisible(false);
@@ -1523,6 +1548,7 @@ class VillageScene extends Phaser.Scene {
   // ---------- 能力型成長 ----------
   loadGrowth() {
     this.xp = 0; this.pending = 0;
+    this.inv = { flask: FLASK_MAX, jc: 0, xq: 0, cloth: 0 }; this.quick = 'flask';
     this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -1530,6 +1556,7 @@ class VillageScene extends Phaser.Scene {
         this.xp = Math.max(0, d.xp | 0);
         for (const k of STAT_KEYS) this.stats[k] = Math.min(STAT_CAP, Math.max(0, d.stats[k] | 0));
       }
+      if (d && d.inv) { for (const k of ITEM_ORDER) this.inv[k] = Math.max(0, d.inv[k] | 0); this.inv.flask = Math.min(FLASK_MAX, this.inv.flask); if (ITEMS[d.quick]) this.quick = d.quick; }
     } catch (e) {}
     this.calcLv();
   }
@@ -1537,7 +1564,7 @@ class VillageScene extends Phaser.Scene {
   calcLv() { this.lv = 1 + STAT_KEYS.reduce((a, k) => a + this.stats[k], 0); }
 
   saveGrowth() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats })); } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick })); } catch (e) {}
   }
 
   maxHp() { return statMaxHp(this.stats.hp); }
@@ -1844,6 +1871,180 @@ class VillageScene extends Phaser.Scene {
     return null;
   }
 
+  // ---------- 背包、藥、掉落 ----------
+  invCount(id) { return this.inv[id] | 0; }
+  itemUseful(id) {
+    const T = ITEMS[id];
+    if (!T || this.invCount(id) <= 0) return false;
+    if (T.kind === 'hp') return this.php < this.maxHp();
+    if (T.kind === 'stam') return this.stam < this.maxStam();
+    return false;
+  }
+  applyItem(id) {
+    const T = ITEMS[id], px = this.playerBody.x, py = this.playerBody.y + 4;
+    this.inv[id]--;
+    if (T.kind === 'hp') {
+      const n = Math.round(this.maxHp() * T.pct); this.php = Math.min(this.maxHp(), this.php + n);
+      this.spawnDamage(px, py - HERO_H - 4, '+' + n, '#9ad98a');
+    } else if (T.kind === 'stam') {
+      const n = Math.round(this.maxStam() * T.pct); this.stam = Math.min(this.maxStam(), this.stam + n);
+      this.spawnDamage(px, py - HERO_H - 4, '+氣力', '#e8d890');
+    }
+    this.saveGrowth();
+  }
+
+  // 「藥」鍵：開始喝藥（有硬直，被打中中斷）
+  pressDrink() {
+    if (this.panelOpen || this.invOpen || this.transitioning) return;
+    const t = this.nowT || 0;
+    if (this.down || this.cine || this.roll || this.atk || this.drink) return;
+    const order = [this.quick, 'flask', 'jc', 'xq'];
+    const id = order.find(k => this.itemUseful(k));
+    if (!id) { this.stamFlash = t; this.potFlash = t + 300; return; }
+    this.drink = { id, start: t, healed: false };
+    this.mv.x = 0; this.mv.y = 0;
+  }
+
+  updateDrink(time) {
+    const d = this.drink; if (!d) return;
+    if (!d.healed && time - d.start >= DRINK_HEAL_AT) { d.healed = true; if (this.itemUseful(d.id) || this.invCount(d.id) > 0) this.applyItem(d.id); }
+    if (time - d.start >= DRINK_MS) this.drink = null;
+  }
+
+  // 敵人倒下：擲掉落
+  rollDrops(b) {
+    for (const [id, p] of (DROPS[b.spawn.type] || [])) {
+      if (Math.random() < p) this.spawnDrop(id, b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12);
+    }
+  }
+  spawnDrop(id, x, y) { this.drops.push({ id, x, y, t0: this.nowT || 0 }); }
+  updateDrops(time) {
+    const g = this.dropGfx; g.clear();
+    const px = this.playerBody.x, py = this.playerBody.y;
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const d = this.drops[i], bob = Math.sin((time - d.t0) / 200) * 1.5;
+      g.fillStyle(0x000000, 0.3); g.fillEllipse(d.x, d.y, 11, 4);
+      g.fillStyle(d.id === 'xq' ? 0x6a9ad9 : 0xb08a4a, 1); g.fillRoundedRect(d.x - 4, d.y - 9 + bob, 8, 8, 2);
+      g.fillStyle(0xf0e6c8, 1); g.fillRect(d.x - 1, d.y - 11 + bob, 2, 3);
+      if (time - d.t0 > 400 && Math.hypot(px - d.x, py - d.y) < 20) {
+        this.inv[d.id] = (this.inv[d.id] | 0) + 1;
+        this.spawnDamage(d.x, d.y - 14, '+' + ITEMS[d.id].name, '#e8d890');
+        this.drops.splice(i, 1); this.saveGrowth();
+      }
+    }
+  }
+
+  canOpenInv() {
+    const ph = this.stage && this.stage.phase;
+    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink;
+  }
+  invBtnRect() { return { x: this.scale.width - 70, y: 28, w: 62, h: 24 }; }
+  potPos() { return { x: this.scale.width - 46, y: this.scale.height - 196 }; }
+
+  buildInv() {
+    const mk = (o) => { o.setDepth(1100); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color, stroke = 3) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke });
+    this.invOpen = false;
+    this.invBtnText = mk(this.add.text(0, 0, '背包', tx(14, '#e6f0dc')).setOrigin(0.5).setDepth(1101));
+    this.potText = mk(this.add.text(0, 0, '藥', tx(18, '#e6f0dc')).setOrigin(0.5).setDepth(1101));
+    this.invTitle = mk(this.add.text(0, 0, '背包', tx(18, '#f0d890')).setOrigin(0.5, 0));
+    this.invRows = ITEM_ORDER.map(id => ({
+      id,
+      name: mk(this.add.text(0, 0, '', tx(16, '#e6f0dc'))),
+      desc: mk(this.add.text(0, 0, '', tx(12, '#c8d8c0'))),
+      use: mk(this.add.text(0, 0, '使用', tx(14, '#16201a', 0)).setOrigin(0.5)),
+    }));
+    this.invClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5));
+    this.invNote = mk(this.add.text(0, 0, '點道具名稱＝設為「藥」鍵快捷；戰鬥中只能用「藥」鍵', tx(11, '#a8b8a0')).setOrigin(0.5, 0));
+    this.drops = [];
+    this.dropGfx = this.add.graphics().setDepth(4000); this.world.push(this.dropGfx); this.uiCam.ignore(this.dropGfx);
+    this.drink = null;
+    this.layoutInv();
+    this.setInvVisible(false);
+  }
+
+  setInvVisible(v) {
+    this.invTitle.setVisible(v); this.invClose.setVisible(v); this.invNote.setVisible(v);
+    for (const r of this.invRows) { r.name.setVisible(v); r.desc.setVisible(v); r.use.setVisible(v); }
+  }
+
+  layoutInv() {
+    const W = this.scale.width, H = this.scale.height;
+    const pw = Math.min(W - 24, 360), rowH = 58, ph = 56 + rowH * 4 + 78;
+    const px = (W - pw) / 2, py = Math.max(12, (H - ph) / 2);
+    this.inv_ = { px, py, pw, ph, rowH, rows: [] };
+    this.invTitle.setPosition(W / 2, py + 12);
+    ITEM_ORDER.forEach((id, i) => {
+      const y = py + 50 + i * rowH, r = this.invRows[i];
+      this.inv_.rows.push({ id, y, use: { x: px + pw - 44, y: y + 22, w: 64, h: 32 }, pick: { x0: px + 8, x1: px + pw - 84, y0: y - 4, y1: y + rowH - 6 } });
+      r.name.setPosition(px + 16, y); r.desc.setPosition(px + 16, y + 24); r.use.setPosition(px + pw - 44, y + 22);
+    });
+    const by = py + 50 + rowH * 4 + 6;
+    this.inv_.close = { x: W / 2, y: by + 18, w: 120, h: 36 };
+    this.invClose.setPosition(W / 2, by + 18);
+    this.invNote.setPosition(W / 2, by + 46);
+    const r = this.invBtnRect(); this.invBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
+  }
+
+  openInv() { this.invOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutInv(); this.setInvVisible(true); }
+  closeInv() { this.invOpen = false; this.setInvVisible(false); this.saveGrowth(); }
+
+  invPointer(p) {
+    if (this.invOpen) {
+      const P = this.inv_;
+      for (const r of P.rows) {
+        if (!(r.id === 'flask' || this.invCount(r.id) > 0)) continue;
+        const u = r.use;
+        if (Math.abs(p.x - u.x) <= u.w / 2 && Math.abs(p.y - u.y) <= u.h / 2) {
+          if (this.itemUseful(r.id)) this.applyItem(r.id);
+        } else if (p.x >= r.pick.x0 && p.x <= r.pick.x1 && p.y >= r.pick.y0 && p.y <= r.pick.y1 && ITEMS[r.id].kind !== 'misc') this.quick = r.id;
+      }
+      const c = P.close;
+      if (Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.y - c.y) <= c.h / 2) this.closeInv();
+      return true;
+    }
+    const r = this.invBtnRect();
+    if (this.canOpenInv() && !this.panelOpen && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openInv(); return true; }
+    return false;
+  }
+
+  drawInvUI() {
+    const g = this.pnGfx, t = this.nowT || 0, W = this.scale.width, k = 1 - this.cineK;
+    // 背包鈕
+    const r = this.invBtnRect(), can = this.canOpenInv() && !this.panelOpen && !this.invOpen;
+    g.fillStyle(0x16201a, can ? 0.6 : 0.25); g.fillRoundedRect(r.x, r.y, r.w, r.h, 6);
+    g.lineStyle(2, 0xe6f0dc, can ? 0.6 : 0.25); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 6);
+    this.invBtnText.setAlpha((can ? 1 : 0.35) * k).setVisible(!this.invOpen && !this.panelOpen);
+    // 藥鍵
+    const pp = this.potPos(), id = [this.quick, 'flask', 'jc', 'xq'].find(q => this.itemUseful(q)), shown = id || this.quick;
+    const flash = t < (this.potFlash || 0) && Math.floor(t / 80) % 2;
+    if (this.invOpen) this.potText.setVisible(false); else this.potText.setVisible(true);
+    if (!this.invOpen) {
+    g.fillStyle(0x16201a, this.drink ? 0.75 : 0.45); g.fillCircle(pp.x, pp.y, 28);
+    g.lineStyle(3, flash ? 0xc0503a : (this.drink ? 0x9ad98a : 0xe6f0dc), this.drink ? 0.95 : 0.55); g.strokeCircle(pp.x, pp.y, 28);
+    if (this.drink) { g.lineStyle(4, 0x9ad98a, 0.9); g.beginPath(); g.arc(pp.x, pp.y, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, (t - this.drink.start) / DRINK_MS), false); g.strokePath(); }
+    this.potText.setText(ITEMS[shown].name.slice(0, 2) + '\n' + this.invCount(shown)).setFontSize(13).setPosition(pp.x, pp.y).setAlpha((id ? 1 : 0.4) * k);
+    }
+    if (!this.invOpen) return;
+    const P = this.inv_;
+    g.fillStyle(0x000000, 0.55); g.fillRect(0, 0, W, this.scale.height);
+    g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    this.invTitle.setText('背包　氣血 ' + Math.ceil(this.php) + '/' + this.maxHp());
+    for (const row of P.rows) {
+      const rr = this.invRows.find(o => o.id === row.id), T = ITEMS[row.id], n = this.invCount(row.id);
+      const have = row.id === 'flask' || n > 0;
+      rr.name.setVisible(have).setText((this.quick === row.id ? '★ ' : '') + T.name + (row.id === 'flask' ? '　' + n + ' / ' + FLASK_MAX : '　× ' + n));
+      rr.desc.setVisible(have).setText(T.desc);
+      const ok = this.itemUseful(row.id);
+      rr.use.setVisible(have && T.kind !== 'misc');
+      if (!have) continue;
+      g.lineStyle(1, 0xe6f0dc, 0.15); g.lineBetween(P.px + 12, row.y - 4, P.px + P.pw - 12, row.y - 4);
+      if (T.kind !== 'misc') { g.fillStyle(ok ? 0xd9b45a : 0x555044, 1); g.fillRoundedRect(row.use.x - row.use.w / 2, row.use.y - row.use.h / 2, row.use.w, row.use.h, 8); }
+    }
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 60, P.close.y - 18, 120, 36, 8);
+  }
+
   // 只在祠堂內、站在祭壇旁才能參拜升級
   canOpenPanel() {
     const ph = this.stage && this.stage.phase;
@@ -1896,7 +2097,7 @@ class VillageScene extends Phaser.Scene {
     const r = this.prayRect(); this.pnBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
   }
 
-  openPanel() { this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutPanel(); this.setPanelVisible(true); }
+  openPanel() { this.inv.flask = FLASK_MAX; this.saveGrowth(); this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutPanel(); this.setPanelVisible(true); }
   closePanel() { this.panelOpen = false; this.setPanelVisible(false); this.saveGrowth(); }
 
   // 回傳 true 表示這次點擊被面板／參拜鈕吃掉
@@ -1945,7 +2146,7 @@ class VillageScene extends Phaser.Scene {
     if (this.down || this.cine || time < this.invulnUntil || (time >= this.rollIFrom && time < this.rollIUntil)) return false;
     dmg = Math.max(1, Math.round(dmg * (1 - statDef(this.stats.def))));
     this.php = Math.max(0, this.php - dmg);
-    this.roll = null;
+    this.roll = null; this.drink = null;
     this.invulnUntil = time + INVULN_MS;
     this.heroFlashUntil = time + 140;
     this.hurtStart = time;
@@ -2342,6 +2543,7 @@ class VillageScene extends Phaser.Scene {
     hg.fillRect(14, 30, sw * Math.max(0, this.stam) / this.maxStam(), 7);
 
     this.drawPanelUI();
+    this.drawInvUI();
 
     // 攻擊鍵
     const b = this.btnPos(), bg = this.btnGfx;
