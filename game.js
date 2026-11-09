@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.20';   // 每次更新請加一
+const VERSION = 'v0.7.21';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -94,19 +94,28 @@ const ENEMY_TYPES = {
     orbitR: 100,              // 輪不到進攻時在這個距離外繞圈等
     attackSlots: 1,           // 同時進攻的人數上限
     atkGap: 600,              // 一個敵人出完招後，其他人至少隔這麼久才能出手
-    // 衝刺（紅線預告）
-    windup: 800, windupFast: 820, aimLock: 220, strike: 200, hitAt: 130, lunge: 280, recover: 1300,
+    // 衝刺（紅線預告）：紅線長度＝實際衝刺距離（lunge×strike）＋刀尖 tip，判定就在這條線上，畫多長就打多遠
+    windup: 800, windupFast: 820, aimLock: 220, strike: 200, hitAt: 130, lunge: 340, recover: 1300,
+    laneHW: 20, tip: 24,
     dmgLunge: 22,
     // 普通揮砍（原地起手、不衝刺）
     slashWindup: 550, slashWindupFast: 400, slashAimLock: 150, slashStrike: 180, slashHitAt: 60,
     slashRecover: 900, slashReach: 18, slashR: 28, dmgSlash: 12,
-    // 選招機率
-    pSlashClose: 0.7, pLungeClose: 0.1,   // 貼身：揮砍 70%、衝刺 10%、其餘只繞步
-    pLungeMid: 0.4,                        // 中距離：衝刺 40%，其餘走近再揮砍
+    // 重劈：前搖最長、地上紅圈預告落點，範圍大、傷害高、破綻也長（前搖時可以搶進去打或翻滾）
+    heavyWindup: 900, heavyWindupFast: 500, heavyAimLock: 260, heavyStrike: 240, heavyHitAt: 110,
+    heavyRecover: 1500, heavyReach: 22, heavyR: 34, dmgHeavy: 20,
+    // 連刺：前搖短、連續 2～3 下小幅前刺，每一下都重新瞄準；傷害小但很逼人
+    thrustWindup: 420, thrustWindupFast: 230, thrustAimLock: 90, thrustStrike: 130, thrustHitAt: 50,
+    thrustRecover: 1000, thrustSpeed: 260, thrustHW: 15, dmgThrust: 8,
+    // 選招機率（varied＝武將專用的多招式選招；小兵、精兵維持原本的選招）
+    varied: true,
+    pSlashClose: 0.30, pThrustClose: 0.22, pHeavyClose: 0.18, pLungeClose: 0.05, pFeintClose: 0.25,   // 貼身（44 以內）
+    pLungeMid: 0.34, pThrustMid: 0.24, pHeavyMid: 0.22, pSlashMid: 0.20,                               // 中距離
+    pFeint: 0.18,                          // 揮砍／重劈起手後，有這個機率在前搖中途取消、後撤（假動作）
     pCombo: 0.5,                           // 揮砍連揮兩下的機率
     rest: 700,                             // 破綻結束後繞步的時間（短一點，不給玩家打了就退的空檔）
     // 防禦與閃避
-    reactRange: 90, reactCdMs: 1500, pGuard: 0.45, pDodge: 0.25, dodgeCdMs: 3000,
+    reactRange: 100, reactCdMs: 1300, pGuard: 0.35, pDodge: 0.35, dodgeCdMs: 2200,
     guardDur: 700, guardDmgMul: 0.15, guardBreakHits: 3, guardBreakStun: 900, dodgeCounterWindup: 480,
     // 架勢與受擊
     poise: 48, stun: 600, knock: 120,
@@ -126,6 +135,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
   attackSlots: 2, atkGap: 400,
   slashWindup: 900, slashWindupFast: 650, slashRecover: 1000, rest: 1800, dmgSlash: 4,
+  varied: false, pFeint: 0, reactRange: 90, dodgeCdMs: 3000,   // 小兵維持原本的選招與反應
   fleeOnHit: false,          // 不退縮：被打中後照樣回來
   pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
@@ -139,6 +149,7 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   h: HERO_H,   // 與主角等高
   hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
   attackSlots: 2, atkGap: 400,
+  varied: false, pFeint: 0, reactRange: 90, dodgeCdMs: 3000,   // 精兵維持原本的選招與反應
   dmgLunge: 16, dmgSlash: 9, rest: 1400,
   pSlashClose: 0.65, pLungeClose: 0.1, pLungeMid: 0.25,
   pGuard: 0.15, pDodge: 0.08,
@@ -148,7 +159,7 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
 });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
-const DODGE_DUR = 220, DODGE_DIST = 36;
+const DODGE_DUR = 240, DODGE_DIST = 46;   // 敵人後閃：距離拉長一點，才看得出來
 
 // 小鎮配置：x、y 為底部中心；w 為顯示寬度
 const PROPS = [
@@ -460,6 +471,7 @@ class VillageScene extends Phaser.Scene {
         poise: T.poise, lastHit: 0, windup: T.windup, combo: 0,
         reactCd: 0, dodgeCd: 0, guardHits: 0, gdx: 0, gdy: 1,
         preemptCd: 0, pRoll: false, pd: undefined, pt: 0,
+        lastKind: null, feintAt: 0, sx: h.x, sy: h.y, ghostT: 0,
       });
     }
     for (let i = 0; i < this.bandits.length; i++) {
@@ -925,7 +937,7 @@ class VillageScene extends Phaser.Scene {
         this.atk.hit.add(b);
         const live = time >= b.t0 + REACT_DELAY;   // 提示動作之後，防禦/閃避才生效
         if (b.state === 'dodge' && live) {
-          this.spawnDamage(bx, by - b.t.h - 4, '閃', '#bcd0e0');
+          // 閃躲中：這刀落空（「閃」字在敵人起閃的當下已經顯示）
         } else if (b.state === 'guard' && live && -this.atk.dx * b.gdx - this.atk.dy * b.gdy > GUARD_FRONT) {
           this.blockBandit(b, this.atk.dx, this.atk.dy, time);
         } else {
@@ -984,9 +996,10 @@ class VillageScene extends Phaser.Scene {
             && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest')
             && time >= b.preemptCd && this.tokenFree(b)) {
           b.pRoll = true;
-          if (Math.random() < b.t.pPreempt) {
+          const pk = Math.random() < b.t.pPreempt ? this.preemptKind(b, dist) : null;
+          if (pk) {
             b.preemptCd = time + b.t.preemptCdMs;
-            this.startWindup(b, time, false, ux, uy, dist <= 60 ? 'slash' : 'lunge');
+            this.startWindup(b, time, false, ux, uy, pk);
           }
         }
       }
@@ -1029,8 +1042,12 @@ class VillageScene extends Phaser.Scene {
             // 選招：貼身多半普通揮砍，偶爾衝刺或只是繞步；中距離才常用衝刺拉近
             let kind = b.nextKind; b.nextKind = null;
             if (!kind) {
-              const r = Math.random();
-              kind = dist <= 40 ? (r < b.t.pSlashClose ? 'slash' : r < b.t.pSlashClose + b.t.pLungeClose ? 'lunge' : 'feint') : (r < b.t.pLungeMid ? 'lunge' : 'slash');
+              if (b.t.varied) {
+                kind = this.pickKind(b, dist, false) || 'feint';   // 武將：多招式，依距離抽籤
+              } else {
+                const r = Math.random();
+                kind = dist <= 40 ? (r < b.t.pSlashClose ? 'slash' : r < b.t.pSlashClose + b.t.pLungeClose ? 'lunge' : 'feint') : (r < b.t.pLungeMid ? 'lunge' : 'slash');
+              }
             }
             b.closeIn = false;
             if (kind === 'feint') {
@@ -1055,8 +1072,18 @@ class VillageScene extends Phaser.Scene {
         if (dt >= REACT_DELAY) { const sp = DODGE_DIST / (DODGE_DUR / 1000); vx = b.gdx * sp; vy = b.gdy * sp; }
         if (time >= b.until) {
           if (this.down) b.state = 'idle';
-          else { this.startWindup(b, time, true, ux, uy, 'lunge'); b.windup = b.t.dodgeCounterWindup; }
+          else {
+            // 閃完立刻反擊：武將依距離換招（遠用衝刺，近用連刺或揮砍），不再固定衝刺
+            let ck = 'lunge';
+            if (b.t.varied && dist <= 64) {
+              const r = Math.random();
+              ck = r < 0.4 ? 'lunge' : r < 0.75 ? 'thrust' : (dist <= 52 ? 'slash' : 'thrust');
+            }
+            this.startWindup(b, time, true, ux, uy, ck); b.windup = b.t.dodgeCounterWindup;
+          }
         }
+        // 閃躲殘影
+        if (dt >= REACT_DELAY && time - b.ghostT > 50) { b.ghostT = time; this.spawnGhost(b); }
       } else if (b.state === 'stalk') {
         faceToward();
         if (this.down || dist > b.t.lose) b.state = 'idle';
@@ -1071,25 +1098,43 @@ class VillageScene extends Phaser.Scene {
       } else if (b.state === 'windup') {
         // 蓄力：持續瞄準玩家，出刀前最後一小段鎖定方向，之後朝鎖定方向衝出去
         const wt = time - b.t0;
-        if (wt < b.windup - (b.kind === 'slash' ? b.t.slashAimLock : b.t.aimLock)) { b.adx = ux; b.ady = uy; }
+        const mv = this.moveStats(b);
+        if (wt < b.windup - mv.aimLock) { b.adx = ux; b.ady = uy; }
         b.facing = Math.abs(b.adx) > Math.abs(b.ady) ? (b.adx > 0 ? 'right' : 'left') : (b.ady > 0 ? 'down' : 'up');
-        if (wt >= b.windup) { b.state = 'strike'; b.t0 = time; b.strikeAt = time; b.did = false; }
-      } else if (b.state === 'strike') {
-        const slash = b.kind === 'slash';
-        if (slash) { if (time - b.t0 < 80) { vx = b.adx * 40; vy = b.ady * 40; } }   // 普通揮砍：只踏半步
-        else { vx = b.adx * b.t.lunge; vy = b.ady * b.t.lunge; }
-        if (!b.did && time - b.t0 >= (slash ? b.t.slashHitAt : b.t.hitAt)) {
-          const off = slash ? b.t.slashReach : 14;
-          const cx = bx + b.adx * off, cy = by - 14 + b.ady * off;
-          if (Math.hypot(cx - px, cy - (py - 14)) < (slash ? b.t.slashR : 29)
-              && this.hurtPlayer(slash ? b.t.dmgSlash : b.t.dmgLunge, bx, by, time)) b.did = true;
+        if (b.feintAt && time >= b.feintAt) {
+          // 假動作：起手到一半收招、往後撤一步，逼你白翻滾（只有武將）
+          b.feintAt = 0; b.combo = 0; b.state = 'feint'; b.t0 = time;
+        } else if (wt >= b.windup) { b.state = 'strike'; b.t0 = time; b.strikeAt = time; b.did = false; b.sx = bx; b.sy = by; }
+      } else if (b.state === 'feint') {
+        if (this.down) b.state = 'idle';
+        else {
+          if (time - b.t0 < 200) { vx = -b.adx * 130; vy = -b.ady * 130; }
+          else { b.state = 'rest'; b.t0 = time; b.stalked = true; b.orbitDir = Math.random() < 0.5 ? 1 : -1; }
         }
-        if (time - b.t0 >= (slash ? b.t.slashStrike : b.t.strike)) {
+      } else if (b.state === 'strike') {
+        const mv = this.moveStats(b), st = time - b.t0;
+        if (mv.kind === 'slash') { if (st < 80) { vx = b.adx * 40; vy = b.ady * 40; } }   // 普通揮砍：只踏半步
+        else if (mv.lane) { vx = b.adx * mv.speed; vy = b.ady * mv.speed; }              // 衝刺、連刺：沿紅線往前推進
+        // 重劈：原地劈下，不移動
+        if (!b.did && st >= mv.hitAt) {
+          let hit;
+          if (mv.lane) {
+            // 紅線判定：玩家在紅線寬度內，且刀尖已經推進到玩家的位置（畫多長就打多遠）
+            const ex = px - b.sx, ey = py - b.sy;
+            const s = ex * b.adx + ey * b.ady, lat = Math.abs(-ex * b.ady + ey * b.adx);
+            hit = s > -6 && s <= Math.hypot(bx - b.sx, by - b.sy) + mv.tip + 6 && lat < mv.hw;
+          } else {
+            const cx = bx + b.adx * mv.reach, cy = by - 14 + b.ady * mv.reach;
+            hit = Math.hypot(cx - px, cy - (py - 14)) < mv.r;
+          }
+          if (hit && this.hurtPlayer(mv.dmg, bx, by, time)) b.did = true;
+        }
+        if (st >= mv.strike) {
           if (b.combo > 0 && !this.down) { b.combo--; this.startWindup(b, time, true, ux, uy); }
           else { b.state = 'recover'; b.t0 = time; }
         }
       } else if (b.state === 'recover') {
-        if (time - b.t0 >= (b.kind === 'slash' ? b.t.slashRecover : b.t.recover)) {
+        if (time - b.t0 >= this.moveStats(b).recover) {
           if (this.down) b.state = 'idle';
           else { this.atkGapUntil = time + b.t.atkGap; b.state = 'rest'; b.t0 = time; b.orbitDir = Math.random() < 0.5 ? 1 : -1; }
         }
@@ -1152,6 +1197,7 @@ class VillageScene extends Phaser.Scene {
 
         if (b.state === 'dead') b.sprite.clearTint();
         else if (b.state === 'recover' && time - b.t0 < 160) b.sprite.setTintFill(0xffffff);   // 破綻提示：白光一閃
+        else if (b.state === 'feint' && time - b.t0 < 120) b.sprite.setTintFill(0xffffff);      // 假動作：收招時白光一閃
         else if ((b.state === 'guard' || b.state === 'dodge') && time - b.t0 < REACT_DELAY) b.sprite.setTintFill(0xffffff);   // 反應前的提示
         else if (b.state === 'guard') b.sprite.setTint(0x9fb8d8);
         else if (time < b.flashUntil) b.sprite.setTint(0xff9a8a);
@@ -1160,7 +1206,7 @@ class VillageScene extends Phaser.Scene {
         else b.sprite.clearTint();
 
         if (b.state !== 'dead') b.sprite.setAlpha(b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1);
-        b.alert.setVisible(b.state === 'windup' && b.kind === 'lunge').setPosition(bx, by - b.t.h - 2);
+        b.alert.setVisible(b.state === 'windup' && (b.kind === 'lunge' || b.kind === 'heavy')).setPosition(bx, by - b.t.h - 2);
         b.nameTag.setVisible(!b.dead && b.t.showName).setPosition(bx, by - b.t.h - 16);
       }
     }
@@ -1188,14 +1234,70 @@ class VillageScene extends Phaser.Scene {
     b.state = 'windup'; b.t0 = time;
     if (kind) b.kind = kind;
     if (!b.kind) b.kind = 'lunge';
+    const T = b.t;
+    b.feintAt = 0;
+    if (!fast) b.lastKind = b.kind;
     if (b.kind === 'slash') {
-      b.windup = fast ? b.t.slashWindupFast : b.t.slashWindup;
-      if (!fast) b.combo = Math.random() < b.t.pCombo ? 1 : 0;       // 偶爾連揮兩下
+      b.windup = fast ? T.slashWindupFast : T.slashWindup;
+      if (!fast) b.combo = Math.random() < T.pCombo ? 1 : 0;       // 偶爾連揮兩下
+    } else if (b.kind === 'heavy') {
+      b.windup = fast ? T.heavyWindupFast : T.heavyWindup;
+      b.combo = 0;
+    } else if (b.kind === 'thrust') {
+      b.windup = fast ? T.thrustWindupFast : T.thrustWindup;
+      if (!fast) b.combo = Math.random() < 0.5 ? 2 : 1;            // 連刺共 2 或 3 下
     } else {
-      b.windup = fast ? b.t.windupFast : b.t.windup;
+      b.windup = fast ? T.windupFast : T.windup;
       b.combo = 0;                                             // 衝刺不連擊
     }
+    // 假動作：普通起手（不是反擊的快速起手）的揮砍與重劈，有機率在前搖 60% 處取消
+    if (!fast && T.pFeint && (b.kind === 'slash' || b.kind === 'heavy') && Math.random() < T.pFeint) b.feintAt = time + b.windup * 0.6;
     b.adx = ux; b.ady = uy;
+  }
+
+  // 各招式的參數（lane＝沿紅線往前推進的招式；其餘為原地範圍判定）
+  moveStats(b) {
+    const T = b.t;
+    switch (b.kind) {
+      case 'slash': return { kind: 'slash', aimLock: T.slashAimLock, strike: T.slashStrike, hitAt: T.slashHitAt, recover: T.slashRecover, reach: T.slashReach, r: T.slashR, dmg: T.dmgSlash };
+      case 'heavy': return { kind: 'heavy', aimLock: T.heavyAimLock, strike: T.heavyStrike, hitAt: T.heavyHitAt, recover: T.heavyRecover, reach: T.heavyReach, r: T.heavyR, dmg: T.dmgHeavy };
+      case 'thrust': return { kind: 'thrust', lane: true, aimLock: T.thrustAimLock, strike: T.thrustStrike, hitAt: T.thrustHitAt, recover: T.thrustRecover, speed: T.thrustSpeed, tip: T.tip, hw: T.thrustHW, dmg: T.dmgThrust };
+      default: return { kind: 'lunge', lane: true, aimLock: T.aimLock, strike: T.strike, hitAt: T.hitAt, recover: T.recover, speed: T.lunge, tip: T.tip, hw: T.laneHW, dmg: T.dmgLunge };
+    }
+  }
+
+  // 武將選招：依距離抽籤；上一招的權重打折，避免連續重複；打不到的招不選。回傳 null＝這次不出手
+  pickKind(b, dist, preempt) {
+    const T = b.t;
+    const w = dist <= 44
+      ? { slash: T.pSlashClose, thrust: T.pThrustClose, heavy: T.pHeavyClose, lunge: T.pLungeClose, feint: preempt ? 0 : T.pFeintClose }
+      : { lunge: T.pLungeMid, thrust: T.pThrustMid, heavy: T.pHeavyMid, slash: T.pSlashMid, feint: 0 };
+    if (dist > 54) w.slash = 0;                         // 揮砍夠不到
+    if (dist > 64) { w.heavy = 0; w.thrust = 0; }       // 重劈與連刺也夠不到，只剩衝刺
+    if (dist > 70) w.lunge = Math.max(w.lunge, 0.1);
+    if (b.lastKind && w[b.lastKind]) w[b.lastKind] *= 0.4;
+    let total = 0;
+    for (const k in w) total += w[k] || 0;
+    if (total <= 0) return null;
+    let r = Math.random() * total;
+    for (const k in w) { r -= w[k] || 0; if (r <= 0) return k; }
+    return null;
+  }
+
+  // 搶先出刀選招：小兵精兵維持原樣（近揮砍、遠衝刺）；武將依距離抽籤，但一定是打得到的招
+  preemptKind(b, dist) {
+    if (!b.t.varied) return dist <= 60 ? 'slash' : 'lunge';
+    return this.pickKind(b, dist, true);
+  }
+
+  // 閃躲殘影
+  spawnGhost(b) {
+    const s = b.sprite;
+    const gh = this.add.image(s.x, s.y, s.texture.key).setOrigin(s.originX, s.originY)
+      .setDisplaySize(s.displayWidth, s.displayHeight).setFlipX(s.flipX)
+      .setAlpha(0.5).setTint(0x9fc7ff).setDepth(s.depth - 1);
+    this.uiCam.ignore(gh);
+    this.tweens.add({ targets: gh, alpha: 0, duration: 320, onComplete: () => gh.destroy() });
   }
 
   hitBandit(b, dx, dy, time) {
@@ -1248,11 +1350,15 @@ class VillageScene extends Phaser.Scene {
       } else if (r < b.t.pGuard + b.t.pDodge && time >= b.dodgeCd) {
         b.state = 'dodge'; b.t0 = time; b.until = time + REACT_DELAY + DODGE_DUR;
         b.gdx = -dx / d; b.gdy = -dy / d;          // 往離開玩家的方向閃
+        this.spawnDamage(b.body.x, b.body.y - b.t.h - 4, '閃', '#bcd0e0');   // 讓你一眼看出他在閃
         b.reactCd = time + b.t.reactCdMs; b.dodgeCd = time + b.t.dodgeCdMs;
       } else if (b.t.preempt && time >= b.preemptCd && d <= b.t.preemptDist && this.tokenFree(b) && Math.random() < b.t.pPreempt) {
         // 沒防禦也沒閃：玩家出刀的當下，有機率搶先動手
-        b.preemptCd = time + b.t.preemptCdMs;
-        this.startWindup(b, time, false, dx / d, dy / d, d <= 60 ? 'slash' : 'lunge');
+        const pk = this.preemptKind(b, d);
+        if (pk) {
+          b.preemptCd = time + b.t.preemptCdMs;
+          this.startWindup(b, time, false, dx / d, dy / d, pk);
+        }
       }
     }
   }
@@ -1348,18 +1454,25 @@ class VillageScene extends Phaser.Scene {
         g.beginPath(); g.arc(gx, gy, 16, mid - 0.95, mid + 0.95, false); g.strokePath();
       }
       // 蓄力時在地上畫出衝刺路線；最後一小段鎖定後變白，這時才是翻滾的時機
-      if (b.state === 'windup' && b.kind === 'lunge') {
+      if (b.state === 'windup' && (b.kind === 'lunge' || b.kind === 'thrust' || b.kind === 'heavy')) {
+        const mv = this.moveStats(b);
         const wt = time - b.t0, k = Math.min(1, wt / b.windup);
-        const locked = wt >= b.windup - b.t.aimLock;
-        const len = b.t.lunge * b.t.strike / 1000 + 14 + 22;
-        const bx0 = b.body.x, by0 = b.body.y + 2, hw = 9;
-        const nx = -b.ady, ny = b.adx;
-        const x1 = bx0 + b.adx * len, y1 = by0 + b.ady * len;
+        const locked = wt >= b.windup - mv.aimLock;
         lg.fillStyle(locked ? 0xffffff : 0xe8604a, locked ? 0.45 : 0.10 + 0.22 * k);
-        lg.fillPoints([
-          { x: bx0 + nx * hw, y: by0 + ny * hw }, { x: x1 + nx * hw, y: y1 + ny * hw },
-          { x: x1 - nx * hw, y: y1 - ny * hw }, { x: bx0 - nx * hw, y: by0 - ny * hw },
-        ], true);
+        if (mv.lane) {
+          // 紅線長度與寬度＝實際判定（衝刺距離＋刀尖、紅線半寬），畫多長就打多遠
+          const len = mv.speed * mv.strike / 1000 + mv.tip;
+          const bx0 = b.body.x, by0 = b.body.y + 4, hw = mv.hw;
+          const nx = -b.ady, ny = b.adx;
+          const x1 = bx0 + b.adx * len, y1 = by0 + b.ady * len;
+          lg.fillPoints([
+            { x: bx0 + nx * hw, y: by0 + ny * hw }, { x: x1 + nx * hw, y: y1 + ny * hw },
+            { x: x1 - nx * hw, y: y1 - ny * hw }, { x: bx0 - nx * hw, y: by0 - ny * hw },
+          ], true);
+        } else {
+          // 重劈：地上一個紅圈，就是落刀的範圍
+          lg.fillCircle(b.body.x + b.adx * mv.reach, b.body.y + 4 + b.ady * mv.reach, mv.r);
+        }
       }
       const t = (time - b.strikeAt) / 240;
       if (b.dead || t < 0 || t > 1) continue;
