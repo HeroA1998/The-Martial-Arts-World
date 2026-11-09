@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.11.1';   // 每次更新請加一
+const VERSION = 'v0.11.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -1681,7 +1681,7 @@ class VillageScene extends Phaser.Scene {
   buildTown() {
     const W = MAP_W, H = MAP_H, BOT = 536, R = TOWN_ROAD, top = R.y - R.hw, bot = R.y + R.hw;
     // 地面：大街用石板圖、其餘用泥地圖（只做一次，之後以 key 快取）
-    if (!this.textures.exists('town_ground5')) {
+    if (!this.textures.exists('town_ground6')) {
       const C = 2, TW = 72, cw = Math.ceil(W / C), ch = Math.ceil(H / C);
       const tileData = key => {
         const c = document.createElement('canvas'); c.width = c.height = TW;
@@ -1695,15 +1695,15 @@ class VillageScene extends Phaser.Scene {
       let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
         const street = Math.abs(j * C - R.y + (rnd() - 0.5) * 6) < R.hw;
-        const o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4, src = street ? st : gr, k = street ? 1 : 0.95;
-        od[d] = src[o] * k; od[d + 1] = src[o + 1] * k; od[d + 2] = src[o + 2] * k; od[d + 3] = 255;
+        const o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4, src = street ? st : gr, kr = street ? 1.18 : 1.5, kg = street ? 1.18 : 1.55, kb = street ? 1.18 : 1.3;
+        od[d] = Math.min(255, src[o] * kr); od[d + 1] = Math.min(255, src[o + 1] * kg); od[d + 2] = Math.min(255, src[o + 2] * kb); od[d + 3] = 255;
       }
       g.putImageData(img, 0, 0);
-      this.textures.addCanvas('town_ground5', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.textures.addCanvas('town_ground6', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
       if (this.textures.exists('stone_floor')) this.textures.remove('stone_floor');
       if (this.textures.exists('town_grass')) this.textures.remove('town_grass');
     }
-    this.world.push(this.add.image(0, 0, 'town_ground5').setOrigin(0).setScale(2).setDepth(-20));
+    this.world.push(this.add.image(0, 0, 'town_ground6').setOrigin(0).setScale(2).setDepth(-20));
 
     // 外牆：四周；鎮門在東牆、大街高度
     const gy0 = TOWN_GATE.y - R.hw, gy1 = TOWN_GATE.y + R.hw;
@@ -1775,37 +1775,34 @@ class VillageScene extends Phaser.Scene {
       this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 2, y1: by + 18, to: 'shrine', spawn: { x: 150, y: 392 }, facing: 'up' });
     }
     // 北側後面：天空（陰天、薄霧、遠山），建築與樹站在天空前；大街上緣有一條暗色地平帶接住天空
-    if (!this.textures.exists('town_sky')) {
+    if (!this.textures.exists('town_sky2')) {
       const cv = document.createElement('canvas'); cv.width = 700; cv.height = 135;
       const g = cv.getContext('2d');
       const gr = g.createLinearGradient(0, 0, 0, 135);
-      gr.addColorStop(0, '#1b2a2c'); gr.addColorStop(0.55, '#3c5253'); gr.addColorStop(1, '#7b8c84');
+      gr.addColorStop(0, '#6d93a6'); gr.addColorStop(0.55, '#a8c0bb'); gr.addColorStop(1, '#e2d9b8');
       g.fillStyle = gr; g.fillRect(0, 0, 700, 135);
       let sd = 7; const r2 = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
       for (let n = 0; n < 26; n++) {   // 雲：橫向壓扁的柔和橢圓
         const x = r2() * 700, y = 10 + r2() * 95, w = 40 + r2() * 90, h = 5 + r2() * 9;
         const rg = g.createRadialGradient(x, y, 0, x, y, w);
-        rg.addColorStop(0, 'rgba(170,185,175,0.16)'); rg.addColorStop(1, 'rgba(170,185,175,0)');
+        rg.addColorStop(0, 'rgba(245,244,235,0.32)'); rg.addColorStop(1, 'rgba(245,244,235,0)');
         g.save(); g.translate(x, y); g.scale(1, h / w); g.translate(-x, -y); g.fillStyle = rg; g.beginPath(); g.arc(x, y, w, 0, Math.PI * 2); g.fill(); g.restore();
       }
-      g.fillStyle = 'rgba(32,46,42,0.75)'; g.beginPath(); g.moveTo(0, 135);   // 遠山剪影
+      g.fillStyle = 'rgba(86,112,98,0.7)'; g.beginPath(); g.moveTo(0, 135);   // 遠山剪影
       for (let x = 0; x <= 700; x += 14) g.lineTo(x, 108 - 12 * Math.sin(x / 53) - 8 * Math.sin(x / 21 + 1));
       g.lineTo(700, 135); g.fill();
-      this.textures.addCanvas('town_sky', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.textures.addCanvas('town_sky2', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
-    this.world.push(this.add.image(0, 0, 'town_sky').setOrigin(0).setScale(2).setDepth(-4));
+    this.world.push(this.add.image(0, 0, 'town_sky2').setOrigin(0).setScale(2).setDepth(-4));
     { const hz = this.add.graphics().setDepth(top - 6); this.world.push(hz);
-      hz.fillStyle(0x1f2a1e, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x2f3d2a, 1); hz.fillRect(0, top - 10, W, 2); }
-    // 南側：只有建築黑影（取代完整貼圖）。三排由近到遠往下疊，近的最黑、遠的稍淡，緊貼大街下緣；下方地面也壓暗
+      hz.fillStyle(0x3d5030, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x587240, 1); hz.fillRect(0, top - 10, W, 2); }
+    // 南側：只有一排建築黑影（取代完整貼圖），帶綠的深灰，緊貼大街下緣；乾淨的屋頂輪廓，不重疊
     const southTop = bot + 4;
-    this.world.push(this.add.rectangle(0, southTop - 4, W, BOT - southTop + 4, 0x0a0f0c, 0.6).setOrigin(0).setDepth(300));
-    for (const [off, tint, d] of [[0, 0x040605, 400], [46, 0x0b100d, 390], [92, 0x151c18, 380]]) {
-      const south = (c, x, sc, w) => {
-        const tex = this.textures.get(SPR[c][0]).getSourceImage(), h = w * tex.height / tex.width;
-        draw(c, x, southTop + off + h, sc, 0, d).setTint(tint).setAlpha(0.93);
-      };
-      fillRow(14 - (off ? 30 : 0), W - 14, south, () => {}, 0.12);
-    }
+    const south = (c, x, sc, w) => {
+      const tex = this.textures.get(SPR[c][0]).getSourceImage(), h = w * tex.height / tex.width;
+      draw(c, x, southTop + h, sc, 0, 400).setTint(0x36443c).setAlpha(0.96);
+    };
+    fillRow(14, W - 14, south, () => {}, 0.12);
     this.sils = [];
     this.stage = { phase: 'walk', t0: 0 };
   }
