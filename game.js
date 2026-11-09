@@ -10,7 +10,8 @@ const pathCX = y => 230 + 16 * Math.sin(y / 170);       // 小道中心 x
 const CLEAR = { x: 230, y: 560, rx: 175, ry: 120 };     // 林間空地（橢圓）
 const SIDE_Y0 = 535, SIDE_Y1 = 595;                     // 左右側小徑的上下緣
 const START = { x: pathCX(1060), y: 1060 };             // 主角起點（小道最下方）
-const AMBUSH_Y = 690;                                   // 主角往上走到這裡（空地下緣）觸發伏擊
+const AMBUSH_Y = 690;
+const CINE_MS = 3900;                                   // 伏兵出場動畫長度（黑條、主角停住）                                   // 主角往上走到這裡（空地下緣）觸發伏擊
 const EXIT_Y = 50;                                      // 擊退伏兵後，走到小道最上方＝本段結束
 function walkable(x, y) {
   if (y < 6 || y > MAP_H - 6) return false;
@@ -29,7 +30,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.8.0';   // 每次更新請加一
+const VERSION = 'v0.8.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -83,10 +84,10 @@ const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 // 伏兵：一開始藏在兩側樹林（看不到），主角走到空地時從左右側小徑衝出
 // delay：觸發後幾毫秒才現身；ex, ey：衝進空地的落點
 const ENEMY_SPAWNS = [
-  { type: 'turban', x: 14,  y: 572, delay: 0,    ex: 120, ey: 585 },
-  { type: 'bandit', x: 14,  y: 556, delay: 2000, ex: 140, ey: 548 },
-  { type: 'turban', x: 446, y: 552, delay: 200,  ex: 330, ey: 545 },
-  { type: 'turban', x: 446, y: 580, delay: 500,  ex: 345, ey: 595 },
+  { type: 'turban', x: 92,  y: 572, delay: 500,  ex: 150, ey: 590 },
+  { type: 'bandit', x: 88,  y: 552, delay: 1700, ex: 165, ey: 555 },
+  { type: 'turban', x: 368, y: 552, delay: 800,  ex: 300, ey: 548 },
+  { type: 'turban', x: 372, y: 582, delay: 1100, ex: 310, ey: 600 },
 ];
 
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
@@ -110,16 +111,16 @@ const ENEMY_TYPES = {
     // 衝刺（紅線預告）：紅線長度＝實際衝刺距離（lunge×strike）＋刀尖 tip，判定就在這條線上，畫多長就打多遠
     windup: 800, windupFast: 820, aimLock: 220, strike: 200, hitAt: 130, lunge: 340, recover: 1300,
     laneHW: 20, tip: 24,
-    dmgLunge: 22,
+    dmgLunge: 30,
     // 普通揮砍（原地起手、不衝刺）
     slashWindup: 550, slashWindupFast: 400, slashAimLock: 150, slashStrike: 180, slashHitAt: 60,
-    slashRecover: 900, slashReach: 18, slashR: 28, dmgSlash: 12,
+    slashRecover: 900, slashReach: 18, slashR: 28, dmgSlash: 25,   // 等級 1：武將一刀約扣 1/4 血
     // 重劈：前搖最長、地上紅圈預告落點，範圍大、傷害高、破綻也長（前搖時可以搶進去打或翻滾）
     heavyWindup: 900, heavyWindupFast: 500, heavyAimLock: 260, heavyStrike: 240, heavyHitAt: 110,
-    heavyRecover: 1500, heavyReach: 22, heavyR: 34, dmgHeavy: 20,
+    heavyRecover: 1500, heavyReach: 22, heavyR: 34, dmgHeavy: 35,
     // 連刺：前搖短、連續 2～3 下小幅前刺，每一下都重新瞄準；傷害小但很逼人
     thrustWindup: 420, thrustWindupFast: 230, thrustAimLock: 90, thrustStrike: 130, thrustHitAt: 50,
-    thrustRecover: 1000, thrustSpeed: 260, thrustHW: 15, dmgThrust: 8,
+    thrustRecover: 1000, thrustSpeed: 260, thrustHW: 15, dmgThrust: 12,
     // 選招機率（varied＝武將專用的多招式選招；小兵、精兵維持原本的選招）
     varied: true,
     pSlashClose: 0.30, pThrustClose: 0.22, pHeavyClose: 0.18, pLungeClose: 0.05, pFeintClose: 0.25,   // 貼身（44 以內）
@@ -410,10 +411,16 @@ class VillageScene extends Phaser.Scene {
 
     this.heroShadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.28).setDepth(-10);
     this.hero = this.add.image(0, 0, 'hero_down').setOrigin(0.5, 1).setDepth(0);
+    // 主角頭頂的紅色驚嘆號（發現埋伏時）
+    this.heroAlert = this.add.text(0, 0, '!', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold',
+      color: '#ff4a3a', stroke: '#000000', strokeThickness: 4, resolution: 3,
+    }).setOrigin(0.5, 1).setDepth(8600).setVisible(false);
+    this.heroAlertUntil = 0;
     this.facing = 'down';
     this.walk = 0; this.walkT = 0;
     this.setHeroTexture('hero_down');
-    this.world.push(this.heroShadow, this.hero);
+    this.world.push(this.heroShadow, this.hero, this.heroAlert);
 
     // 玩家狀態
     this.php = PLAYER_HP;
@@ -516,6 +523,10 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '30px', color: '#e8c8b8',
       stroke: '#000000', strokeThickness: 5,
     }).setOrigin(0.5).setDepth(1002).setVisible(false);
+    // 出場動畫的上下黑條（平常收在畫面外）
+    this.barTop = this.add.rectangle(0, 0, 10, 10, 0x000000, 1).setOrigin(0, 0).setDepth(990);
+    this.barBot = this.add.rectangle(0, 0, 10, 10, 0x000000, 1).setOrigin(0, 0).setDepth(990);
+    this.cineK = 0;   // 黑條展開程度 0～1
     this.bannerText = this.add.text(this.scale.width / 2, this.scale.height * 0.3, '', {
       fontFamily: 'system-ui, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#f0d890',
       stroke: '#000000', strokeThickness: 5, align: 'center',
@@ -529,7 +540,7 @@ class VillageScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(1, 0).setDepth(1001);
     this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText,
-                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.bannerText);
+                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.bannerText, this.barTop, this.barBot);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -647,7 +658,7 @@ class VillageScene extends Phaser.Scene {
     this.vt += delta;
     const time = this.vt;
     this.nowT = time;
-    const { x, y, m } = this.down ? { x: 0, y: 0, m: 0 } : this.readInput();
+    const { x, y, m } = this.down || this.cine ? { x: 0, y: 0, m: 0 } : this.readInput();
 
     // 出招：按住攻擊鍵或空白鍵會連續出招，但受冷卻限制
     if (!this.down && (this.btn.held || this.atkKeys.SPACE.isDown || this.atkKeys.J.isDown)) this.tryAttack(time);
@@ -746,6 +757,13 @@ class VillageScene extends Phaser.Scene {
       lx = this.atk.dx * lunge; ly = this.atk.dy * lunge * 0.6;
     }
     this.hero.setPosition(fx + lx, fy - bob + ly).setDepth(fy);
+    if (this.heroAlert.visible) {
+      if (time >= this.heroAlertUntil) this.heroAlert.setVisible(false);
+      else {
+        const at = time - (this.heroAlertUntil - 1400);   // 跳出來：先放大再縮回
+        this.heroAlert.setPosition(fx, fy - HERO_H - 4).setScale(at < 120 ? 0.6 + at / 120 * 0.8 : Math.max(1, 1.4 - (at - 120) / 150 * 0.4));
+      }
+    }
     // 翻滾：身體壓扁並留下殘影
     if (this.roll) {
       const sx = rollSprite ? this.heroSx : this.heroSx * 1.1, sy = rollSprite ? this.heroSy : this.heroSy * 0.72;
@@ -793,7 +811,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   tryAttack(time) {
-    if (this.down || this.atk) return false;
+    if (this.down || this.atk || this.cine) return false;
     let quick = false;
     if (this.roll) {
       if (time - this.roll.start < this.roll.iTo) return false;   // 翻滾無敵還沒結束
@@ -885,7 +903,7 @@ class VillageScene extends Phaser.Scene {
 
   // 翻滾：往搖桿方向；沒推搖桿就往後退。前段無敵，亂翻會耗光耐力
   tryRoll(time) {
-    if (this.down || this.roll) return false;
+    if (this.down || this.roll || this.cine) return false;
     if (this.atk && time - this.atk.start < ATK_ROLL_CANCEL) return false;
     if (this.stam <= 0) { this.stamFlash = time + 300; return false; }
     const inp = this.readInput();
@@ -1019,9 +1037,10 @@ class VillageScene extends Phaser.Scene {
       } else if (b.state === 'enter') {
         // 從側小徑衝進空地：朝落點跑，到了（或跑太久）就開始圍攻
         const ex = b.spawn.ex - bx, ey = b.spawn.ey - by, ed = Math.hypot(ex, ey) || 1;
-        vx = ex / ed * b.t.speed * 1.25; vy = ey / ed * b.t.speed * 1.25;
-        b.facing = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up');
-        if (ed < 10 || time - b.t0 > 3000) { b.state = this.down ? 'idle' : 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
+        const spd = b.t.speed * (this.cine ? 0.7 : 1.25);   // 出場動畫中慢慢走出來
+        if (ed > 6) { vx = ex / ed * spd; vy = ey / ed * spd; b.facing = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up'); }
+        else faceToward();                                  // 到位後盯著主角，等動畫結束
+        if (!this.cine && (ed < 10 || time - b.t0 > 3000)) { b.state = this.down ? 'idle' : 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'idle') {
         if (!this.down && dist < b.t.aggro) { b.state = 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'chase') {
@@ -1123,7 +1142,7 @@ class VillageScene extends Phaser.Scene {
             // 紅線判定：玩家在紅線寬度內，且刀尖已經推進到玩家的位置（畫多長就打多遠）
             const ex = px - b.sx, ey = py - b.sy;
             const s = ex * b.adx + ey * b.ady, lat = Math.abs(-ex * b.ady + ey * b.adx);
-            hit = s > -6 && s <= Math.hypot(bx - b.sx, by - b.sy) + mv.tip + 6 && lat < mv.hw;
+            hit = s > -8 && s <= Math.hypot(bx - b.sx, by - b.sy) + mv.tip + 8 && lat < mv.hw + 7;   // +7：主角身體半寬，身體碰到紅線就算中
           } else {
             const cx = bx + b.adx * mv.reach, cy = by - 14 + b.ady * mv.reach;
             hit = Math.hypot(cx - px, cy - (py - 14)) < mv.r;
@@ -1194,7 +1213,7 @@ class VillageScene extends Phaser.Scene {
         }
         if (b.state !== 'dead') b.sprite.setPosition(bx + ox, by + oy).setDepth(by);
         b.shadow.setPosition(bx, by);
-        b.shadow.setAlpha(b.state === 'dead' ? 0 : 1);
+        b.shadow.setAlpha(b.state === 'dead' ? 0 : b.state === 'enter' ? Math.min(1, (time - b.t0) / 600) : 1);
 
         if (b.state === 'dead') b.sprite.clearTint();
         else if (b.state === 'recover' && time - b.t0 < 160) b.sprite.setTintFill(0xffffff);   // 破綻提示：白光一閃
@@ -1206,7 +1225,8 @@ class VillageScene extends Phaser.Scene {
         else if (b.t.tint) b.sprite.setTint(b.t.tint);   // 種類色調（暫代用）
         else b.sprite.clearTint();
 
-        if (b.state !== 'dead') b.sprite.setAlpha(b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1);
+        const fadeIn = b.state === 'enter' ? Math.min(1, (time - b.t0) / 600) : 1;
+        if (b.state !== 'dead') b.sprite.setAlpha((b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1) * fadeIn);
         b.alert.setVisible(b.state === 'windup' && (b.kind === 'lunge' || b.kind === 'heavy')).setPosition(bx, by - b.t.h - 2);
         b.nameTag.setVisible(!b.dead && b.t.showName).setPosition(bx, by - b.t.h - 16);
       }
@@ -1407,7 +1427,7 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 玩家受傷與倒下 ----------
   hurtPlayer(dmg, sx, sy, time) {
-    if (this.down || time < this.invulnUntil || (time >= this.rollIFrom && time < this.rollIUntil)) return false;
+    if (this.down || this.cine || time < this.invulnUntil || (time >= this.rollIFrom && time < this.rollIUntil)) return false;
     this.php = Math.max(0, this.php - dmg);
     this.roll = null;
     this.invulnUntil = time + INVULN_MS;
@@ -1442,17 +1462,29 @@ class VillageScene extends Phaser.Scene {
     for (const b of this.bandits) this.hideBandit(b);
     this.stage = { phase: 'walk', t0: 0 };
     this.bannerText.setVisible(false);
+    this.cine = false; this.heroAlert.setVisible(false);
   }
 
   // ---------- 森林小道：伏擊流程 ----------
   updateStage(time) {
     const st = this.stage, py = this.playerBody.y;
     if (st.phase === 'walk' && !this.down && py < AMBUSH_Y) {
-      st.phase = 'fight'; st.t0 = time;
-      this.banner('有埋伏！', 1600);
+      // 出場動畫：黑條滑入、主角停住（無敵、不能操作），頭頂跳出紅色驚嘆號，伏兵慢慢走出來
+      st.phase = 'intro'; st.t0 = time;
+      this.cine = true; this.atk = null; this.roll = null; this.atkBuf = 0; this.rollBuf = 0;
+      this.heroAlert.setVisible(true).setScale(0.6); this.heroAlertUntil = time + 1400;
+      this.hintText.setVisible(false);
     }
-    if (st.phase === 'fight') {
+    if (st.phase === 'intro' || st.phase === 'fight') {
       for (const b of this.bandits) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
+    }
+    if (st.phase === 'intro' && time - st.t0 >= CINE_MS) { st.phase = 'fight'; this.cine = false; }
+    // 黑條與操作介面跟著 cine 淡入淡出
+    const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
+    const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
+    this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
+    for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText]) o.setAlpha(1 - k);
+    if (st.phase === 'fight') {
       if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; this.banner('擊退伏兵\n往北前進', 2800); }
     }
     if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
@@ -1501,7 +1533,7 @@ class VillageScene extends Phaser.Scene {
   revealBandit(b, time) {
     b.hidden = false; b.dead = false; b.state = 'enter'; b.t0 = time;
     b.body.body.enable = true; b.body.body.reset(b.spawn.x, b.spawn.y - 4);
-    b.sprite.setVisible(true); b.shadow.setVisible(true);
+    b.sprite.setVisible(true).setAlpha(0); b.shadow.setVisible(true).setAlpha(0);   // 從樹林陰影裡慢慢浮現（見 updateBandits 的 fadeIn）
     b.reactCd = time + 600; b.preemptCd = time + 600;   // 剛衝出來先不防禦、不搶先出刀
   }
 
@@ -1760,7 +1792,7 @@ class VillageScene extends Phaser.Scene {
     dg.clear();
     dg.fillStyle(0x16201a, rolling || this.btn2.id !== null ? 0.7 : 0.45); dg.fillCircle(dp.x, dp.y, DG_R);
     dg.lineStyle(3, tired ? 0xc0503a : 0xe6f0dc, rolling ? 0.95 : 0.55); dg.strokeCircle(dp.x, dp.y, DG_R);
-    this.dgText.setPosition(dp.x, dp.y).setAlpha(tired ? 0.5 : 1);
+    this.dgText.setPosition(dp.x, dp.y).setAlpha((tired ? 0.5 : 1) * (1 - this.cineK));
 
     // 搖桿
     const g = this.joyGfx;
