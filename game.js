@@ -30,7 +30,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.9.0';   // 每次更新請加一
+const VERSION = 'v0.9.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -66,26 +66,33 @@ const STAM_DELAY = 750;         // 用完耐力後多久才開始回復
 const STAM_DELAY_EMPTY = 1300;  // 耐力見底時要等更久
 const ATK_COST = 22;
 
-// ---------- 能力型成長 ----------
-// 等級上限 99；升下一級所需經驗 = 50 × 目前等級；每級 3 點能力點
-const LV_CAP = 99, PTS_PER_LV = 3;
+// ---------- 能力型成長（黑魂式：在營火花經驗升級）----------
+// 等級 = 1 + 四項能力投入點數總和；每項最高 50 點，總等級最高 201
+// 升級（加 1 點）所需經驗 = 50 × 目前等級；經驗是貨幣，只能在營火花用
+const STAT_CAP = 50;
+const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
+const MAX_LV = 1 + STAT_KEYS.length * STAT_CAP;
 const xpNeed = lv => 50 * lv;
-// 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%
+// 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%。整場戰鬥結束才結算
 const KILL_XP = { turban: 8, hansoldier: 25, bandit: 120 };
 const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
-const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
 const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
+const statMaxHp = p => 100 + 3 * p;
+const statMaxStam = p => 100 + 5 * p;
+const statAtk = p => 1 + 0.01 * p;
+const statDef = p => 0.008 * p;
 const STAT_DESC = {
   hp: p => '氣血上限 ' + statMaxHp(p),
   sta: p => '氣力上限 ' + statMaxStam(p),
   atk: p => '傷害 ×' + statAtk(p).toFixed(2),
-  def: p => '減傷 ' + Math.round(statDef(p) * 100) + '%',
+  def: p => '減傷 ' + (statDef(p) * 100).toFixed(1).replace('.0', '') + '%',
 };
-// p = 該項已投入的點數；前 50 點效果完整，之後遞減
-const statMaxHp = p => 100 + 3 * Math.min(p, 50) + 2 * Math.max(0, p - 50);
-const statMaxStam = p => 100 + 5 * Math.min(p, 50) + 2 * Math.max(0, p - 50);
-const statAtk = p => 1 + 0.01 * Math.min(p, 50) + 0.005 * Math.max(0, p - 50);
-const statDef = p => Math.min(0.40, 0.015 * p);
+// 營火（升級、存檔的地方）
+const CAMPS = [
+  { x: START.x + 6, y: START.y - 34 },
+  { x: pathCX(150) + 6, y: 150 },
+];
+const CAMP_R = 70;
 const SAVE_KEY = 'dajianghu_save_v1';
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
 const ROLL_COST = 26;
@@ -392,6 +399,7 @@ class VillageScene extends Phaser.Scene {
     this.ui = [];      // 螢幕固定物件
 
     this.buildForest();
+    this.buildCamps();
 
     // 固定擺設（目前沒有）：障礙、陰影、排序；this.obstacles 已在 buildForest 建好
     for (const p of PROPS) {
@@ -556,7 +564,7 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#f0d890',
       stroke: '#000000', strokeThickness: 5, align: 'center',
     }).setOrigin(0.5).setDepth(1002).setVisible(false);
-    this.hintText = this.add.text(this.scale.width / 2, 52, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾（前段無敵）\n翻滾後立刻按「攻」＝翻滾攻擊\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
+    this.hintText = this.add.text(this.scale.width / 2, 66, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾（前段無敵）\n翻滾後立刻按「攻」＝翻滾攻擊\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
@@ -1464,21 +1472,22 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 能力型成長 ----------
   loadGrowth() {
-    this.lv = 1; this.xp = 0; this.pts = 0;
+    this.xp = 0; this.pending = 0;
     this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-      if (d && d.lv >= 1 && d.lv <= LV_CAP) {
-        this.lv = d.lv; this.xp = Math.max(0, d.xp | 0);
-        for (const k of STAT_KEYS) this.stats[k] = Math.max(0, (d.stats && d.stats[k]) | 0);
-        const spent = STAT_KEYS.reduce((a, k) => a + this.stats[k], 0);
-        this.pts = Math.max(0, (this.lv - 1) * PTS_PER_LV - spent);   // 以等級反推，防止存檔被改壞
+      if (d && d.stats) {
+        this.xp = Math.max(0, d.xp | 0);
+        for (const k of STAT_KEYS) this.stats[k] = Math.min(STAT_CAP, Math.max(0, d.stats[k] | 0));
       }
     } catch (e) {}
+    this.calcLv();
   }
 
+  calcLv() { this.lv = 1 + STAT_KEYS.reduce((a, k) => a + this.stats[k], 0); }
+
   saveGrowth() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ lv: this.lv, xp: this.xp, stats: this.stats })); } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats })); } catch (e) {}
   }
 
   maxHp() { return statMaxHp(this.stats.hp); }
@@ -1487,150 +1496,158 @@ class VillageScene extends Phaser.Scene {
     return Math.max(1, Math.round((PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG)) * statAtk(this.stats.atk)));
   }
 
-  // 給經驗；回傳升了幾級
-  addXp(n) {
-    if (this.lv >= LV_CAP) return 0;
-    this.xp += Math.round(n);
-    let up = 0;
-    while (this.lv < LV_CAP && this.xp >= xpNeed(this.lv)) {
-      this.xp -= xpNeed(this.lv); this.lv++; this.pts += PTS_PER_LV; up++;
-    }
-    if (this.lv >= LV_CAP) this.xp = 0;
-    if (up) this.banner('升級！等級 ' + this.lv + '\n+' + (up * PTS_PER_LV) + ' 能力點（安全時按左上「能力」）', 2400);
-    this.saveGrowth();
-    return up;
-  }
+  // 章節固定經驗（劇情結算時呼叫；直接入帳，不受等級影響）
+  grantChapterXp(i) { this.xp += CHAPTER_XP[i] || 0; this.saveGrowth(); }
 
-  // 章節固定經驗（劇情結算時呼叫；不受等級影響）
-  grantChapterXp(i) { return this.addXp(CHAPTER_XP[i] || 0); }
-
+  // 擊殺：先記進「待結算」，整場戰鬥結束才算數；結算前倒下就沒了
   gainKillXp(b) {
     const type = b.spawn.type, enemyLv = b.spawn.lv || 1;
     let xp = (KILL_XP[type] || 5) * enemyLv;
     if (this.lv >= enemyLv + 10) xp *= 0.25;
     xp = Math.max(1, Math.round(xp));
-    this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '+' + xp + ' 經驗', '#e8d890');
-    this.addXp(xp);
+    this.pending += xp;
+    this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '+' + xp, '#e8d890');
   }
 
-  // 能力面板：只在安全時（走路中、擊退伏兵後）可開
+  settleXp() {
+    const n = this.pending; this.pending = 0;
+    this.xp += n; this.saveGrowth();
+    return n;
+  }
+
+  buyStat(k) {
+    const need = xpNeed(this.lv);
+    if (this.stats[k] >= STAT_CAP || this.lv >= MAX_LV || this.xp < need) return false;
+    this.xp -= need; this.stats[k]++; this.calcLv();
+    if (k === 'hp') this.php += 3;      // 加點時順便補上增加的上限
+    if (k === 'sta') this.stam += 5;
+    this.php = Math.min(this.php, this.maxHp()); this.stam = Math.min(this.stam, this.maxStam());
+    this.saveGrowth();
+    return true;
+  }
+
+  // ---------- 營火 ----------
+  buildCamps() {
+    this.camps = CAMPS.map(c => {
+      const g = this.add.graphics().setDepth(c.y);
+      this.world.push(g);
+      return { x: c.x, y: c.y, g };
+    });
+  }
+
+  drawCamps(time) {
+    for (const c of this.camps) {
+      const g = c.g; g.clear(); g.setPosition(c.x, c.y).setScale(2);
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(0, 2, 30, 9);
+      g.fillStyle(0x6b6a66, 1);   // 圍石
+      for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.fillRect(Math.cos(a) * 12 - 2, Math.sin(a) * 4 - 1, 4, 3); }
+      g.fillStyle(0x4a3220, 1); g.fillRect(-9, -3, 18, 3); g.fillRect(-7, -6, 14, 3);   // 柴
+      const f = 1 + 0.18 * Math.sin(time / 90 + c.x) + 0.1 * Math.sin(time / 53);
+      g.fillStyle(0xd9602a, 0.95); g.fillTriangle(-7, -5, 7, -5, Math.sin(time / 140) * 2, -5 - 17 * f);
+      g.fillStyle(0xf2b23c, 1);    g.fillTriangle(-4, -5, 4, -5, 0, -5 - 11 * f);
+      g.fillStyle(0xfff0b0, 1);    g.fillTriangle(-2, -5, 2, -5, 0, -5 - 6 * f);
+    }
+  }
+
+  nearCamp() {
+    for (const c of this.camps) if (Math.hypot(this.playerBody.x - c.x, this.playerBody.y - c.y) <= CAMP_R) return c;
+    return null;
+  }
+
+  // 只在安全時（走路中、擊退伏兵後）、站在營火旁才能祈禱升級
   canOpenPanel() {
     const ph = this.stage && this.stage.phase;
-    return !this.down && !this.cine && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll;
+    return !this.down && !this.cine && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !!this.nearCamp();
   }
 
-  panelBtnRect() { return { x: 13, y: 42, w: 64, h: 24 }; }
+  prayRect() { return { x: this.scale.width / 2 - 52, y: this.scale.height - 260, w: 104, h: 36 }; }
 
   buildPanel() {
     const mk = (o) => { o.setDepth(1100); this.ui.push(o); this.cameras.main.ignore(o); return o; };
-    const tx = (size, color) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: 3 });
-    this.lvText = mk(this.add.text(82, 45, '', tx(13, '#e8d890')).setDepth(1001));
-    this.lvText.setDepth(1001);
+    const tx = (size, color, stroke = 3) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke });
+    this.lvText = mk(this.add.text(14, 42, '', tx(13, '#e8d890')).setDepth(1001));
     this.pnGfx = mk(this.add.graphics());
-    this.pnBtnText = mk(this.add.text(0, 0, '能力', tx(14, '#e6f0dc')).setOrigin(0.5).setDepth(1001));
-    this.pnTitle = mk(this.add.text(0, 0, '', tx(18, '#f0d890')).setOrigin(0.5, 0));
+    this.pnBtnText = mk(this.add.text(0, 0, '祈禱（升級）', tx(15, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.pnTitle = mk(this.add.text(0, 0, '', tx(16, '#f0d890')).setOrigin(0.5, 0));
     this.pnRows = STAT_KEYS.map(k => ({
       k,
       name: mk(this.add.text(0, 0, STAT_NAMES[k], tx(17, '#e6f0dc'))),
       val: mk(this.add.text(0, 0, '', tx(13, '#c8d8c0'))),
-      plus: mk(this.add.text(0, 0, '＋', Object.assign(tx(26, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5)),
-      minus: mk(this.add.text(0, 0, '－', Object.assign(tx(26, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5)),
+      plus: mk(this.add.text(0, 0, '＋', tx(26, '#16201a', 0)).setOrigin(0.5)),
     }));
-    this.pnReset = mk(this.add.text(0, 0, '重置', Object.assign(tx(16, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5));
-    this.pnClose = mk(this.add.text(0, 0, '關閉', Object.assign(tx(16, '#16201a'), { strokeThickness: 0 })).setOrigin(0.5));
-    this.pnNote = mk(this.add.text(0, 0, '重置不用錢；點數可隨時重新分配', tx(12, '#a8b8a0')).setOrigin(0.5, 0));
+    this.pnClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5));
+    this.pnNote = mk(this.add.text(0, 0, '加點後無法退回，請慎重分配', tx(12, '#a8b8a0')).setOrigin(0.5, 0));
     this.panelOpen = false;
     this.layoutPanel();
     this.setPanelVisible(false);
   }
 
   setPanelVisible(v) {
-    this.pnGfx.setVisible(v); this.pnTitle.setVisible(v); this.pnReset.setVisible(v); this.pnClose.setVisible(v); this.pnNote.setVisible(v);
-    for (const r of this.pnRows) { r.name.setVisible(v); r.val.setVisible(v); r.plus.setVisible(v); r.minus.setVisible(v); }
+    this.pnGfx.setVisible(true); this.pnTitle.setVisible(v); this.pnClose.setVisible(v); this.pnNote.setVisible(v);
+    for (const r of this.pnRows) { r.name.setVisible(v); r.val.setVisible(v); r.plus.setVisible(v); }
   }
 
-  // 面板版面（置中；幾何用於繪製與點擊判定）
   layoutPanel() {
     const W = this.scale.width, H = this.scale.height;
-    const pw = Math.min(W - 24, 360), rowH = 54, ph = 96 + rowH * 4 + 70;
+    const pw = Math.min(W - 24, 360), rowH = 54, ph = 62 + rowH * 4 + 80;
     const px = (W - pw) / 2, py = Math.max(12, (H - ph) / 2);
     this.pn = { px, py, pw, ph, rowH, rows: [] };
     this.pnTitle.setPosition(W / 2, py + 12);
+    this.pnTitle.setWordWrapWidth(pw - 20).setAlign('center');
     STAT_KEYS.forEach((k, i) => {
-      const y = py + 62 + i * rowH, r = this.pnRows[i];
-      const bx = px + pw - 28, mx = px + pw - 28 - 60;
-      this.pn.rows.push({ k, y, plus: { x: bx, y: y + 20, r: 22 }, minus: { x: mx, y: y + 20, r: 22 } });
-      r.name.setPosition(px + 16, y); r.val.setPosition(px + 16, y + 24);
-      r.plus.setPosition(bx, y + 20); r.minus.setPosition(mx, y + 20);
+      const y = py + 62 + i * rowH, r = this.pnRows[i], bx = px + pw - 32;
+      this.pn.rows.push({ k, y, plus: { x: bx, y: y + 20, r: 24 } });
+      r.name.setPosition(px + 16, y); r.val.setPosition(px + 16, y + 24); r.plus.setPosition(bx, y + 20);
     });
     const by = py + 62 + rowH * 4 + 10;
-    this.pn.reset = { x: px + pw * 0.27, y: by + 18, w: 100, h: 36 };
-    this.pn.close = { x: px + pw * 0.73, y: by + 18, w: 100, h: 36 };
-    this.pnReset.setPosition(this.pn.reset.x, this.pn.reset.y);
-    this.pnClose.setPosition(this.pn.close.x, this.pn.close.y);
-    this.pnNote.setPosition(W / 2, by + 44);
-    this.pnBtnText.setPosition(13 + 32, 42 + 12);
+    this.pn.close = { x: W / 2, y: by + 18, w: 120, h: 36 };
+    this.pnClose.setPosition(W / 2, by + 18);
+    this.pnNote.setPosition(W / 2, by + 46);
+    const r = this.prayRect(); this.pnBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
   }
 
   openPanel() { this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutPanel(); this.setPanelVisible(true); }
   closePanel() { this.panelOpen = false; this.setPanelVisible(false); this.saveGrowth(); }
 
-  // 回傳 true 表示這次點擊被面板／能力鈕吃掉
+  // 回傳 true 表示這次點擊被面板／祈禱鈕吃掉
   panelPointer(p) {
     if (this.panelOpen) {
-      const hit = (c) => Math.hypot(p.x - c.x, p.y - c.y) <= c.r;
-      const inRect = (r) => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.y - r.y) <= r.h / 2;
-      for (const r of this.pn.rows) {
-        if (hit(r.plus) && this.pts > 0) { this.stats[r.k]++; this.pts--; this.afterStatChange(r.k, true); }
-        else if (hit(r.minus) && this.stats[r.k] > 0) { this.stats[r.k]--; this.pts++; this.afterStatChange(r.k, false); }
-      }
-      if (inRect(this.pn.reset)) {
-        for (const k of STAT_KEYS) { this.pts += this.stats[k]; this.stats[k] = 0; }
-        this.php = Math.min(this.php, this.maxHp()); this.stam = Math.min(this.stam, this.maxStam());
-      }
-      if (inRect(this.pn.close)) this.closePanel();
+      for (const r of this.pn.rows) if (Math.hypot(p.x - r.plus.x, p.y - r.plus.y) <= r.plus.r) this.buyStat(r.k);
+      const c = this.pn.close;
+      if (Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.y - c.y) <= c.h / 2) this.closePanel();
       return true;
     }
-    const r = this.panelBtnRect();
+    const r = this.prayRect();
     if (this.canOpenPanel() && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openPanel(); return true; }
     return false;
-  }
-
-  afterStatChange(k, plus) {
-    if (k === 'hp') { if (plus) this.php += 3; this.php = Math.min(this.php, this.maxHp()); }   // 加點時順便補上增加的上限
-    if (k === 'sta') { if (plus) this.stam += 5; this.stam = Math.min(this.stam, this.maxStam()); }
   }
 
   drawPanelUI() {
     const g = this.pnGfx, t = this.nowT || 0;
     g.clear();
-    // 等級與經驗條（耐力條下方）
-    const hg = this.hpGfx, can = this.canOpenPanel();
-    const xr = this.lv >= LV_CAP ? 1 : this.xp / xpNeed(this.lv);
-    hg.fillStyle(0x000000, 0.55); hg.fillRect(13, 38, 62, 4);
-    hg.fillStyle(0x6a8fb8, 1); hg.fillRect(14, 39, 60 * xr, 2);
-    this.lvText.setText('Lv ' + this.lv + (this.pts > 0 ? '  ★' + this.pts : ''));
-    const r = this.panelBtnRect();
-    g.fillStyle(0x16201a, can ? 0.6 : 0.25); g.fillRoundedRect(r.x, r.y, r.w, r.h, 6);
-    g.lineStyle(2, 0xe6f0dc, can ? (this.pts > 0 && Math.floor(t / 500) % 2 ? 1 : 0.6) : 0.25); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 6);
-    this.pnBtnText.setAlpha((can ? 1 : 0.35) * (1 - this.cineK));
-    g.setAlpha(1 - this.cineK);
+    this.drawCamps(t);
+    this.lvText.setText('Lv ' + this.lv + '　經驗 ' + this.xp + (this.pending > 0 ? '　（待結算 +' + this.pending + '）' : ''));
+    const can = this.canOpenPanel(), r = this.prayRect();
+    if (can && !this.panelOpen) {
+      g.fillStyle(0xd9b45a, 0.95); g.fillRoundedRect(r.x, r.y, r.w, r.h, 8);
+    }
+    this.pnBtnText.setVisible(can && !this.panelOpen);
+    g.setAlpha(1 - this.cineK); this.pnBtnText.setAlpha(1 - this.cineK);
     if (!this.panelOpen) return;
-    const P = this.pn;
+    this.pnBtnText.setVisible(false);
+    const P = this.pn, need = xpNeed(this.lv);
     g.fillStyle(0x000000, 0.55); g.fillRect(0, 0, this.scale.width, this.scale.height);
     g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(P.px, P.py, P.pw, P.ph, 10);
     g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(P.px, P.py, P.pw, P.ph, 10);
-    this.pnTitle.setText('能力　Lv ' + this.lv + '　剩餘點數 ' + this.pts);
+    this.pnTitle.setText('營火　Lv ' + this.lv + (this.lv >= MAX_LV ? '（已達上限）' : '\n經驗 ' + this.xp + '　升一級需 ' + need));
     for (const row of P.rows) {
       const rr = this.pnRows.find(o => o.k === row.k), p = this.stats[row.k];
-      rr.val.setText(p + ' 點　' + STAT_DESC[row.k](p));
+      rr.val.setText(p + ' / ' + STAT_CAP + '　' + STAT_DESC[row.k](p) + (p < STAT_CAP ? ' → ' + STAT_DESC[row.k](p + 1).replace(/^\D+/, '') : ''));
       g.lineStyle(1, 0xe6f0dc, 0.15); g.lineBetween(P.px + 12, row.y - 4, P.px + P.pw - 12, row.y - 4);
-      const okP = this.pts > 0, okM = p > 0;
-      g.fillStyle(okP ? 0xd9b45a : 0x555044, 1); g.fillCircle(row.plus.x, row.plus.y, row.plus.r);
-      g.fillStyle(okM ? 0xa8b8a0 : 0x444a40, 1); g.fillCircle(row.minus.x, row.minus.y, row.minus.r);
+      const ok = p < STAT_CAP && this.lv < MAX_LV && this.xp >= need;
+      g.fillStyle(ok ? 0xd9b45a : 0x555044, 1); g.fillCircle(row.plus.x, row.plus.y, row.plus.r);
     }
-    g.fillStyle(0xa8b8a0, 1); g.fillRoundedRect(P.reset.x - 50, P.reset.y - 18, 100, 36, 8);
-    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 50, P.close.y - 18, 100, 36, 8);
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 60, P.close.y - 18, 120, 36, 8);
   }
 
   // ---------- 玩家受傷與倒下 ----------
@@ -1661,6 +1678,7 @@ class VillageScene extends Phaser.Scene {
   respawnPlayer(time) {
     this.down = false; this.hurtStart = undefined;
     this.lockTarget = null;
+    this.pending = 0;   // 結算前倒下，待結算的經驗就沒了
     this.php = this.maxHp();
     this.invulnUntil = time + 1500;
     this.stam = this.maxStam(); this.roll = null;
@@ -1694,7 +1712,7 @@ class VillageScene extends Phaser.Scene {
     this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
     for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
     if (st.phase === 'fight') {
-      if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; this.banner('擊退伏兵\n往北前進', 2800); }
+      if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; const got = this.settleXp(); this.banner('擊退伏兵\n獲得 ' + got + ' 經驗\n往北前進', 3000); }
     }
     if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
       st.phase = 'end'; st.t0 = time;
