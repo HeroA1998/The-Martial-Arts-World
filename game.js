@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.17';   // 每次更新請加一
+const VERSION = 'v0.7.18';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -45,6 +45,7 @@ const INVULN_MS = 500;        // 被打中後的無敵時間
 const PLAYER_KNOCK = 150;     // 被擊退的速度
 const PLAYER_KNOCK_MS = 130;
 const PLAYER_RESPAWN_MS = 2000;
+const HURT_ANIM_MS = 330;     // 主角受擊動畫長度
 
 // 耐力與翻滾（魂系核心：每個動作都要付出代價）
 const STAM_MAX = 100;
@@ -77,10 +78,11 @@ const ENEMY_SPAWNS = [
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
 const ENEMY_TYPES = {
   bandit: {
-    tex: 'bandit',            // 貼圖前綴：bandit_up / bandit_down / bandit_side_k
+    tex: 'hangeneral',        // 貼圖前綴（武將專屬圖：走路、站立、揮砍、受擊、倒下）
+    walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',   // animTex：有揮砍／受擊／倒下動畫
     name: '山賊頭目', showName: true,   // 武將：常駐名字與血條
     shadowColor: 0x000000,
-    walkBright: { side: 0.87, front: 0.92, back: 0.94 },   // 走路圖亮度校正（與靜止圖一致）
+    walkBright: { side: 1, front: 1, back: 1 },            // 走路圖亮度校正（Codex 圖已與參考一致）
     h: Math.round(HERO_H * 1.15),   // 武將放大約 15%
     hp: 50,
     speed: 82,
@@ -117,7 +119,7 @@ const ENEMY_TYPES = {
 };
 // 小兵（黃巾軍）：血少、慢、很少防禦；可多人同時進攻
 ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
-  walkTex: 'turban', walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖（Codex 生成）
+  walkTex: 'turban', standTex: 'turban', animTex: null, walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖、站立圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
   h: Math.round(HERO_H * 0.8),   // 小兵縮小約 20%，與精兵區分
   hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
@@ -131,7 +133,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
-  walkTex: 'hansoldier', walkBright: { side: 1, front: 1, back: 1 },   // 官軍走路圖（Codex 生成）
+  walkTex: 'hansoldier', standTex: 'hansoldier', animTex: null, walkBright: { side: 1, front: 1, back: 1 },   // 官軍走路圖、站立圖（Codex 生成）
   name: '官軍', showName: false, shadowColor: 0x000000,
   h: HERO_H,   // 與主角等高
   hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
@@ -266,18 +268,24 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_roll_side', A + 'characters/hero_roll_side.png');
     this.load.image('hero_roll_front', A + 'characters/hero_roll_front.png');
     this.load.image('hero_roll_back', A + 'characters/hero_roll_back.png');
-    this.load.image('bandit_walk_side', A + 'characters/bandit_walk_side.png');
-    this.load.image('bandit_walk_front', A + 'characters/bandit_walk_front.png');
-    this.load.image('bandit_walk_back', A + 'characters/bandit_walk_back.png');
+    this.load.image('hero_hurt_side', A + 'characters/hero_hurt_side.png');
+    this.load.image('hero_hurt_front', A + 'characters/hero_hurt_front.png');
+    this.load.image('hero_hurt_back', A + 'characters/hero_hurt_back.png');
+    this.load.image('hero_down_side', A + 'characters/hero_down_side.png');
+    this.load.image('hero_down_front', A + 'characters/hero_down_front.png');
+    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back',
+                     'attack_side', 'attack_front', 'attack_back', 'hurt_side', 'down_side']) {
+      this.load.image('hangeneral_' + f, A + 'characters/hangeneral_' + f + '.png');
+    }
+    for (const p of ['turban', 'hansoldier']) {
+      for (const d of ['side', 'front', 'back']) this.load.image(p + '_stand_' + d, A + 'characters/' + p + '_stand_' + d + '.png');
+    }
     this.load.image('turban_walk_side', A + 'characters/turban_walk_side.png');
     this.load.image('turban_walk_front', A + 'characters/turban_walk_front.png');
     this.load.image('turban_walk_back', A + 'characters/turban_walk_back.png');
     this.load.image('hansoldier_walk_side', A + 'characters/hansoldier_walk_side.png');
     this.load.image('hansoldier_walk_front', A + 'characters/hansoldier_walk_front.png');
     this.load.image('hansoldier_walk_back', A + 'characters/hansoldier_walk_back.png');
-    this.load.image('bandit_front', A + 'characters/bandit_front.png');
-    this.load.image('bandit_back', A + 'characters/bandit_back.png');
-    this.load.image('bandit_side', A + 'characters/bandit_side.png');
     this.load.image('stone', A + 'tiles/stone_floor.png');
     this.load.image('house', A + 'buildings/house_01.png');
     this.load.image('tree', A + 'props/tree_01.png');
@@ -309,6 +317,12 @@ class VillageScene extends Phaser.Scene {
       .forEach((cv, i) => this.textures.addCanvas('hero_roll_front_' + i, cv));
     keyAndTrimFramesCentered(this.textures.get('hero_roll_back').getSourceImage(), 3, 0.94)
       .forEach((cv, i) => this.textures.addCanvas('hero_roll_back_' + i, cv));
+    // 主角受擊（三方向）、倒下（側面、正面）：各 3 幀
+    for (const [src, dst, br] of [['hero_hurt_side', 'hero_hurt_side', 0.85], ['hero_hurt_front', 'hero_hurt_front', 0.85], ['hero_hurt_back', 'hero_hurt_back', 0.94],
+                                  ['hero_down_side', 'hero_down_side', 0.85], ['hero_down_front', 'hero_down_front', 0.85]]) {
+      keyAndTrimFramesCentered(this.textures.get(src).getSourceImage(), 3, br)
+        .forEach((cv, i) => this.textures.addCanvas(dst + '_' + i, cv));
+    }
     // 敵人走路動畫：依數值表的 tex 前綴建立 <tex>_walk_<side|front|back>_<0..3>
     for (const T of Object.values(ENEMY_TYPES)) {
       const wk = T.walkTex || T.tex;
@@ -318,9 +332,20 @@ class VillageScene extends Phaser.Scene {
           .forEach((cv, i) => this.textures.addCanvas(wk + '_walk_' + dir + '_' + i, cv));
       }
     }
-    this.keyTex('bandit_front', 'bandit_down');
-    this.keyTex('bandit_back', 'bandit_up');
-    this.keyTex('bandit_side', 'bandit_side_k');
+    // 敵人站立圖：<前綴>_standk_<side|front|back>
+    for (const T of Object.values(ENEMY_TYPES)) {
+      if (!T.standTex || this.textures.exists(T.standTex + '_standk_side')) continue;
+      for (const dir of ['side', 'front', 'back']) this.keyTex(T.standTex + '_stand_' + dir, T.standTex + '_standk_' + dir);
+    }
+    // 武將的揮砍（三方向）、受擊、倒下（側面）：各 3 幀，以格子中心為身體中心
+    for (const T of Object.values(ENEMY_TYPES)) {
+      const P = T.animTex;
+      if (!P || this.textures.exists(P + '_atk_side_0')) continue;
+      for (const [src, dst] of [['attack_side', 'atk_side'], ['attack_front', 'atk_front'], ['attack_back', 'atk_back'], ['hurt_side', 'hurt_side'], ['down_side', 'down_side']]) {
+        keyAndTrimFramesCentered(this.textures.get(P + '_' + src).getSourceImage(), 3, 1)
+          .forEach((cv, i) => this.textures.addCanvas(P + '_' + dst + '_' + i, cv));
+      }
+    }
     this.keyTex('house', 'house_k');
     this.keyTex('tree', 'tree_k');
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
@@ -564,7 +589,7 @@ class VillageScene extends Phaser.Scene {
     const tex = this.textures.get(key).getSourceImage();
     this.hero.setTexture(key);
     // 揮刀圖的裁切框比身體高（刀舉高），要用「身體 360px = HERO_H」的同一比例，主角才不會縮小
-    const H = (key.startsWith('hero_atk_') || key.startsWith('hero_roll_')) ? HERO_H * tex.height / ATK_SRC_BODY_H : HERO_H;
+    const H = (key.startsWith('hero_atk_') || key.startsWith('hero_roll_') || key.startsWith('hero_hurt_') || key.startsWith('hero_down_')) ? HERO_H * tex.height / ATK_SRC_BODY_H : HERO_H;
     this.hero.setDisplaySize(H * tex.width / tex.height, H);
     this.heroSx = this.hero.scaleX; this.heroSy = this.hero.scaleY;
   }
@@ -678,8 +703,19 @@ class VillageScene extends Phaser.Scene {
       const rt = time - this.roll.start;
       rollFrame = rt < ROLL_CROUCH_MS ? 0 : rt < this.roll.iTo ? 1 : 2;
     }
-    const key = atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + atkFrame
+    // 倒下（側面、正面；朝上時用正面）與受擊（被打中後約 0.33 秒）
+    let downFrame = -1, hurtFrame = -1;
+    if (this.down) {
+      const dt = time - (this.downStart === undefined ? time : this.downStart);
+      downFrame = dt < 150 ? 0 : dt < 330 ? 1 : 2;
+    } else if (!this.atk && !this.roll && this.hurtStart !== undefined && time - this.hurtStart < HURT_ANIM_MS) {
+      const ht = time - this.hurtStart;
+      hurtFrame = ht < 110 ? 0 : ht < 220 ? 1 : 2;
+    }
+    const key = downFrame >= 0 ? 'hero_down_' + (side ? 'side_' : 'front_') + downFrame
+              : atkFrame >= 0 ? 'hero_atk_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + atkFrame
               : rollSprite ? 'hero_roll_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + rollFrame
+              : hurtFrame >= 0 ? 'hero_hurt_' + (side ? 'side_' : this.facing === 'down' ? 'front_' : 'back_') + hurtFrame
               : this.facing === 'up' ? (walking ? 'hero_walk_back_' + walkFrame : 'hero_up')
               : walking && this.facing === 'down' ? 'hero_walk_front_' + walkFrame
               : walking ? 'hero_walk_side_' + walkFrame
@@ -861,8 +897,17 @@ class VillageScene extends Phaser.Scene {
   // 敵人靜止時的貼圖：有自己走路圖的種類用走路圖第 2 幀（雙腳併攏），不再誤用山賊的圖
   stillKey(T, facing) {
     const dir = facing === 'up' ? 'back' : (facing === 'left' || facing === 'right') ? 'side' : 'front';
+    if (T.standTex) return T.standTex + '_standk_' + dir;
     if (T.walkTex) return T.walkTex + '_walk_' + dir + '_1';
     return facing === 'up' ? T.tex + '_up' : (facing === 'left' || facing === 'right') ? T.tex + '_side_k' : T.tex + '_down';
+  }
+
+  // 揮砍、受擊、倒下的幀：裁切框比身體大，用「身體 360px = h」的同一比例（與主角相同做法）
+  setSpriteBodyTex(sprite, key, h) {
+    const tex = this.textures.get(key).getSourceImage();
+    sprite.setTexture(key);
+    const k = h / ATK_SRC_BODY_H;
+    sprite.setDisplaySize(tex.width * k, tex.height * k);
   }
 
   setSpriteTex(sprite, key, h) {
@@ -1031,10 +1076,25 @@ class VillageScene extends Phaser.Scene {
         if (moving) b.walkT = (b.walkT || 0) + wdt * Math.max(0.5, Math.min(1, sp / b.t.speed));
         const wf = Math.floor(b.walkT / WALK_FRAME_MS) % 4;
         const wdir = b.facing === 'up' ? 'back' : (b.facing === 'left' || b.facing === 'right') ? 'side' : 'front';
-        const key = moving ? (b.t.walkTex || b.t.tex) + '_walk_' + wdir + '_' + wf
-                  : this.stillKey(b.t, b.facing);
-        if (b.sprite.texture.key !== key) this.setSpriteTex(b.sprite, key, b.t.h);
-        b.sprite.setFlipX(b.facing === 'left');
+        // 有專屬動畫的敵人（武將）：蓄力＝舉刀、出刀＝揮出、破綻＝收刀；破勢時播受擊；倒下時播倒下
+        if (b.facing === 'left' || b.facing === 'right') b.lastLeft = b.facing === 'left';
+        const AT = b.t.animTex;
+        let key, bodyFrame = false, flipLeft = b.facing === 'left';
+        if (AT && (b.state === 'windup' || b.state === 'strike' || b.state === 'recover')) {
+          key = AT + '_atk_' + wdir + '_' + (b.state === 'windup' ? 0 : b.state === 'strike' ? 1 : 2); bodyFrame = true;
+        } else if (AT && b.state === 'hurt') {
+          const ht = Math.min(0.999, (time - (b.hurtT0 === undefined ? time : b.hurtT0)) / (b.hurtDur || 600));
+          key = AT + '_hurt_side_' + (ht < 0.3 ? 0 : ht < 0.7 ? 1 : 2); bodyFrame = true; flipLeft = !!b.lastLeft;
+        } else if (AT && b.state === 'dead') {
+          const dt = time - (b.deadT0 === undefined ? time : b.deadT0);
+          key = AT + '_down_side_' + (dt < 150 ? 0 : dt < 330 ? 1 : 2); bodyFrame = true; flipLeft = (b.deadDir || 1) > 0;
+        } else {
+          key = moving ? (b.t.walkTex || b.t.tex) + '_walk_' + wdir + '_' + wf : this.stillKey(b.t, b.facing);
+        }
+        if (b.sprite.texture.key !== key) {
+          if (bodyFrame) this.setSpriteBodyTex(b.sprite, key, b.t.h); else this.setSpriteTex(b.sprite, key, b.t.h);
+        }
+        b.sprite.setFlipX(flipLeft);
 
         let ox = 0, oy = 0;
         const [fdx, fdy] = DIRS[b.facing];
@@ -1109,7 +1169,7 @@ class VillageScene extends Phaser.Scene {
     // 架勢值：連續被打才會破勢；破勢之前他不會被打斷，仍會出刀
     b.poise -= dmg;
     if (b.poise <= 0) {
-      b.state = 'hurt'; b.until = time + b.t.stun;
+      b.state = 'hurt'; b.until = time + b.t.stun; b.hurtT0 = time; b.hurtDur = b.t.stun;
       const m = Math.hypot(dx, dy) || 1;
       b.kx = dx / m * b.t.knock; b.ky = dy / m * b.t.knock;
       this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '破勢', '#9fd8ff');
@@ -1165,7 +1225,7 @@ class VillageScene extends Phaser.Scene {
     this.spawnDamage(b.body.x, b.body.y - b.t.h - 4, '擋 ' + dmg, '#bcd0e0');
     this.pk = { vx: -dx * 120, vy: -dy * 120, until: time + 110 };
     if (b.guardHits >= b.t.guardBreakHits) {
-      b.state = 'hurt'; b.until = time + b.t.guardBreakStun;
+      b.state = 'hurt'; b.until = time + b.t.guardBreakStun; b.hurtT0 = time; b.hurtDur = b.t.guardBreakStun;
       b.kx = dx * 25; b.ky = dy * 25;
       this.hitstop(130);
       this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '破防', '#9fd8ff');
@@ -1182,7 +1242,8 @@ class VillageScene extends Phaser.Scene {
     b.alert.setVisible(false); b.nameTag.setVisible(false);
     b.respawnAt = time + b.t.respawnMs;
     const dir = dx >= 0 ? 1 : -1;
-    this.tweens.add({ targets: b.sprite, angle: dir * 85, duration: 280, ease: 'Quad.easeIn' });
+    b.deadT0 = time; b.deadDir = dir;
+    if (!b.t.animTex) this.tweens.add({ targets: b.sprite, angle: dir * 85, duration: 280, ease: 'Quad.easeIn' });   // 有倒下動畫的敵人不再用旋轉
     this.tweens.add({ targets: b.sprite, alpha: 0, delay: 2600, duration: 900 });
   }
 
@@ -1202,6 +1263,7 @@ class VillageScene extends Phaser.Scene {
     this.roll = null;
     this.invulnUntil = time + INVULN_MS;
     this.heroFlashUntil = time + 140;
+    this.hurtStart = time;
     this.atk = null;                                  // 被打中會打斷自己的揮劍
     const px = this.playerBody.x, py = this.playerBody.y + 4;
     const m = Math.hypot(px - sx, py - sy) || 1;
@@ -1212,14 +1274,14 @@ class VillageScene extends Phaser.Scene {
     if (this.php <= 0) {
       this.down = true;
       this.respawnAt = time + PLAYER_RESPAWN_MS;
-      this.hero.setAngle(this.facing === 'left' ? -85 : 85);
+      this.downStart = time;
       this.downText.setVisible(true);
     }
     return true;
   }
 
   respawnPlayer(time) {
-    this.down = false;
+    this.down = false; this.hurtStart = undefined;
     this.php = PLAYER_HP;
     this.invulnUntil = time + 1500;
     this.stam = STAM_MAX; this.roll = null;
