@@ -13,7 +13,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.16';   // 每次更新請加一
+const VERSION = 'v0.7.17';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -100,7 +100,7 @@ const ENEMY_TYPES = {
     // 選招機率
     pSlashClose: 0.7, pLungeClose: 0.1,   // 貼身：揮砍 70%、衝刺 10%、其餘只繞步
     pLungeMid: 0.4,                        // 中距離：衝刺 40%，其餘走近再揮砍
-    pCombo: 0.3,                           // 揮砍連揮兩下的機率
+    pCombo: 0.5,                           // 揮砍連揮兩下的機率
     rest: 700,                             // 破綻結束後繞步的時間（短一點，不給玩家打了就退的空檔）
     // 防禦與閃避
     reactRange: 90, reactCdMs: 1500, pGuard: 0.45, pDodge: 0.25, dodgeCdMs: 3000,
@@ -109,6 +109,7 @@ const ENEMY_TYPES = {
     poise: 48, stun: 600, knock: 120,
     // 反制「打了就退」：被打中後有機率立刻轉向反擊（蓄力縮短，仍有預備動作）
     counterOnHit: 1, counterWindup: 320, counterRange: 70,
+    recoverCounter: 0.6,   // 破綻期被打中：有這個機率打斷破綻、立刻反擊（玩家每刀都要承擔風險）
     // 搶先出刀：玩家快速逼近或已出刀時，距離內有機率先動手（蓄力時間不縮短，動作仍可辨識）
     preempt: true, preemptDist: 85, pPreempt: 1, preemptCdMs: 1800, preemptCloseSpd: 70,
     respawnMs: 6000,
@@ -126,7 +127,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
   poise: 10, stun: 500, knock: 140, respawnMs: 20000,
-  counterOnHit: 0, preempt: false,   // 小兵不反擊、不搶先出刀
+  counterOnHit: 0, recoverCounter: 0, preempt: false,   // 小兵不反擊、不搶先出刀
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
@@ -140,7 +141,7 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   pGuard: 0.15, pDodge: 0.08,
   poise: 28, stun: 500, respawnMs: 15000,
   reactCdMs: 2500,
-  counterOnHit: 0, preempt: false,   // 精兵維持原本手感
+  counterOnHit: 0, recoverCounter: 0, preempt: false, pCombo: 0.3,   // 精兵維持原本手感
 });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
@@ -1115,6 +1116,13 @@ class VillageScene extends Phaser.Scene {
     } else if (b.t.counterOnHit && (b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause')
                && Math.random() < b.t.counterOnHit && this.tokenFree(b)) {
       // 被打中沒破勢：立刻轉向反擊，反制打一刀就退
+      const cx = this.playerBody.x - b.body.x, cy = this.playerBody.y + 4 - (b.body.y + 4), cd = Math.hypot(cx, cy) || 1;
+      if (cd < b.t.counterRange) {
+        this.startWindup(b, time, true, cx / cd, cy / cd, 'slash');
+        b.windup = b.t.counterWindup; b.combo = 0;
+      }
+    } else if (b.state === 'recover' && b.t.recoverCounter && Math.random() < b.t.recoverCounter && this.tokenFree(b)) {
+      // 破綻期被打中：打斷破綻，立刻反擊（只有武將；小兵精兵的 recoverCounter 為 0）
       const cx = this.playerBody.x - b.body.x, cy = this.playerBody.y + 4 - (b.body.y + 4), cd = Math.hypot(cx, cy) || 1;
       if (cd < b.t.counterRange) {
         this.startWindup(b, time, true, cx / cd, cy / cd, 'slash');
