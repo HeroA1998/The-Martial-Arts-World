@@ -4,7 +4,7 @@
 let MAP_W = 460, MAP_H = 1120;   // 目前區域的大小（切換區域時改變）
 const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
-  town:   { w: 480, h: 900,  bg: '#1c1a16', name: '鎮內' },
+  town:   { w: 640, h: 900,  bg: '#1c1a16', name: '鎮內' },
   shrine: { w: 300, h: 440,  bg: '#0c0a08', name: '祠堂' },
 };
 
@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.10.0';   // 每次更新請加一
+const VERSION = 'v0.10.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -94,6 +94,13 @@ const STAT_DESC = {
 };
 // 升級的地方：祠堂內的祭壇（參拜）
 const CAMP_R = 70;
+
+// 鎮內：彎曲的主街、三條橫街；祠堂在祠堂街（中間那條橫街）北側
+const townPathX = y => 320 + 22 * Math.sin(y / 130);
+const TOWN_STREETS_Y = [{ y: 130, hw: 26 }, { y: 330, hw: 38 }, { y: 620, hw: 34 }];
+const TOWN_START = { x: townPathX(840), y: 840 };
+const TOWN_GATE = { x: townPathX(26), y: 26 };
+const SHRINE_POS = { x: 150, y: 292 };   // 祠堂底邊中心（台階前緣）
 const SAVE_KEY = 'dajianghu_save_v1';
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
 const ROLL_COST = 26;
@@ -331,6 +338,7 @@ class VillageScene extends Phaser.Scene {
     }
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
+    this.load.image('shrine_exterior', A + 'buildings/shrine_exterior.png');
     this.load.image('forest_floor', A + 'tiles/forest_floor.png');
     this.load.image('dirt_path', A + 'tiles/dirt_path.png');
     for (const p of ['turban', 'hansoldier']) {
@@ -351,6 +359,7 @@ class VillageScene extends Phaser.Scene {
 
   // 去背素材（只做一次；切換區域重啟場景時不用重做）
   prepareTextures() {
+    this.keyTex('shrine_exterior', 'shrine_ext_k');
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
     this.keyTex('hero_side', 'hero_side_k');
@@ -457,7 +466,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // 主角：物理碰撞用的腳底框（看不見），圖片跟著它走
-    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'town' ? { x: 240, y: 830 } : { x: 150, y: 380 });
+    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'town' ? { x: TOWN_START.x, y: TOWN_START.y } : { x: 150, y: 380 });
     this.playerBody = this.add.zone(sp.x, sp.y, 14, 8);
     this.physics.add.existing(this.playerBody);
     this.playerBody.body.setCollideWorldBounds(true);
@@ -524,7 +533,7 @@ class VillageScene extends Phaser.Scene {
       });
     }
     for (const b of this.bandits) this.hideBandit(b);
-    if (this.area === 'forest') this.exits.push({ x0: START.x - 60, x1: START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: 240, y: 80 }, facing: 'down' });
+    if (this.area === 'forest') this.exits.push({ x0: START.x - 60, x1: START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y + 50 }, facing: 'down' });
     this.stage = { phase: 'walk', t0: 0 };   // walk：往上走 → fight：伏兵出現 → cleared：擊退 → end：本段結束
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
@@ -865,6 +874,7 @@ class VillageScene extends Phaser.Scene {
     this.processAttack(time, fx, fy);
     this.updateStage(time);
     this.checkExits();
+    this.fadeSils();
     this.fadeTrees(time);
     this.updateBandits(time);
     if (this.down && time >= this.respawnAt) this.respawnPlayer(time);
@@ -1638,44 +1648,98 @@ class VillageScene extends Phaser.Scene {
   // ---------- 鎮內 ----------
   buildTown() {
     const W = MAP_W, H = MAP_H;
-    this.makeGround('town_ground', W, H, 2, (x, y, rnd) => {
-      const road = Math.abs(x - 240 + (rnd() - 0.5) * 6) < 48;
-      if (road) {                                    // 石板路
-        const bx = Math.floor((x + (Math.floor(y / 12) % 2) * 9) / 18), by = Math.floor(y / 12);
-        const mortar = (x + (by % 2) * 9) % 18 < 2 || y % 12 < 2;
-        const v = 92 + ((bx * 31 + by * 17) % 7) * 3 + (rnd() - 0.5) * 8;
+    this.makeGround('town_ground2', W, H, 2, (x, y, rnd) => {
+      const jit = (rnd() - 0.5) * 7;
+      let street = Math.abs(x - townPathX(y) + jit) < 46;
+      for (const st of TOWN_STREETS_Y) if (Math.abs(y - st.y + jit) < st.hw) street = true;
+      if (street) {                                   // 石板路
+        const row = Math.floor(y / 12), bx = Math.floor((x + (row % 2) * 9) / 18);
+        const mortar = (x + (row % 2) * 9) % 18 < 2 || y % 12 < 2;
+        const v = 92 + ((bx * 31 + row * 17) % 7) * 3 + (rnd() - 0.5) * 8;
         return mortar ? [58, 56, 52] : [v, v - 2, v - 8];
       }
-      const dirt = ((Math.sin(x / 37) + Math.sin(y / 53) + (rnd() - 0.5) * 1.2) > 0.4);
+      const dirt = ((Math.sin(x / 37) + Math.sin(y / 53) + (rnd() - 0.5) * 1.2) > 0.2);
       const n = (rnd() - 0.5) * 14;
       return dirt ? [98 + n, 86 + n, 64 + n] : [62 + n, 76 + n, 50 + n];
     });
+    const BOT = 872;   // 下緣牆：y > BOT 走不進去
     // 外牆：左右下三邊與上方（鎮門留空）
     const wg = this.add.graphics().setDepth(-5); this.world.push(wg);
-    wg.fillStyle(0x4a4640, 1); wg.fillRect(0, 0, 14, H); wg.fillRect(W - 14, 0, 14, H); wg.fillRect(0, H - 14, W, 14);
-    wg.fillRect(0, 0, 190, 26); wg.fillRect(290, 0, W - 290, 26);
+    wg.fillStyle(0x4a4640, 1); wg.fillRect(0, 0, 14, H); wg.fillRect(W - 14, 0, 14, H); wg.fillRect(0, BOT, W, H - BOT);
+    const gx0 = TOWN_GATE.x - 52, gx1 = TOWN_GATE.x + 52;
+    wg.fillRect(0, 0, gx0, 26); wg.fillRect(gx1, 0, W - gx1, 26);
     wg.fillStyle(0x32302c, 1); wg.fillRect(12, 0, 3, H); wg.fillRect(W - 15, 0, 3, H);
-    this.block(0, 0, 14, H); this.block(W - 14, 0, W, H); this.block(0, H - 14, W, H);
-    this.block(0, 0, 190, 22); this.block(290, 0, W, 22);
+    this.block(0, 0, 14, H); this.block(W - 14, 0, W, H); this.block(0, BOT, W, H);
+    this.block(0, 0, gx0, 22); this.block(gx1, 0, W, 22);
     // 鎮門：兩根門柱與門樓
     const gt = this.add.graphics().setDepth(40); this.world.push(gt);
-    gt.fillStyle(0x6a4a30, 1); gt.fillRect(184, 4, 10, 38); gt.fillRect(286, 4, 10, 38);
-    gt.fillStyle(0x3c4042, 1); gt.fillRect(176, 0, 128, 10); gt.fillStyle(0x24282a, 1); gt.fillRect(176, 8, 128, 3);
-    this.block(184, 20, 194, 42); this.block(286, 20, 296, 42);
-    // 建築：祠堂在左側（門朝南），其餘暫代民居
-    this.drawHouse(105, 440, 160, 128, { shrine: true, wall: 0xb0a48c });
-    for (const [x, y, w, h] of [[85, 800, 110, 84], [90, 650, 100, 80], [95, 250, 110, 84], [395, 790, 100, 80], [390, 660, 104, 82], [388, 520, 100, 80], [392, 380, 108, 84], [388, 250, 100, 80]]) {
-      this.drawHouse(x, y, w, h, { wall: 0x8e8470 + ((x + y) % 3) * 0x040302 });
+    gt.fillStyle(0x6a4a30, 1); gt.fillRect(gx0 - 8, 4, 10, 38); gt.fillRect(gx1 - 2, 4, 10, 38);
+    gt.fillStyle(0x3c4042, 1); gt.fillRect(gx0 - 16, 0, gx1 - gx0 + 32, 10); gt.fillStyle(0x24282a, 1); gt.fillRect(gx0 - 16, 8, gx1 - gx0 + 32, 3);
+    this.block(gx0 - 8, 20, gx0 + 2, 42); this.block(gx1 - 2, 20, gx1 + 8, 42);
+
+    // 祠堂（Codex 圖）：祠堂街北側，門朝南
+    {
+      const key = 'shrine_ext_k', tex = this.textures.get(key).getSourceImage();
+      const w = 172, h = w * tex.height / tex.width, x = SHRINE_POS.x, by = SHRINE_POS.y;
+      this.world.push(this.add.ellipse(x, by + 1, w * 1.02, 12, 0x000000, 0.3).setDepth(by - 1));
+      this.world.push(this.add.image(x, by, key).setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(by));
+      const t = this.add.text(x, by - h * 0.425, '祠堂', { fontFamily: 'system-ui, sans-serif', fontSize: '10px', fontStyle: 'bold', color: '#3a1a10', resolution: 3 }).setOrigin(0.5).setDepth(by + 1);
+      this.world.push(t);
+      this.block(x - w / 2 + 8, by - h * 0.62, x + w / 2 - 8, by - 12);
+      this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 9, y1: by + 12, to: 'shrine', spawn: { x: 150, y: 392 }, facing: 'up' });
     }
-    // 路邊散放小東西（石頭、灌木）
-    for (const [k, x, y, hh] of [['bush_01_k', 40, 300, 26], ['bush_01_k', 440, 320, 28], ['rock_01_k', 150, 720, 20], ['bush_01_k', 330, 700, 26], ['rock_01_k', 330, 140, 18], ['bush_01_k', 150, 190, 26], ['log_01_k', 430, 600, 18]]) {
+    // 民居（暫代圖）：每排門朝南、對著下方的橫街；主街兩側各兩間，之間留窄巷
+    const rows = [
+      [100, 70],                                    // 北：鎮門與北橫街之間
+      [290, 70],                                    // 祠堂街北側（祠堂在左，右邊還有兩間）
+      [580, 84],                                    // 中：祠堂街與南橫街之間
+      [800, 84],                                    // 南：南橫街以南
+    ];
+    for (const [by, h] of rows) {
+      for (const [x, w] of [[70, 100], [182, 88], [452, 100], [562, 100]]) {
+        if (by === 290 && x < 250) continue;       // 祠堂佔住左邊
+        this.drawHouse(x, by, w, h + (x % 3) * 4, { wall: 0x8e8470 + ((x + by) % 3) * 0x040302 });
+      }
+    }
+    // 院子裡與路邊的小東西：石頭、灌木、倒木，以及水缸、柴堆、木欄（暫代）
+    for (const [k, x, y, hh] of [['bush_01_k', 40, 470, 26], ['bush_01_k', 600, 440, 28], ['rock_01_k', 140, 440, 20], ['bush_01_k', 510, 450, 26], ['rock_01_k', 250, 700, 18], ['bush_01_k', 400, 190, 26], ['log_01_k', 590, 700, 18], ['bush_01_k', 120, 210, 24], ['rock_01_k', 520, 220, 18]]) {
       const tex = this.textures.get(k).getSourceImage(), w = hh * tex.width / tex.height;
       this.world.push(this.add.image(x, y, k).setOrigin(0.5, 1).setDisplaySize(w, hh).setDepth(y));
     }
-    // 出口：祠堂門前進祠堂、鎮門往北進森林
-    this.exits.push({ x0: 90, x1: 120, y0: 436, y1: 454, to: 'shrine', spawn: { x: 150, y: 392 }, facing: 'up' });
-    this.exits.push({ x0: 190, x1: 290, y0: 0, y1: 30, to: 'forest', spawn: { x: START.x, y: START.y }, facing: 'up' });
+    const pg = this.add.graphics().setDepth(0); this.world.push(pg);
+    const jar = (x, y) => { const g = this.add.graphics().setDepth(y); this.world.push(g); g.fillStyle(0x000000, 0.3); g.fillEllipse(x, y, 16, 5); g.fillStyle(0x5a4632, 1); g.fillRect(x - 6, y - 14, 12, 14); g.fillStyle(0x3a2c1e, 1); g.fillRect(x - 7, y - 16, 14, 3); this.block(x - 6, y - 5, x + 6, y); };
+    const wood = (x, y) => { const g = this.add.graphics().setDepth(y); this.world.push(g); g.fillStyle(0x000000, 0.28); g.fillEllipse(x, y, 30, 6); g.fillStyle(0x6a4a2a, 1); for (let r = 0; r < 3; r++) for (let c = 0; c < 4 - r; c++) g.fillRect(x - 13 + c * 7 + r * 3, y - 6 - r * 5, 6, 5); this.block(x - 14, y - 6, x + 14, y); };
+    const fence = (x0, x1, y) => { const g = this.add.graphics().setDepth(y); this.world.push(g); g.fillStyle(0x5a4632, 1); g.fillRect(x0, y - 8, x1 - x0, 2); g.fillRect(x0, y - 4, x1 - x0, 2); for (let x = x0; x <= x1; x += 10) g.fillRect(x, y - 11, 3, 11); this.block(x0, y - 4, x1, y); };
+    jar(118, 560); jar(130, 566); jar(498, 560); wood(240, 560); wood(402, 470); wood(116, 420);
+    fence(40, 120, 470); fence(480, 600, 400); fence(150, 215, 780);
+    // 出口：鎮門往北進森林（祠堂門在上面）
+    this.exits.push({ x0: gx0 + 4, x1: gx1 - 4, y0: 0, y1: 30, to: 'forest', spawn: { x: START.x, y: START.y }, facing: 'up' });
+    // 前景黑影：畫面邊緣的屋簷與牆影（只放在邊緣，主角走近會變透明）
+    this.sils = [];
+    const sil = (pts, bx0, by0, bx1, by1) => {
+      const g = this.add.graphics().setDepth(7500); this.world.push(g);
+      g.fillStyle(0x0b0d0c, 0.92); g.fillPoints(pts.map(p => ({ x: p[0], y: p[1] })), true);
+      g.fillStyle(0x181c1a, 0.9);
+      for (let k = 0; k < 6; k++) { const t = k / 6; g.fillRect(bx0 + (bx1 - bx0) * 0.05, by0 + (by1 - by0) * t, (bx1 - bx0) * 0.8, 1); }
+      this.sils.push({ g, x0: bx0, y0: by0, x1: bx1, y1: by1 });
+    };
+    sil([[0, 640], [64, 660], [40, 760], [0, 800]], 0, 640, 64, 800);                         // 左側屋簷
+    sil([[W, 360], [W - 70, 380], [W - 48, 470], [W, 500]], W - 70, 360, W, 500);            // 右側屋簷
+    sil([[0, 836], [110, 852], [150, H], [0, H]], 0, 836, 150, H);                            // 左下角
+    sil([[W, 826], [W - 130, 850], [W - 170, H], [W, H]], W - 170, 826, W, H);               // 右下角
+    sil([[W * 0.38, H], [W * 0.43, 862], [W * 0.6, 866], [W * 0.66, H]], W * 0.38, 862, W * 0.66, H);   // 下方中間
     this.stage = { phase: 'walk', t0: 0 };
+  }
+
+  // 前景黑影：主角靠近或走到後面時變透明
+  fadeSils() {
+    if (!this.sils) return;
+    const px = this.playerBody.x, py = this.playerBody.y;
+    for (const o of this.sils) {
+      const near = px > o.x0 - 14 && px < o.x1 + 14 && py > o.y0 - 20 && py < o.y1 + 14;
+      const target = near ? 0.22 : 1;
+      o.g.setAlpha(o.g.alpha + (target - o.g.alpha) * 0.15);
+    }
   }
 
   // ---------- 祠堂室內 ----------
@@ -1707,7 +1771,7 @@ class VillageScene extends Phaser.Scene {
     this.block(98, 90, 202, 116);
     this.block(0, 0, 22, H); this.block(W - 22, 0, W, H); this.block(0, 0, W, 66); this.block(0, H - 30, W / 2 - 34, H); this.block(W / 2 + 34, H - 30, W, H);
     this.camps = [{ x: 150, y: 128 }];   // 參拜的位置
-    this.exits.push({ x0: W / 2 - 34, x1: W / 2 + 34, y0: H - 24, y1: H + 5, to: 'town', spawn: { x: 105, y: 476 }, facing: 'down' });
+    this.exits.push({ x0: W / 2 - 34, x1: W / 2 + 34, y0: H - 24, y1: H + 5, to: 'town', spawn: { x: SHRINE_POS.x, y: SHRINE_POS.y + 34 }, facing: 'down' });
     this.stage = { phase: 'walk', t0: 0 };
   }
 
@@ -1893,7 +1957,7 @@ class VillageScene extends Phaser.Scene {
       st.phase = 'end'; st.t0 = time;
       this.banner('本段結束', 3000);
     }
-    if (st.phase === 'end' && time - st.t0 > 3400) this.gotoArea('town', { x: 240, y: 80 }, 'down');   // 本段結束，回到鎮內
+    if (st.phase === 'end' && time - st.t0 > 3400) this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y + 50 }, 'down');   // 本段結束，回到鎮內
   }
 
   // 擋在角色前面的樹變半透明，打鬥時看得到人（每 0.1 秒檢查一次）
