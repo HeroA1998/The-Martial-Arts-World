@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.10.1';   // 每次更新請加一
+const VERSION = 'v0.10.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -495,6 +495,8 @@ class VillageScene extends Phaser.Scene {
     this.pk = { vx: 0, vy: 0, until: 0 };   // 被擊退
     this.heroFlashUntil = 0;
     this.down = false;
+    this.hurtStart = undefined; this.downStart = undefined;   // 切換區域時舊場景的計時不能留下來（遊戲時間會歸零）
+    this.cine = false; this.atk = null; this.roll = null; this.lockTarget = null;
     this.respawnAt = 0;
 
     // 山賊：追擊、出刀、受傷、倒下、重生
