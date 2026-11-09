@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.11.0';   // 每次更新請加一
+const VERSION = 'v0.11.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -1738,9 +1738,10 @@ class VillageScene extends Phaser.Scene {
       const img = this.add.image(x + w / 2, y, key).setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(depth);
       if (crop) img.setCrop(0, 0, tex.width, tex.height * crop);
       this.world.push(img);
+      return img;
     };
     // 沿一段橫向範圍排建築；每棟之後有機會留一段空隙（gap 由呼叫端決定放什麼）
-    const fillRow = (x0, x1, put, gap) => {
+    const fillRow = (x0, x1, put, gap, gapChance = 0.5) => {
       let x = x0, prev = '';
       while (x < x1 - 70) {
         let c; do { c = codes[Math.floor(rnd() * codes.length)]; } while (c === prev); prev = c;
@@ -1748,7 +1749,7 @@ class VillageScene extends Phaser.Scene {
         if (x + w > x1) break;
         put(c, x, sc, w);
         x += w - 2;
-        if (rnd() < 0.5 && x + 40 < x1) { const gw = 30 + rnd() * 26; gap(x, x + gw); x += gw; }
+        if (rnd() < gapChance && x + 40 < x1) { const gw = 30 + rnd() * 26; gap(x, x + gw); x += gw; }
       }
       if (x < x1) gap(x, x1);
     };
@@ -1773,38 +1774,38 @@ class VillageScene extends Phaser.Scene {
       this.world.push(this.add.text(x, by - h * 0.425, '祠堂', { fontFamily: 'system-ui, sans-serif', fontSize: '10px', fontStyle: 'bold', color: '#3a1a10', resolution: 3 }).setOrigin(0.5).setDepth(by + 1));
       this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 2, y1: by + 18, to: 'shrine', spawn: { x: 150, y: 392 }, facing: 'up' });
     }
-    // 北側後面：兩排樹林加一層薄霧（遠的暗、近的亮），不再放建築
-    for (const [by, hMin, hVar, sh, step] of [[92, 112, 30, 0.6, 48], [152, 100, 26, 0.78, 58]]) {
-      for (let x = -4; x < W + 8; x += step * (0.8 + rnd() * 0.5)) tree(x, by + (rnd() - 0.5) * 10, hMin + rnd() * hVar, sh, by);
-      if (by === 92) this.world.push(this.add.rectangle(0, 20, W, 150, 0x2c3e34, 0.22).setOrigin(0).setDepth(100));
-    }
-    // 南側第一排：只露屋頂（建築背面），疏落；空隙放樹、柵欄、矮牆、灌木
-    const southTop = bot + 4;
-    const southPut = (c, x, sc, w) => {
-      const tex = this.textures.get(SPR[c][0]).getSourceImage(), h = w * tex.height / tex.width;
-      draw(c, x, southTop + h, sc, 0.56, 400);
-      const cutY = southTop + h * 0.56;   // 裁切線：用灌木蓋住，不要露出平直的切口
-      for (const px of [x + 12 + rnd() * 8, x + w - 12 - rnd() * 8]) prop('bush_01_k', px, cutY + 3, 17 + rnd() * 5, 404);
-    };
-    const southGap = (a, b) => {
-      const cx = (a + b) / 2, span = b - a, kind = Math.floor(rnd() * 3), g = this.add.graphics().setDepth(402); this.world.push(g);
-      if (kind === 0 && span > 26) { tree(cx, southTop + 104 + rnd() * 14, 100 + rnd() * 20, 0.9, 402); prop('bush_01_k', a + 8, southTop + 20, 20 + rnd() * 6, 403); }
-      else if (kind === 1) {   // 木柵欄
-        g.fillStyle(0x3a2c20, 1); g.fillRect(a, southTop + 6, span, 3); g.fillRect(a, southTop + 14, span, 3);
-        for (let px = a + 2; px < b; px += 9) g.fillRect(px, southTop + 1, 3, 20);
-        prop('rock_01_k', cx, southTop + 36, 16 + rnd() * 6, 403);
-      } else {                  // 矮石牆
-        g.fillStyle(0x4a4640, 1); g.fillRect(a, southTop + 4, span, 16); g.fillStyle(0x6a665e, 1); g.fillRect(a, southTop + 4, span, 4);
-        g.fillStyle(0x2c2a26, 1); for (let px = a + 6; px < b; px += 12) g.fillRect(px, southTop + 10, 1, 10);
-        if (span > 34) prop('bush_01_k', cx, southTop + 4, 22 + rnd() * 6, 403);
+    // 北側後面：天空（陰天、薄霧、遠山），建築與樹站在天空前；大街上緣有一條暗色地平帶接住天空
+    if (!this.textures.exists('town_sky')) {
+      const cv = document.createElement('canvas'); cv.width = 700; cv.height = 135;
+      const g = cv.getContext('2d');
+      const gr = g.createLinearGradient(0, 0, 0, 135);
+      gr.addColorStop(0, '#1b2a2c'); gr.addColorStop(0.55, '#3c5253'); gr.addColorStop(1, '#7b8c84');
+      g.fillStyle = gr; g.fillRect(0, 0, 700, 135);
+      let sd = 7; const r2 = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      for (let n = 0; n < 26; n++) {   // 雲：橫向壓扁的柔和橢圓
+        const x = r2() * 700, y = 10 + r2() * 95, w = 40 + r2() * 90, h = 5 + r2() * 9;
+        const rg = g.createRadialGradient(x, y, 0, x, y, w);
+        rg.addColorStop(0, 'rgba(170,185,175,0.16)'); rg.addColorStop(1, 'rgba(170,185,175,0)');
+        g.save(); g.translate(x, y); g.scale(1, h / w); g.translate(-x, -y); g.fillStyle = rg; g.beginPath(); g.arc(x, y, w, 0, Math.PI * 2); g.fill(); g.restore();
       }
-    };
-    fillRow(14, W - 14, southPut, southGap);
-    // 南側後面：兩排樹林加薄霧；樹冠不蓋到大街，也避開東邊鎮門
-    for (const [by, hMin, hVar, sh, step] of [[472, 112, 26, 0.62, 50], [556, 124, 30, 0.8, 60]]) {
-      for (let x = -4; x < W - 44; x += step * (0.8 + rnd() * 0.5)) tree(x, by + (rnd() - 0.5) * 8, hMin + rnd() * hVar, sh, 331 + by / 1000);
+      g.fillStyle = 'rgba(32,46,42,0.75)'; g.beginPath(); g.moveTo(0, 135);   // 遠山剪影
+      for (let x = 0; x <= 700; x += 14) g.lineTo(x, 108 - 12 * Math.sin(x / 53) - 8 * Math.sin(x / 21 + 1));
+      g.lineTo(700, 135); g.fill();
+      this.textures.addCanvas('town_sky', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
-    this.world.push(this.add.rectangle(0, southTop, W, BOT - southTop, 0x2c3e34, 0.2).setOrigin(0).setDepth(335));
+    this.world.push(this.add.image(0, 0, 'town_sky').setOrigin(0).setScale(2).setDepth(-4));
+    { const hz = this.add.graphics().setDepth(top - 6); this.world.push(hz);
+      hz.fillStyle(0x1f2a1e, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x2f3d2a, 1); hz.fillRect(0, top - 10, W, 2); }
+    // 南側：只有建築黑影（取代完整貼圖）。三排由近到遠往下疊，近的最黑、遠的稍淡，緊貼大街下緣；下方地面也壓暗
+    const southTop = bot + 4;
+    this.world.push(this.add.rectangle(0, southTop - 4, W, BOT - southTop + 4, 0x0a0f0c, 0.6).setOrigin(0).setDepth(300));
+    for (const [off, tint, d] of [[0, 0x040605, 400], [46, 0x0b100d, 390], [92, 0x151c18, 380]]) {
+      const south = (c, x, sc, w) => {
+        const tex = this.textures.get(SPR[c][0]).getSourceImage(), h = w * tex.height / tex.width;
+        draw(c, x, southTop + off + h, sc, 0, d).setTint(tint).setAlpha(0.93);
+      };
+      fillRow(14 - (off ? 30 : 0), W - 14, south, () => {}, 0.12);
+    }
     this.sils = [];
     this.stage = { phase: 'walk', t0: 0 };
   }
