@@ -13,13 +13,14 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.7.18';   // 每次更新請加一
+const VERSION = 'v0.7.19';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
 const ATK_DUR = 580;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
 const ATK_HIT_FROM = 150, ATK_HIT_TO = 320;   // 動作中可以打到人的時間窗
 const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
+const LOCK_KEEP = 260;      // 手動鎖定的敵人離玩家超過這個距離就自動解除
 const LOCK_RANGE = 80;      // 揮劍時自動鎖定這個距離內最近的目標
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
@@ -83,7 +84,7 @@ const ENEMY_TYPES = {
     name: '山賊頭目', showName: true,   // 武將：常駐名字與血條
     shadowColor: 0x000000,
     walkBright: { side: 1, front: 1, back: 1 },            // 走路圖亮度校正（Codex 圖已與參考一致）
-    h: Math.round(HERO_H * 1.15),   // 武將放大約 15%
+    h: Math.round(HERO_H * 1.2),    // 武將比主角大 20%
     hp: 50,
     speed: 82,
     aggro: 120,               // 玩家進入這個距離就會追
@@ -121,7 +122,7 @@ const ENEMY_TYPES = {
 ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   walkTex: 'turban', standTex: 'turban', animTex: null, walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖、站立圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
-  h: Math.round(HERO_H * 0.8),   // 小兵縮小約 20%，與精兵區分
+  h: HERO_H,   // 小兵與主角等高
   hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
   attackSlots: 2, atkGap: 400,
   slashWindup: 900, slashWindupFast: 650, slashRecover: 1000, rest: 1800, dmgSlash: 4,
@@ -134,7 +135,7 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   walkTex: 'hansoldier', standTex: 'hansoldier', animTex: null, walkBright: { side: 1, front: 1, back: 1 },   // 官軍走路圖、站立圖（Codex 生成）
-  name: '官軍', showName: false, shadowColor: 0x000000,
+  name: '官軍', showName: true, shadowColor: 0x000000,   // 精兵：頭上顯示名字與血條
   h: HERO_H,   // 與主角等高
   hp: 28, speed: 78, aggro: 140, lose: 300, stalkDist: 90,
   attackSlots: 2, atkGap: 400,
@@ -468,7 +469,9 @@ class VillageScene extends Phaser.Scene {
     }
     this.enemyGfx = this.add.graphics().setDepth(5000);
     this.laneGfx = this.add.graphics().setDepth(-5);     // 山賊衝刺路線預告（畫在地上）
-    this.world.push(this.enemyGfx, this.laneGfx);
+    this.lockGfx = this.add.graphics().setDepth(8500);     // 鎖定標記（紅色倒三角＋腳下圈）
+    this.lockTarget = null; this.lockDrawn = false;
+    this.world.push(this.enemyGfx, this.laneGfx, this.lockGfx);
 
     // 戰鬥特效用的繪圖層（劍光、血條）
     this.slashGfx = this.add.graphics().setDepth(5000);
@@ -553,7 +556,7 @@ class VillageScene extends Phaser.Scene {
         this.pressAttack();   // 按下當下就出招，輕點也不會漏
         return;
       }
-      if (this.joy.id === null && p.x < this.scale.width * 0.5) {
+      if (this.joy.id === null && p.x < this.scale.width * 0.5) {   // 搖桿；若只是輕點，放開時改當作「點擊鎖定」
         this.joy.id = p.id; this.joy.active = true;
         this.joy.ox = p.x; this.joy.oy = p.y;
         this.setJoy(p);
@@ -569,6 +572,13 @@ class VillageScene extends Phaser.Scene {
     };
     this.input.on('pointerup', endJoy);
     this.input.on('pointerupoutside', endJoy);
+    // 點擊敵人：鎖定／取消／換目標（很快的輕點、幾乎沒移動才算；按鈕上的觸碰不算）
+    this.input.on('pointerup', p => {
+      if (this.down || p.getDuration() > 260 || p.getDistance() > 14) return;
+      const bp = this.btnPos(), dg = this.dodgePos();
+      if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) return;
+      this.tapLock(p);
+    });
 
     this.scale.on('resize', () => {
       this.uiCam.setSize(this.scale.width, this.scale.height);
@@ -757,6 +767,7 @@ class VillageScene extends Phaser.Scene {
     this.updateBandits(time);
     if (this.down && time >= this.respawnAt) this.respawnPlayer(time);
     this.drawEnemyFx(time);
+    this.drawLock(time);
     this.drawSlash(time, fx, fy);
     this.drawBars();
     this.drawUI();
@@ -808,9 +819,40 @@ class VillageScene extends Phaser.Scene {
     return true;
   }
 
-  // 找距離內最近、還活著的目標（山賊或木人樁）
+  // 點擊選取敵人：點在敵人身上（含一點餘裕）就鎖定；再點同一個取消；點空地不變
+  tapLock(p) {
+    const w = this.cameras.main.getWorldPoint(p.x, p.y);
+    let best = null, bd = 1e9;
+    for (const b of this.bandits) {
+      if (b.dead || Math.hypot(b.body.x - this.playerBody.x, b.body.y - this.playerBody.y) > LOCK_KEEP) continue;   // 太遠的不能選
+      const by = b.body.y + 4, hw = b.sprite.displayWidth * 0.45 + 10;
+      if (Math.abs(w.x - b.body.x) > hw || w.y < by - b.t.h - 10 || w.y > by + 12) continue;
+      const d = Math.hypot(w.x - b.body.x, w.y - (by - b.t.h / 2));
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (!best) return;
+    this.lockTarget = this.lockTarget === best ? null : best;
+  }
+
+  // 鎖定標記：目標頭上紅色倒三角（上下浮動）＋腳下紅圈；沒鎖定時只在剛解除那一刻清掉
+  drawLock(time) {
+    const lt = this.lockTarget;
+    if (lt && (lt.dead || Math.hypot(lt.body.x - this.playerBody.x, lt.body.y - this.playerBody.y) > LOCK_KEEP)) this.lockTarget = null;
+    const g = this.lockGfx;
+    if (!this.lockTarget) { if (this.lockDrawn) { g.clear(); this.lockDrawn = false; } return; }
+    const b = this.lockTarget, by = b.body.y + 4;
+    const tip = by - b.t.h - (b.t.showName ? 32 : 14) - (Math.sin(time / 160) + 1) * 1.2;
+    g.clear();
+    g.lineStyle(1, 0xff6a5a, 0.7); g.strokeEllipse(b.body.x, by, b.t.h * 0.55, b.t.h * 0.18);
+    g.fillStyle(0x000000, 0.7); g.fillTriangle(b.body.x - 6, tip - 9, b.body.x + 6, tip - 9, b.body.x, tip + 1);
+    g.fillStyle(0xff4a3a, 1); g.fillTriangle(b.body.x - 5, tip - 8, b.body.x + 5, tip - 8, b.body.x, tip);
+    this.lockDrawn = true;
+  }
+
+  // 找距離內最近、還活著的目標（山賊或木人樁）；手動鎖定中就只看鎖定的目標，不被旁邊的敵人吸引
   pickTarget(range) {
     const fx = this.playerBody.x, fy = this.playerBody.y + 4;
+    if (this.lockTarget && !this.lockTarget.dead) return { x: this.lockTarget.body.x, y: this.lockTarget.body.y + 4 };
     let best = null, bd = range;
     for (const b of this.bandits) {
       if (b.dead) continue;
@@ -1282,6 +1324,7 @@ class VillageScene extends Phaser.Scene {
 
   respawnPlayer(time) {
     this.down = false; this.hurtStart = undefined;
+    this.lockTarget = null;
     this.php = PLAYER_HP;
     this.invulnUntil = time + 1500;
     this.stam = STAM_MAX; this.roll = null;
