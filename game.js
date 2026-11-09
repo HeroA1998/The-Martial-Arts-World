@@ -30,7 +30,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.8.1';   // 每次更新請加一
+const VERSION = 'v0.8.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -111,16 +111,16 @@ const ENEMY_TYPES = {
     // 衝刺（紅線預告）：紅線長度＝實際衝刺距離（lunge×strike）＋刀尖 tip，判定就在這條線上，畫多長就打多遠
     windup: 800, windupFast: 820, aimLock: 220, strike: 200, hitAt: 130, lunge: 340, recover: 1300,
     laneHW: 20, tip: 24,
-    dmgLunge: 30,
+    dmgLunge: 33,
     // 普通揮砍（原地起手、不衝刺）
     slashWindup: 550, slashWindupFast: 400, slashAimLock: 150, slashStrike: 180, slashHitAt: 60,
     slashRecover: 900, slashReach: 18, slashR: 28, dmgSlash: 25,   // 等級 1：武將一刀約扣 1/4 血
     // 重劈：前搖最長、地上紅圈預告落點，範圍大、傷害高、破綻也長（前搖時可以搶進去打或翻滾）
     heavyWindup: 900, heavyWindupFast: 500, heavyAimLock: 260, heavyStrike: 240, heavyHitAt: 110,
-    heavyRecover: 1500, heavyReach: 22, heavyR: 34, dmgHeavy: 35,
+    heavyRecover: 1500, heavyReach: 22, heavyR: 34, dmgHeavy: 33,
     // 連刺：前搖短、連續 2～3 下小幅前刺，每一下都重新瞄準；傷害小但很逼人
     thrustWindup: 420, thrustWindupFast: 230, thrustAimLock: 90, thrustStrike: 130, thrustHitAt: 50,
-    thrustRecover: 1000, thrustSpeed: 260, thrustHW: 15, dmgThrust: 12,
+    thrustRecover: 1000, thrustSpeed: 260, thrustHW: 15, dmgThrust: 25,
     // 選招機率（varied＝武將專用的多招式選招；小兵、精兵維持原本的選招）
     varied: true,
     pSlashClose: 0.30, pThrustClose: 0.22, pHeavyClose: 0.18, pLungeClose: 0.05, pFeintClose: 0.25,   // 貼身（44 以內）
