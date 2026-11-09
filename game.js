@@ -101,7 +101,7 @@ const TOWN_START = { x: 90, y: 300 };         // 出生點：大街西端
 const TOWN_GATE = { x: 1330, y: 300 };        // 鎮門：大街東端（往森林）；從森林回來也站這裡
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
-const FLASK_MAX = 5;                    // 藥壺容量，參拜祠堂補滿
+const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
 const DRINK_MS = 900, DRINK_HEAL_AT = 600;   // 喝藥時間；中途被打中會中斷、不回血
 const DRINK_MOVE = 0.35;                // 喝藥時移動速度倍率
 const ITEM_ORDER = ['flask', 'jc', 'xq', 'cloth'];
