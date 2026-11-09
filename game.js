@@ -30,7 +30,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.8.2';   // 每次更新請加一
+const VERSION = 'v0.8.3';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -93,8 +93,8 @@ const ENEMY_SPAWNS = [
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
 const ENEMY_TYPES = {
   bandit: {
-    tex: 'yturban',           // 暫代：盜賊圖把頭巾染成土黃（之後換成 Codex 的正式黃巾武將）
-    walkTex: 'yturban', standTex: 'yturban', animTex: null,   // 暫代圖沒有揮砍／受擊／倒下動畫
+    tex: 'ytgeneral',         // 黃巾武將專屬圖（Codex 生成）：走路、站立、揮砍、受擊、倒下
+    walkTex: 'ytgeneral', standTex: 'ytgeneral', animTex: 'ytgeneral',   // animTex：有揮砍／受擊／倒下動畫
     name: '黃巾渠帥', showName: true,   // 武將：常駐名字與血條
     shadowColor: 0x000000,
     walkBright: { side: 1, front: 1, back: 1 },            // 走路圖亮度校正（Codex 圖已與參考一致）
@@ -286,10 +286,15 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_hurt_back', A + 'characters/hero_hurt_back.png');
     this.load.image('hero_down_side', A + 'characters/hero_down_side.png');
     this.load.image('hero_down_front', A + 'characters/hero_down_front.png');
-    // 黃巾渠帥（暫代圖）；官兵武將圖 hangeneral_* 保留在資料夾，之後給官軍將領用
-    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back']) {
-      this.load.image('yturban_' + f, A + 'characters/yturban_' + f + '.png');
+    // 黃巾武將；官兵武將圖 hangeneral_*、盜賊染色暫代圖 yturban_* 保留在資料夾，沒有在用
+    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back',
+                     'attack_side', 'attack_front', 'attack_back', 'hurt_side', 'down_side']) {
+      this.load.image('ytgeneral_' + f, A + 'characters/ytgeneral_' + f + '.png');
     }
+    // 森林素材
+    for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
+    this.load.image('forest_floor', A + 'tiles/forest_floor.png');
+    this.load.image('dirt_path', A + 'tiles/dirt_path.png');
     for (const p of ['turban', 'hansoldier']) {
       for (const d of ['side', 'front', 'back']) this.load.image(p + '_stand_' + d, A + 'characters/' + p + '_stand_' + d + '.png');
     }
@@ -299,7 +304,6 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hansoldier_walk_side', A + 'characters/hansoldier_walk_side.png');
     this.load.image('hansoldier_walk_front', A + 'characters/hansoldier_walk_front.png');
     this.load.image('hansoldier_walk_back', A + 'characters/hansoldier_walk_back.png');
-    this.load.image('tree', A + 'props/tree_01.png');
   }
 
   create() {
@@ -357,10 +361,10 @@ class VillageScene extends Phaser.Scene {
           .forEach((cv, i) => this.textures.addCanvas(P + '_' + dst + '_' + i, cv));
       }
     }
-    this.keyTex('tree', 'tree_k');
+    for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
-      if (k.startsWith('__') || k === 'stone') continue;
+      if (k.startsWith('__') || k === 'forest_floor' || k === 'dirt_path') continue;   // 兩張地面圖要留到 buildForest 用完再釋放
       if (this.textures.get(k).getSourceImage() instanceof HTMLImageElement) this.textures.remove(k);
     }
 
@@ -1547,43 +1551,84 @@ class VillageScene extends Phaser.Scene {
       for (let gx = (row % 2) * 22 - 10; gx < MAP_W + 30; gx += 44) {
         const x = gx + (rnd() - 0.5) * 22, y = gy + (rnd() - 0.5) * 16;
         if (walkable(x, y) || walkable(x, y - 8) || walkable(x - 10, y) || walkable(x + 10, y)) continue;
-        trees.push({ x, y, w: 78 + rnd() * 30, flip: rnd() < 0.5, shade: 0.72 + rnd() * 0.28 });
+        const r = rnd(), kind = r < 0.38 ? 0 : r < 0.72 ? 1 : 2;           // 松、櫟、柏
+        const baseH = [104, 98, 118][kind] * (0.88 + rnd() * 0.26);
+        trees.push({ x, y, kind, h: baseH, flip: rnd() < 0.5, shade: 0.74 + rnd() * 0.26 });
       }
     }
-    // 2. 地面畫在一張畫布上（只畫一次，之後當一張圖，手機比較省）
-    const C = 3, cw = Math.ceil(MAP_W / C), ch = Math.ceil(MAP_H / C);
+    // 2. 地面：林地與泥土兩張圖鋪滿，小道與林地交界用噪點做出不規則的草泥過渡（只畫一次、之後當一張圖，手機比較省）
+    const C = 2, cw = Math.ceil(MAP_W / C), ch = Math.ceil(MAP_H / C), TW = 72;   // 一格地磚在世界裡約 144 單位
+    const tileData = key => {
+      const c = document.createElement('canvas'); c.width = c.height = TW;
+      const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+      x.drawImage(this.textures.get(key).getSourceImage(), 0, 0, TW, TW);
+      return x.getImageData(0, 0, TW, TW).data;
+    };
+    const fl = tileData('forest_floor'), dt = tileData('dirt_path');
+    // 「可走」遮罩：每 4 單位一格，模糊後當作泥土比例
+    const M = 4, mw = Math.ceil(MAP_W / M), mh = Math.ceil(MAP_H / M);
+    let m = new Float32Array(mw * mh);
+    for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) m[j * mw + i] = walkable(i * M + 2, j * M + 2) ? 1 : 0;
+    const blur = (src, r) => {
+      const a = new Float32Array(src.length), b = new Float32Array(src.length);
+      for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) { let t = 0, n = 0; for (let k = -r; k <= r; k++) { const q = i + k; if (q >= 0 && q < mw) { t += src[j * mw + q]; n++; } } a[j * mw + i] = t / n; }
+      for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) { let t = 0, n = 0; for (let k = -r; k <= r; k++) { const q = j + k; if (q >= 0 && q < mh) { t += a[q * mw + i]; n++; } } b[j * mw + i] = t / n; }
+      return b;
+    };
+    m = blur(blur(m, 2), 2);
     const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-    const g = cv.getContext('2d');
-    const near = (x, y, r) => !walkable(x - r, y) || !walkable(x + r, y) || !walkable(x, y - r) || !walkable(x, y + r);
+    const g = cv.getContext('2d'), img = g.createImageData(cw, ch), od = img.data;
     for (let j = 0; j < ch; j++) {
       for (let i = 0; i < cw; i++) {
-        const x = i * C + 1.5, y = j * C + 1.5, n = rnd();
-        let col;
-        if (walkable(x, y)) {
-          if (near(x, y, 7)) col = n < 0.5 ? '#3d4630' : '#454a33';            // 小道邊緣：泥土混著草
-          else col = n < 0.12 ? '#3f3a2a' : n < 0.8 ? '#4b4332' : '#544a37';  // 泥土
-          if (n > 0.985) col = '#6a5f48';                                        // 小石子
-        } else {
-          col = n < 0.2 ? '#243020' : n < 0.85 ? '#2b3826' : '#33422c';        // 林地
-          if (n > 0.975) col = '#4a4a2c';                                        // 落葉
-        }
-        g.fillStyle = col; g.fillRect(i, j, 1, 1);
+        const v = m[Math.min(mh - 1, Math.floor(j * C / M)) * mw + Math.min(mw - 1, Math.floor(i * C / M))];
+        const dirt = v + (rnd() - 0.5) * 0.55 > 0.5;
+        const src = dirt ? dt : fl, o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4;
+        // 林地越靠樹林深處越暗一點
+        const k = dirt ? 1 : 0.78 + 0.22 * Math.min(1, v * 3);
+        od[d] = src[o] * k; od[d + 1] = src[o + 1] * k; od[d + 2] = src[o + 2] * k; od[d + 3] = 255;
       }
     }
+    g.putImageData(img, 0, 0);
+    // 樹下的陰影
     g.fillStyle = 'rgba(0,0,0,0.30)';
-    for (const t of trees) { g.beginPath(); g.ellipse(t.x / C, t.y / C, t.w * 0.42 / C, t.w * 0.16 / C, 0, 0, Math.PI * 2); g.fill(); }
+    for (const t of trees) { const w = t.h * 0.7; g.beginPath(); g.ellipse(t.x / C, t.y / C, w * 0.42 / C, w * 0.15 / C, 0, 0, Math.PI * 2); g.fill(); }
     this.textures.addCanvas('forest_ground', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);   // 放大時保持像素硬邊
     this.world.push(this.add.image(0, 0, 'forest_ground').setOrigin(0).setScale(C).setDepth(-20));
+    this.textures.remove('forest_floor'); this.textures.remove('dirt_path');   // 原圖用完就釋放
     // 3. 樹：依腳底 y 排前後
     this.forestTrees = [];
     for (const t of trees) {
-      const tex = this.textures.get('tree_k').getSourceImage(), h = t.w * tex.height / tex.width;
+      const key = 'forest_tree_0' + (t.kind + 1) + '_k', tex = this.textures.get(key).getSourceImage(), h = t.h, w = h * tex.width / tex.height;
       const v = Math.round(255 * t.shade), tint = (v << 16) | (v << 8) | v;
-      const img = this.add.image(t.x, t.y, 'tree_k').setOrigin(0.5, 1).setDisplaySize(t.w, h)
+      const img = this.add.image(t.x, t.y, key).setOrigin(0.5, 1).setDisplaySize(w, h)
         .setFlipX(t.flip).setTint(tint).setDepth(t.y);
       this.world.push(img);
-      this.forestTrees.push({ img, x: t.x, y: t.y, hw: t.w * 0.42, h: h * 0.92, faded: false });
+      this.forestTrees.push({ img, x: t.x, y: t.y, hw: w * 0.42, h: h * 0.92, faded: false });
     }
+    // 3b. 灌木、石頭、倒木：林緣散放（不擋路）；空地邊緣另放幾個會擋路的石頭與倒木
+    this.propBlocks = [];
+    const place = (key, x, y, h, block, flip) => {
+      const tex = this.textures.get(key).getSourceImage(), w = h * tex.width / tex.height;
+      const img = this.add.image(x, y, key).setOrigin(0.5, 1).setDisplaySize(w, h).setFlipX(!!flip).setDepth(y);
+      this.world.push(img);
+      if (block) this.propBlocks.push({ x, y: y - 3, w: w * 0.8, h: 8 });
+    };
+    const rim = [];   // 緊貼小道與空地外緣的林地點
+    for (let y = 20; y < MAP_H - 20; y += 12) for (let x = 14; x < MAP_W - 14; x += 12) {
+      if (walkable(x, y)) continue;
+      if (walkable(x - 14, y) || walkable(x + 14, y) || walkable(x, y - 14) || walkable(x, y + 14)) rim.push([x, y]);
+    }
+    const pick = () => rim.splice(Math.floor(rnd() * rim.length), 1)[0];
+    for (let n = 0; n < 26 && rim.length; n++) { const [x, y] = pick(); place('bush_01_k', x + (rnd() - 0.5) * 8, y, 26 + rnd() * 10, false, rnd() < 0.5); }
+    for (let n = 0; n < 8 && rim.length; n++) { const [x, y] = pick(); place('rock_01_k', x, y, 18 + rnd() * 8, false, rnd() < 0.5); }
+    for (let n = 0; n < 4 && rim.length; n++) { const [x, y] = pick(); place('log_01_k', x, y, 18, false, rnd() < 0.5); }
+    // 空地邊緣：擋路的石頭與倒木（避開小道出入口與伏兵衝出的位置）
+    place('rock_01_k', 100, 505, 26, true, false);
+    place('rock_01_k', 362, 500, 24, true, true);
+    place('rock_01_k', 322, 655, 22, true, false);
+    place('log_01_k', 118, 628, 20, true, false);
+    place('bush_01_k', 372, 628, 30, false, true);
+
     // 4. 看不見的牆：小道、空地、側小徑以外都走不進去（每列連續的區段合併，再把上下相同的合併）
     this.obstacles = this.physics.add.staticGroup();
     const S = 8, open = [];
@@ -1602,6 +1647,11 @@ class VillageScene extends Phaser.Scene {
     }
     for (const q of open) {
       const z = this.add.zone((q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2, q.x1 - q.x0, q.y1 - q.y0);
+      this.physics.add.existing(z, true);
+      this.obstacles.add(z);
+    }
+    for (const b of this.propBlocks) {   // 空地裡擋路的石頭與倒木
+      const z = this.add.zone(b.x, b.y, b.w, b.h);
       this.physics.add.existing(z, true);
       this.obstacles.add(z);
     }
