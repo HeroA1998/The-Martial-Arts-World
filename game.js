@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.0';   // 每次更新請加一
+const VERSION = 'v0.14.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -110,6 +110,25 @@ const NPCS = [
     lines: ['客官，要買點傷藥還是丹藥？'],
     shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
 ];
+// ---------- 分層路人：基礎人偶＋零件（淺灰單色），執行時染色、疊合 ----------
+// 檔案：assets/characters/npc_<零件名>_walk_<front|back|side>.png（2048×512，4 格）。新增零件：把檔名（不含 npc_ 與方向）加進下面欄位即可
+const PED_PARTS = {
+  bottom: ['bottom_a'],
+  top:    ['top_a'],
+  hair:   ['hair_a'],
+  // 之後：face: ['face_a'…]、beard: ['beard_a'…]、hat: ['hat_a'…]、top 加 robe_a / vest_a / cape_a 等
+};
+const PED_ORDER = ['base', 'bottom', 'top', 'face', 'beard', 'hair', 'hat'];   // 由下往上疊
+const PED_COLORS = {   // 欄位 → 可選染色（RGB）
+  skin:  [[244, 206, 168], [228, 186, 142], [204, 154, 112], [176, 124, 88], [250, 224, 200]],
+  cloth: [[110, 140, 190], [190, 110, 80], [120, 160, 110], [205, 185, 140], [160, 150, 135], [210, 170, 80], [150, 110, 70], [90, 110, 150], [190, 170, 130], [120, 125, 118]],
+  hair:  [[50, 40, 38], [90, 60, 45], [70, 55, 45], [110, 105, 100], [30, 28, 28]],
+  hat:   [[200, 175, 110], [150, 120, 80], [180, 170, 150]],
+};
+const PED_SLOT_COLOR = { base: 'skin', face: 'skin', bottom: 'cloth', top: 'cloth', beard: 'hair', hair: 'hair', hat: 'hat' };
+const PED_COUNT = 8;
+const PED_DIRS = ['front', 'back', 'side'];
+const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
 const WZ_DROP = { turban: 2, hansoldier: 5, bandit: 20 };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
@@ -349,6 +368,8 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
+    for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
+      for (const d of PED_DIRS) this.load.image('npc_' + nm + '_' + d, A + 'characters/npc_' + nm + '_walk_' + d + '.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
     this.load.image('hero_attack_front', A + 'characters/hero_attack_front.png');
     this.load.image('hero_attack_back', A + 'characters/hero_attack_back.png');
@@ -457,6 +478,7 @@ class VillageScene extends Phaser.Scene {
       }
     }
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
+    this.makePeds();   // 分層路人：先疊好染色後的貼圖，零件原圖隨後釋放
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
       if (k.startsWith('__') || k === 'forest_floor' || k === 'dirt_path' || k === 'stone_floor' || k === 'town_grass') continue;   // 兩張地面圖要留到 buildForest 用完再釋放
@@ -470,10 +492,10 @@ class VillageScene extends Phaser.Scene {
     this.world = [];   // 世界物件，會被鏡頭看到
     this.bandImgs = [];
     this.ui = [];      // 螢幕固定物件
-    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.dlg = null; this.shop = null;
+    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.walkers = []; this.dlg = null; this.shop = null;
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
-    else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); }
+    else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); this.buildWalkers(); }
     else this.buildShrine();
 
     // 固定擺設（目前沒有）：障礙、陰影、排序；this.obstacles 已在 buildForest 建好
@@ -2017,6 +2039,111 @@ class VillageScene extends Phaser.Scene {
     }
   }
 
+  // ---------- 分層路人 ----------
+  pedKeyed(texKey) {
+    if (PED_KEYED[texKey]) return PED_KEYED[texKey];
+    const img = this.textures.get(texKey).getSourceImage(), c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) p[i + 3] = 0;
+    g.putImageData(d, 0, 0);
+    return (PED_KEYED[texKey] = c);
+  }
+
+  // 依「零件清單＋染色」疊出三個方向、每方向 4 格的貼圖：ped<i>_<方向>_<格>
+  composePed(i, layers) {
+    if (this.textures.exists('ped' + i + '_side_0')) return;
+    for (const dir of PED_DIRS) {
+      const comp = document.createElement('canvas'); comp.width = 2048; comp.height = 512;
+      const g = comp.getContext('2d');
+      for (const L of layers) {
+        const src = this.pedKeyed('npc_' + L.name + '_' + dir);
+        const t = document.createElement('canvas'); t.width = src.width; t.height = src.height;
+        const tg = t.getContext('2d'); tg.drawImage(src, 0, 0);
+        tg.globalCompositeOperation = 'multiply';
+        tg.fillStyle = 'rgb(' + L.col.map(v => Math.min(255, Math.round(v * 1.15))).join(',') + ')';
+        tg.fillRect(0, 0, t.width, t.height);
+        tg.globalCompositeOperation = 'destination-in'; tg.drawImage(src, 0, 0);
+        g.drawImage(t, 0, 0);
+      }
+      const p = g.getImageData(0, 0, 2048, 512).data;
+      let minX = 512, minY = 512, maxX = -1, maxY = -1;
+      for (let y = 0; y < 512; y++) for (let x = 0; x < 2048; x++) {
+        if (p[(y * 2048 + x) * 4 + 3] > 0) { const lx = x % 512; if (lx < minX) minX = lx; if (lx > maxX) maxX = lx; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+      }
+      const w = maxX - minX + 1, h = maxY - minY + 1;
+      for (let f = 0; f < 4; f++) {
+        const o = document.createElement('canvas'); o.width = w; o.height = h;
+        o.getContext('2d').drawImage(comp, f * 512 + minX, minY, w, h, 0, 0, w, h);
+        this.textures.addCanvas('ped' + i + '_' + dir + '_' + f, o);
+      }
+    }
+  }
+
+  // 開機時一次做好 PED_COUNT 個路人的貼圖（隨機組合零件與染色），之後只留成品
+  makePeds() {
+    let seed = 20261110; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    for (let i = 0; i < PED_COUNT; i++) {
+      const cols = {}; for (const k of Object.keys(PED_COLORS)) cols[k] = pick(PED_COLORS[k]);
+      const topCol = pick(PED_COLORS.cloth); let botCol; do { botCol = pick(PED_COLORS.cloth); } while (botCol === topCol);   // 上衣與下裝不同色
+      const layers = [];
+      for (const slot of PED_ORDER) {
+        let name = null;
+        if (slot === 'base') name = 'base';
+        else if (PED_PARTS[slot]) name = pick(PED_PARTS[slot]);
+        if (name) layers.push({ name, col: slot === 'top' ? topCol : slot === 'bottom' ? botCol : cols[PED_SLOT_COLOR[slot]] });
+      }
+      this.composePed(i, layers);
+    }
+    for (const k of Object.keys(PED_KEYED)) delete PED_KEYED[k];   // 零件圖用完就丟，省記憶體
+  }
+
+  buildWalkers() {
+    let seed = 777; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const R = TOWN_ROAD, y0 = R.y - R.hw + 12, y1 = R.y + R.hw - 4;
+    for (let i = 0; i < PED_COUNT; i++) {
+      const x = 180 + rnd() * (MAP_W - 360), y = y0 + rnd() * (y1 - y0);
+      const sprite = this.add.image(x, y, 'ped' + i + '_front_1').setOrigin(0.5, 1).setDepth(y);
+      const sh = this.add.ellipse(x, y - 1, 22, 8, 0x000000, 0.35).setDepth(y - 1);
+      this.world.push(sprite); this.world.push(sh);
+      this.walkers.push({ i, x, y, sprite, sh, vx: 0, vy: 0, dir: 'front', flip: false, until: 0, t: rnd() * 1000, sp: 20 + rnd() * 14, y0, y1, sc: 0.97 + rnd() * 0.06 });
+    }
+    this.walkerT = this.time.now;
+  }
+
+  updateWalkers() {
+    if (this.area !== 'town' || !this.walkers || !this.walkers.length) return;
+    const now = this.time.now, dt = Math.min(0.05, (now - (this.walkerT || now)) / 1000); this.walkerT = now;
+    const frozen = this.modal();
+    for (const w of this.walkers) {
+      if (!frozen) {
+        if (now > w.until) {   // 換個走法：停一下、左右走、或換條路線
+          const r = Math.random();
+          if (r < 0.28) { w.vx = 0; w.vy = 0; w.until = now + 1200 + Math.random() * 2600; }
+          else if (r < 0.82) { const d = Math.random() < 0.5 ? -1 : 1; w.vx = d * w.sp; w.vy = 0; w.until = now + 2500 + Math.random() * 4500; }
+          else { const d = Math.random() < 0.5 ? -1 : 1; w.vx = 0; w.vy = d * w.sp * 0.8; w.until = now + 700 + Math.random() * 1200; }
+        }
+        w.x += w.vx * dt; w.y += w.vy * dt;
+        if (w.x < 80) { w.x = 80; w.vx = Math.abs(w.vx); } else if (w.x > MAP_W - 80) { w.x = MAP_W - 80; w.vx = -Math.abs(w.vx); }
+        if (w.y < w.y0) { w.y = w.y0; w.vy = Math.abs(w.vy); } else if (w.y > w.y1) { w.y = w.y1; w.vy = -Math.abs(w.vy); }
+        if (w.vx || w.vy) w.t += dt * 1000;
+      }
+      const moving = !frozen && (w.vx || w.vy);
+      if (moving) {
+        if (Math.abs(w.vx) >= Math.abs(w.vy)) { w.dir = 'side'; w.flip = w.vx < 0; } else { w.dir = w.vy < 0 ? 'back' : 'front'; }
+      }
+      const f = moving ? Math.floor(w.t / WALK_FRAME_MS) % 4 : 1;
+      const key = 'ped' + w.i + '_' + w.dir + '_' + f;
+      const tex = this.textures.get(key).getSourceImage(), hs = this.textures.get('hero_walk_' + w.dir + '_0').getSourceImage().height;
+      const k = HERO_H / hs * w.sc;
+      if (w.sprite.texture.key !== key) w.sprite.setTexture(key);
+      w.sprite.setDisplaySize(tex.width * k, tex.height * k).setPosition(w.x, w.y).setDepth(w.y).setFlipX(w.dir === 'side' && w.flip);
+      w.sh.setPosition(w.x, w.y - 1).setDepth(w.y - 1);
+    }
+  }
+
   nearNpc() {
     if (this.area !== 'town' || !this.playerBody) return null;
     let best = null, bd = NPC_R;
@@ -2781,6 +2908,7 @@ class VillageScene extends Phaser.Scene {
 
     this.drawPanelUI();
     this.drawInvUI();
+    this.updateWalkers();
     this.drawDialogUI();
     this.drawShopUI();
 
