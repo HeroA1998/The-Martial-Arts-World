@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.12.2';   // 每次更新請加一
+const VERSION = 'v0.13.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -99,6 +99,14 @@ const CAMP_R = 70;
 const TOWN_ROAD = { y: 300, hw: 28 };
 const TOWN_START = { x: 90, y: 300 };         // 出生點：大街西端
 const TOWN_GATE = { x: 1330, y: 300 };        // 鎮門：大街東端（往森林）；從森林回來也站這裡
+// 鎮內 NPC：暫用官軍站立圖（tint 區分），之後換正式美術；對話文字為測試用
+const NPC_R = 44;   // 走到這個距離內才出現「對話」鈕
+const NPCS = [
+  { id: 'guard', name: '鎮門守衛', x: 1290, y: 274, tex: 'hansoldier', face: 'left',
+    lines: ['站住……啊，是本鎮的人。', '東邊鎮門外就是林間小道，聽說最近黃巾賊常在那一帶出沒。', '要出去的話，先到祠堂拜一拜，補足精神再走。'] },
+  { id: 'elder', name: '老村民', x: 480, y: 326, tex: 'hansoldier', tint: 0xc8a878, face: 'right',
+    lines: ['年輕人，亂世不太平啊。', '祠堂在大街正中。進去參拜，能把身子骨練得更結實。', '藥壺用完也別慌，拜過祠堂就會補滿。'] },
+];
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -457,10 +465,10 @@ class VillageScene extends Phaser.Scene {
     this.world = [];   // 世界物件，會被鏡頭看到
     this.bandImgs = [];
     this.ui = [];      // 螢幕固定物件
-    this.forestTrees = []; this.camps = []; this.exits = [];
+    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.dlg = null;
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
-    else if (this.area === 'town') this.buildTown();
+    else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); }
     else this.buildShrine();
 
     // 固定擺設（目前沒有）：障礙、陰影、排序；this.obstacles 已在 buildForest 建好
@@ -648,6 +656,7 @@ class VillageScene extends Phaser.Scene {
     this.uiCam.ignore(this.world);
     this.buildPanel();
     this.buildInv();
+    this.buildDialog();
 
     // 輸入
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -657,13 +666,16 @@ class VillageScene extends Phaser.Scene {
     this.atkKeys = this.input.keyboard.addKeys('SPACE,J');
     this.input.keyboard.on('keydown-SPACE', () => this.pressAttack());
     this.input.keyboard.on('keydown-J', () => this.pressAttack());
-    const dodgeKey = () => { if (this.panelOpen || this.invOpen) return; const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
+    const dodgeKey = () => { if (this.modal()) return; const t = this.nowT || 0; if (!this.tryRoll(t)) this.rollBuf = t + 400; };
     this.input.keyboard.on('keydown-SHIFT', dodgeKey);
     this.input.keyboard.on('keydown-E', () => this.pressDrink());
     this.input.keyboard.on('keydown-K', dodgeKey);
+    this.input.keyboard.on('keydown-F', () => this.talkKey());
+    this.input.keyboard.on('keydown-ENTER', () => this.talkKey());
     this.input.on('pointerdown', p => {
       if (this.invPointer(p)) return;
       if (this.panelPointer(p)) return;
+      if (this.dlgPointer(p)) return;
       { const pp = this.potPos(); if (Math.hypot(p.x - pp.x, p.y - pp.y) <= 40) { this.pressDrink(); return; } }
       const dg = this.dodgePos();
       if (this.btn2.id === null && Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) {
@@ -683,7 +695,7 @@ class VillageScene extends Phaser.Scene {
         this.setJoy(p);
       }
     });
-    this.input.on('pointermove', p => { if (!this.panelOpen && !this.invOpen && p.id === this.joy.id) this.setJoy(p); });
+    this.input.on('pointermove', p => { if (!this.modal() && p.id === this.joy.id) this.setJoy(p); });
     const endJoy = p => {
       if (p.id === this.btn.id) { this.btn.id = null; this.btn.held = false; return; }
       if (p.id === this.btn2.id) { this.btn2.id = null; return; }
@@ -695,7 +707,7 @@ class VillageScene extends Phaser.Scene {
     this.input.on('pointerupoutside', endJoy);
     // 點擊敵人：鎖定／取消／換目標（很快的輕點、幾乎沒移動才算；按鈕上的觸碰不算）
     this.input.on('pointerup', p => {
-      if (this.down || this.panelOpen || this.invOpen || p.getDuration() > 260 || p.getDistance() > 14) return;
+      if (this.down || this.modal() || p.getDuration() > 260 || p.getDistance() > 14) return;
       const bp = this.btnPos(), dg = this.dodgePos();
       if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) return;
       this.tapLock(p);
@@ -772,7 +784,7 @@ class VillageScene extends Phaser.Scene {
       this.playerBody.body.setVelocity(0, 0);
       return;
     }
-    if (this.panelOpen || this.invOpen) {   // 面板開著：整個遊戲暫停
+    if (this.modal()) {   // 面板或對話開著：整個遊戲暫停
       this.playerBody.body.setVelocity(0, 0);
       for (const b of this.bandits) b.body.body.setVelocity(0, 0);
       this.nowT = this.vt;
@@ -935,7 +947,7 @@ class VillageScene extends Phaser.Scene {
   // ---------- 戰鬥 ----------
   // 按下攻擊：不能立刻出招時（翻滾無敵中、揮劍中）先記著，時機一到自動接上
   pressAttack() {
-    if (this.panelOpen || this.invOpen) return;
+    if (this.modal()) return;
     const t = this.nowT || 0;
     if (!this.tryAttack(t) && !this.down && (this.roll || this.atk)) this.atkBuf = t + 350;
   }
@@ -1936,7 +1948,7 @@ class VillageScene extends Phaser.Scene {
 
   // 「藥」鍵：開始喝藥（有硬直，被打中中斷）
   pressDrink() {
-    if (this.panelOpen || this.invOpen || this.transitioning) return;
+    if (this.modal() || this.transitioning) return;
     const t = this.nowT || 0;
     if (this.down || this.cine || this.roll || this.atk || this.drink) return;
     const order = [this.quick, 'flask', 'jc', 'xq'];
@@ -1975,9 +1987,108 @@ class VillageScene extends Phaser.Scene {
     }
   }
 
+  // ---------- 鎮內 NPC 與對話 ----------
+  modal() { return !!(this.panelOpen || this.invOpen || this.dlg); }
+
+  buildNpcs() {
+    for (const d of NPCS) {
+      const sprite = this.add.image(d.x, d.y, d.tex + '_standk_front').setOrigin(0.5, 1).setDepth(d.y);
+      if (d.tint) sprite.setTint(d.tint);
+      const sh = this.add.ellipse(d.x, d.y - 1, 22, 8, 0x000000, 0.35).setDepth(d.y - 1);
+      this.world.push(sprite); this.world.push(sh);
+      this.block(d.x - 8, d.y - 6, d.x + 8, d.y + 2);
+      this.setSpriteTex(sprite, d.tex + '_standk_front', HERO_H);
+      this.npcs.push(Object.assign({ sprite }, d));
+    }
+  }
+
+  nearNpc() {
+    if (this.area !== 'town' || !this.playerBody) return null;
+    let best = null, bd = NPC_R;
+    for (const n of this.npcs) {
+      const dd = Math.hypot(this.playerBody.x - n.x, this.playerBody.y - n.y);
+      if (dd <= bd) { bd = dd; best = n; }
+    }
+    return best;
+  }
+
+  canTalk() {
+    const ph = this.stage && this.stage.phase;
+    return !this.dlg && !this.panelOpen && !this.invOpen && !this.down && !this.cine && !this.transitioning
+      && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !!this.nearNpc();
+  }
+
+  talkRect() { return { x: this.scale.width / 2 - 52, y: this.scale.height - 260, w: 104, h: 36 }; }
+
+  buildDialog() {
+    const mk = (o) => { o.setDepth(1300); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color, stroke = 3) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke });
+    this.dlgGfx = mk(this.add.graphics());
+    this.dlgBtnText = mk(this.add.text(0, 0, '對話', tx(15, '#16201a', 0)).setOrigin(0.5).setDepth(1301).setVisible(false));
+    this.dlgName = mk(this.add.text(0, 0, '', tx(15, '#f0d890')).setDepth(1301).setVisible(false));
+    this.dlgBody = mk(this.add.text(0, 0, '', tx(15, '#e6f0dc', 2)).setDepth(1301).setVisible(false));
+    this.dlgHint = mk(this.add.text(0, 0, '點一下繼續', tx(11, '#a8b8a0', 2)).setOrigin(1, 1).setDepth(1301).setVisible(false));
+  }
+
+  openDialog(npc) {
+    this.dlg = { npc, i: 0 };
+    this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
+  }
+
+  advanceDialog() {
+    if (!this.dlg) return;
+    this.dlg.i++;
+    if (this.dlg.i >= this.dlg.npc.lines.length) this.dlg = null;
+  }
+
+  talkKey() {
+    if (this.dlg) { this.advanceDialog(); return; }
+    if (this.canTalk()) this.openDialog(this.nearNpc());
+  }
+
+  // 回傳 true 表示這次點擊被對話吃掉
+  dlgPointer(p) {
+    if (this.dlg) { this.advanceDialog(); return true; }
+    const r = this.talkRect();
+    if (this.canTalk() && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openDialog(this.nearNpc()); return true; }
+    return false;
+  }
+
+  drawDialogUI() {
+    const g = this.dlgGfx, W = this.scale.width, H = this.scale.height, k = 1 - this.cineK;
+    g.clear();
+    // NPC 轉向面對主角
+    if (this.area === 'town' && this.playerBody) for (const n of this.npcs) {
+      const dx = this.playerBody.x - n.x, dy = this.playerBody.y - n.y;
+      let dir = 'front', flip = n.face === 'left';
+      if (Math.hypot(dx, dy) < 120) {
+        if (Math.abs(dx) > Math.abs(dy) * 1.25) { dir = 'side'; flip = dx < 0; }
+        else dir = dy < 0 ? 'back' : 'front';
+      } else if (n.face) { dir = 'side'; }
+      this.setSpriteTex(n.sprite, n.tex + '_standk_' + dir, HERO_H);
+      n.sprite.setFlipX(dir === 'side' && flip);
+    }
+    // 「對話」鈕
+    const can = this.canTalk(), r = this.talkRect();
+    if (can) { g.fillStyle(0xd9b45a, 0.95); g.fillRoundedRect(r.x, r.y, r.w, r.h, 8); }
+    this.dlgBtnText.setVisible(can).setPosition(r.x + r.w / 2, r.y + r.h / 2).setAlpha(k);
+    g.setAlpha(k);
+    // 對話框
+    const d = this.dlg;
+    this.dlgName.setVisible(!!d); this.dlgBody.setVisible(!!d); this.dlgHint.setVisible(!!d);
+    if (!d) return;
+    const bw = Math.min(W - 20, 380), bh = 118, bx = (W - bw) / 2, by = H - bh - 16;
+    g.fillStyle(0x000000, 0.35); g.fillRect(0, 0, W, H);
+    g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(bx, by, bw, bh, 10);
+    g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(bx, by, bw, bh, 10);
+    this.dlgName.setText(d.npc.name).setPosition(bx + 14, by + 10);
+    this.dlgBody.setText(d.npc.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28);
+    this.dlgHint.setText(d.i >= d.npc.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
+  }
+
   canOpenInv() {
     const ph = this.stage && this.stage.phase;
-    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink;
+    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !this.dlg;
   }
   invBtnRect() { return { x: this.scale.width - 70, y: 28, w: 62, h: 24 }; }
   potPos() { return { x: this.scale.width - 46, y: this.scale.height - 196 }; }
@@ -2585,6 +2696,7 @@ class VillageScene extends Phaser.Scene {
 
     this.drawPanelUI();
     this.drawInvUI();
+    this.drawDialogUI();
 
     // 攻擊鍵
     const b = this.btnPos(), bg = this.btnGfx;
