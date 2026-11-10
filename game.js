@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.13.1';   // 每次更新請加一
+const VERSION = 'v0.14.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -106,7 +106,12 @@ const NPCS = [
     lines: ['站住……啊，是本鎮的人。', '東邊鎮門外就是林間小道，聽說最近黃巾賊常在那一帶出沒。', '要出去的話，先到祠堂拜一拜，補足精神再走。'] },
   { id: 'elder', name: '老村民', x: 480, y: 326, tex: 'hansoldier', tint: 0xc8a878, face: 'right',
     lines: ['年輕人，亂世不太平啊。', '祠堂在大街正中。進去參拜，能把身子骨練得更結實。', '藥壺用完也別慌，拜過祠堂就會補滿。'] },
+  { id: 'merchant', name: '雜貨商販', x: 900, y: 326, tex: 'hansoldier', tint: 0x9ab4c8, face: 'right',
+    lines: ['客官，要買點傷藥還是丹藥？'],
+    shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
 ];
+// 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
+const WZ_DROP = { turban: 2, hansoldier: 5, bandit: 20 };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -465,7 +470,7 @@ class VillageScene extends Phaser.Scene {
     this.world = [];   // 世界物件，會被鏡頭看到
     this.bandImgs = [];
     this.ui = [];      // 螢幕固定物件
-    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.dlg = null;
+    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.dlg = null; this.shop = null;
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
     else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); }
@@ -657,6 +662,7 @@ class VillageScene extends Phaser.Scene {
     this.buildPanel();
     this.buildInv();
     this.buildDialog();
+    this.buildShop();
 
     // 輸入
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -675,6 +681,7 @@ class VillageScene extends Phaser.Scene {
     this.input.on('pointerdown', p => {
       if (this.invPointer(p)) return;
       if (this.panelPointer(p)) return;
+      if (this.shopPointer(p)) return;
       if (this.dlgPointer(p)) return;
       { const pp = this.potPos(); if (Math.hypot(p.x - pp.x, p.y - pp.y) <= 40) { this.pressDrink(); return; } }
       const dg = this.dodgePos();
@@ -1571,7 +1578,7 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 能力型成長 ----------
   loadGrowth() {
-    this.xp = 0; this.pending = 0;
+    this.xp = 0; this.pending = 0; this.wz = 0;
     this.inv = { flask: FLASK_MAX, jc: 0, xq: 0, cloth: 0 }; this.quick = 'flask';
     this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
     try {
@@ -1580,6 +1587,7 @@ class VillageScene extends Phaser.Scene {
         this.xp = Math.max(0, d.xp | 0);
         for (const k of STAT_KEYS) this.stats[k] = Math.min(STAT_CAP, Math.max(0, d.stats[k] | 0));
       }
+      if (d) this.wz = Math.max(0, d.wz | 0);
       if (d && d.inv) { for (const k of ITEM_ORDER) this.inv[k] = Math.max(0, d.inv[k] | 0); this.inv.flask = Math.min(FLASK_MAX, this.inv.flask); if (ITEMS[d.quick]) this.quick = d.quick; }
     } catch (e) {}
     this.calcLv();
@@ -1588,7 +1596,7 @@ class VillageScene extends Phaser.Scene {
   calcLv() { this.lv = 1 + STAT_KEYS.reduce((a, k) => a + this.stats[k], 0); }
 
   saveGrowth() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick })); } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz })); } catch (e) {}
   }
 
   maxHp() { return statMaxHp(this.stats.hp); }
@@ -1969,26 +1977,33 @@ class VillageScene extends Phaser.Scene {
     for (const [id, p] of (DROPS[b.spawn.type] || [])) {
       if (Math.random() < p) this.spawnDrop(id, b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12);
     }
+    const w = WZ_DROP[b.spawn.type];
+    if (w) this.spawnDrop('wz', b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12, w);
   }
-  spawnDrop(id, x, y) { this.drops.push({ id, x, y, t0: this.nowT || 0 }); }
+  spawnDrop(id, x, y, n) { this.drops.push({ id, x, y, n: n || 1, t0: this.nowT || 0 }); }
   updateDrops(time) {
     const g = this.dropGfx; g.clear();
     const px = this.playerBody.x, py = this.playerBody.y;
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const d = this.drops[i], bob = Math.sin((time - d.t0) / 200) * 1.5;
       g.fillStyle(0x000000, 0.3); g.fillEllipse(d.x, d.y, 11, 4);
-      g.fillStyle(d.id === 'xq' ? 0x6a9ad9 : 0xb08a4a, 1); g.fillRoundedRect(d.x - 4, d.y - 9 + bob, 8, 8, 2);
-      g.fillStyle(0xf0e6c8, 1); g.fillRect(d.x - 1, d.y - 11 + bob, 2, 3);
+      if (d.id === 'wz') {   // 五銖錢：金色圓錢加方孔
+        g.fillStyle(0xd9b45a, 1); g.fillCircle(d.x, d.y - 5 + bob, 4.5);
+        g.fillStyle(0x3a3520, 1); g.fillRect(d.x - 1, d.y - 6 + bob, 2, 2);
+      } else {
+        g.fillStyle(d.id === 'xq' ? 0x6a9ad9 : 0xb08a4a, 1); g.fillRoundedRect(d.x - 4, d.y - 9 + bob, 8, 8, 2);
+        g.fillStyle(0xf0e6c8, 1); g.fillRect(d.x - 1, d.y - 11 + bob, 2, 3);
+      }
       if (time - d.t0 > 400 && Math.hypot(px - d.x, py - d.y) < 20) {
-        this.inv[d.id] = (this.inv[d.id] | 0) + 1;
-        this.spawnDamage(d.x, d.y - 14, '+' + ITEMS[d.id].name, '#e8d890');
+        if (d.id === 'wz') { this.wz += d.n; this.spawnDamage(d.x, d.y - 14, '+' + d.n + ' 五銖', '#e8d890'); }
+        else { this.inv[d.id] = (this.inv[d.id] | 0) + 1; this.spawnDamage(d.x, d.y - 14, '+' + ITEMS[d.id].name, '#e8d890'); }
         this.drops.splice(i, 1); this.saveGrowth();
       }
     }
   }
 
   // ---------- 鎮內 NPC 與對話 ----------
-  modal() { return !!(this.panelOpen || this.invOpen || this.dlg); }
+  modal() { return !!(this.panelOpen || this.invOpen || this.dlg || this.shop); }
 
   buildNpcs() {
     for (const d of NPCS) {
@@ -2014,7 +2029,7 @@ class VillageScene extends Phaser.Scene {
 
   canTalk() {
     const ph = this.stage && this.stage.phase;
-    return !this.dlg && !this.panelOpen && !this.invOpen && !this.down && !this.cine && !this.transitioning
+    return !this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.down && !this.cine && !this.transitioning
       && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !!this.nearNpc();
   }
 
@@ -2038,7 +2053,10 @@ class VillageScene extends Phaser.Scene {
   advanceDialog() {
     if (!this.dlg) return;
     this.dlg.i++;
-    if (this.dlg.i >= this.dlg.npc.lines.length) this.dlg = null;
+    if (this.dlg.i >= this.dlg.npc.lines.length) {
+      const n = this.dlg.npc; this.dlg = null;
+      if (n.shop) this.openShop(n);
+    }
   }
 
   talkKey() {
@@ -2086,9 +2104,76 @@ class VillageScene extends Phaser.Scene {
     this.dlgHint.setText(d.i >= d.npc.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
   }
 
+  // ---------- 商店（五銖）----------
+  buildShop() {
+    const mk = (o) => { o.setDepth(1350); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color, stroke = 3) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke });
+    this.shopGfx = mk(this.add.graphics());
+    this.shopTitle = mk(this.add.text(0, 0, '', tx(16, '#f0d890')).setOrigin(0.5, 0).setDepth(1351).setVisible(false));
+    this.shopRows = [0, 1, 2, 3].map(() => ({
+      name: mk(this.add.text(0, 0, '', tx(16, '#e6f0dc')).setDepth(1351).setVisible(false)),
+      desc: mk(this.add.text(0, 0, '', tx(12, '#c8d8c0')).setDepth(1351).setVisible(false)),
+      buy: mk(this.add.text(0, 0, '買', tx(15, '#16201a', 0)).setOrigin(0.5).setDepth(1351).setVisible(false)),
+    }));
+    this.shopClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1351).setVisible(false));
+    this.shopNote = mk(this.add.text(0, 0, '', tx(12, '#e8c890')).setOrigin(0.5, 0).setDepth(1351).setVisible(false));
+  }
+
+  openShop(npc) {
+    this.shop = { npc, note: '', noteUntil: 0 };
+    this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
+  }
+
+  shopLayout() {
+    const W = this.scale.width, H = this.scale.height, items = this.shop.npc.shop;
+    const pw = Math.min(W - 24, 360), rowH = 58, ph = 70 + rowH * items.length + 64;
+    const px = (W - pw) / 2, py = Math.max(12, (H - ph) / 2);
+    const rows = items.map((it, i) => { const y = py + 50 + i * rowH; return Object.assign({ y, buy: { x: px + pw - 44, y: y + 22, w: 64, h: 32 } }, it); });
+    return { px, py, pw, ph, rows, close: { x: W / 2, y: py + 50 + rowH * items.length + 18, w: 120, h: 36 } };
+  }
+
+  shopPointer(p) {
+    if (!this.shop) return false;
+    const L = this.shopLayout(), t = this.nowT || 0;
+    for (const r of L.rows) {
+      if (Math.abs(p.x - r.buy.x) <= r.buy.w / 2 && Math.abs(p.y - r.buy.y) <= r.buy.h / 2) {
+        if (this.wz >= r.price) {
+          this.wz -= r.price; this.inv[r.id] = (this.inv[r.id] | 0) + 1; this.saveGrowth();
+          this.shop.note = '買了 ' + ITEMS[r.id].name; this.shop.noteUntil = t + 1200;
+        } else { this.shop.note = '五銖不夠'; this.shop.noteUntil = t + 1200; }
+      }
+    }
+    const c = L.close;
+    if (Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.y - c.y) <= c.h / 2) { this.shop = null; this.saveGrowth(); }
+    return true;
+  }
+
+  drawShopUI() {
+    const g = this.shopGfx, S = this.shop, t = this.nowT || 0;
+    g.clear();
+    this.shopTitle.setVisible(!!S); this.shopClose.setVisible(!!S); this.shopNote.setVisible(!!S);
+    for (const r of this.shopRows) { r.name.setVisible(false); r.desc.setVisible(false); r.buy.setVisible(false); }
+    if (!S) return;
+    const L = this.shopLayout(), W = this.scale.width, H = this.scale.height;
+    g.fillStyle(0x000000, 0.55); g.fillRect(0, 0, W, H);
+    g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(L.px, L.py, L.pw, L.ph, 10);
+    g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(L.px, L.py, L.pw, L.ph, 10);
+    this.shopTitle.setText(S.npc.name + '　五銖 ' + this.wz).setPosition(W / 2, L.py + 12);
+    L.rows.forEach((r, i) => {
+      const o = this.shopRows[i], T = ITEMS[r.id], ok = this.wz >= r.price;
+      o.name.setVisible(true).setText(T.name + '　' + r.price + ' 五銖（有 ' + this.invCount(r.id) + '）').setPosition(L.px + 16, r.y);
+      o.desc.setVisible(true).setText(T.desc).setPosition(L.px + 16, r.y + 24);
+      g.fillStyle(0xd9b45a, ok ? 0.95 : 0.35); g.fillRoundedRect(r.buy.x - r.buy.w / 2, r.buy.y - r.buy.h / 2, r.buy.w, r.buy.h, 8);
+      o.buy.setVisible(true).setAlpha(ok ? 1 : 0.5).setPosition(r.buy.x, r.buy.y);
+    });
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(L.close.x - L.close.w / 2, L.close.y - L.close.h / 2, L.close.w, L.close.h, 8);
+    this.shopClose.setPosition(L.close.x, L.close.y);
+    this.shopNote.setText(t < S.noteUntil ? S.note : '').setPosition(W / 2, L.close.y + 26);
+  }
+
   canOpenInv() {
     const ph = this.stage && this.stage.phase;
-    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !this.dlg;
+    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !this.dlg && !this.shop;
   }
   invBtnRect() { return { x: this.scale.width - 70, y: 28, w: 62, h: 24 }; }
   potPos() { return { x: this.scale.width - 46, y: this.scale.height - 196 }; }
@@ -2697,6 +2782,7 @@ class VillageScene extends Phaser.Scene {
     this.drawPanelUI();
     this.drawInvUI();
     this.drawDialogUI();
+    this.drawShopUI();
 
     // 攻擊鍵
     const b = this.btnPos(), bg = this.btnGfx;
