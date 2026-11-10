@@ -36,7 +36,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.3';   // 每次更新請加一
+const VERSION = 'v0.14.4';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -127,6 +127,7 @@ const PED_COLORS = {   // 欄位 → 可選染色（RGB）
   hat:   [[200, 175, 110], [150, 120, 80], [180, 170, 150]],
 };
 const PED_SLOT_COLOR = { base: 'skin', face: 'skin', bottom: 'cloth', top: 'cloth', beard: 'hair', hair: 'hair', hat: 'hat' };
+const WALKER_IDS = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hunter', 'refugee'];   // 鎮內路人（單一角色，assets/characters/npc_<id>_walk_<方向>.png）
 const PED_COUNT = 0;   // 分層路人暫停（品質不如敵人）；改用單一角色後再開
 const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
@@ -369,6 +370,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
+    for (const id of WALKER_IDS) for (const d of PED_DIRS) this.load.image('npcsrc_' + id + '_' + d, A + 'characters/npc_' + id + '_walk_' + d + '.png');
     if (PED_COUNT > 0) for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
       for (const d of PED_DIRS) this.load.image('npc_' + nm + '_' + d, A + 'characters/npc_' + nm + '_walk_' + d + '.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
@@ -480,6 +482,9 @@ class VillageScene extends Phaser.Scene {
       }
     }
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
+    for (const id of WALKER_IDS) for (const d of PED_DIRS)   // 路人：去洋紅並裁成 4 格
+      keyAndTrimFrames(this.textures.get('npcsrc_' + id + '_' + d).getSourceImage(), 4, 1)
+        .forEach((cv, i) => this.textures.addCanvas('npcw_' + id + '_' + d + '_' + i, cv));
     this.makePeds();   // 分層路人：先疊好染色後的貼圖，零件原圖隨後釋放
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
@@ -2118,13 +2123,13 @@ class VillageScene extends Phaser.Scene {
   buildWalkers() {
     let seed = 777; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     const R = TOWN_ROAD, y0 = R.y - R.hw + 12, y1 = R.y + R.hw - 4;
-    for (let i = 0; i < PED_COUNT; i++) {
-      const x = 180 + rnd() * (MAP_W - 360), y = y0 + rnd() * (y1 - y0);
-      const sprite = this.add.image(x, y, 'ped' + i + '_front_1').setOrigin(0.5, 1).setDepth(y);
+    WALKER_IDS.forEach((id, i) => {
+      const x = 180 + (i + rnd() * 0.8) * (MAP_W - 360) / WALKER_IDS.length, y = y0 + rnd() * (y1 - y0);
+      const sprite = this.add.image(x, y, 'npcw_' + id + '_front_1').setOrigin(0.5, 1).setDepth(y);
       const sh = this.add.ellipse(x, y - 1, 22, 8, 0x000000, 0.35).setDepth(y - 1);
       this.world.push(sprite); this.world.push(sh);
-      this.walkers.push({ i, x, y, sprite, sh, vx: 0, vy: 0, dir: 'front', flip: false, until: 0, t: rnd() * 1000, sp: 20 + rnd() * 14, y0, y1, sc: 0.97 + rnd() * 0.06 });
-    }
+      this.walkers.push({ id, x, y, sprite, sh, vx: 0, vy: 0, dir: 'front', flip: false, until: 0, t: rnd() * 1000, sp: 20 + rnd() * 14, y0, y1, sc: 1 });
+    });
     this.walkerT = this.time.now;
   }
 
@@ -2150,7 +2155,7 @@ class VillageScene extends Phaser.Scene {
         if (Math.abs(w.vx) >= Math.abs(w.vy)) { w.dir = 'side'; w.flip = w.vx < 0; } else { w.dir = w.vy < 0 ? 'back' : 'front'; }
       }
       const f = moving ? Math.floor(w.t / WALK_FRAME_MS) % 4 : 1;
-      const key = 'ped' + w.i + '_' + w.dir + '_' + f;
+      const key = 'npcw_' + w.id + '_' + w.dir + '_' + f;
       const tex = this.textures.get(key).getSourceImage(), hs = this.textures.get('hero_walk_' + w.dir + '_0').getSourceImage().height;
       const k = HERO_H / hs * w.sc;
       if (w.sprite.texture.key !== key) w.sprite.setTexture(key);
