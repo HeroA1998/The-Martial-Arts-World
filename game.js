@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.11.3';   // 每次更新請加一
+const VERSION = 'v0.11.4';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -445,6 +445,7 @@ class VillageScene extends Phaser.Scene {
 
   buildScene() {
     this.world = [];   // 世界物件，會被鏡頭看到
+    this.bandImgs = [];
     this.ui = [];      // 螢幕固定物件
     this.forestTrees = []; this.camps = []; this.exits = [];
     this.obstacles = this.physics.add.staticGroup();
@@ -1741,33 +1742,53 @@ class VillageScene extends Phaser.Scene {
       return img;
     };
     // 沿一段橫向範圍排建築；每棟之後有機會留一段空隙（gap 由呼叫端決定放什麼）
-    const fillRow = (x0, x1, put, gap, gapChance = 0.5) => {
+    const fillRow = (x0, x1, put, gap, gapChance = 0.5, ov = 2) => {
+      if (gapChance === 0) {   // 排滿：先挑一串建築，再整體等比縮放，剛好填滿 x0..x1，不留零頭
+        const picks = []; let tot = 0, prev = '';
+        while (tot < x1 - x0 + ov) {
+          let c; do { c = codes[Math.floor(rnd() * codes.length)]; } while (c === prev); prev = c;
+          const sc = 0.92 + rnd() * 0.16; picks.push([c, sc]); tot += SPR[c][1] * sc - ov;
+        }
+        // 最後一棟若會超出太多，就丟掉它再縮放（縮放比例不超出 0.85–1.25）
+        const fit = list => { let t = ov; for (const [c, sc] of list) t += SPR[c][1] * sc - ov; return (x1 - x0 + ov) / (t); };
+        let k = fit(picks); if (k < 0.85 && picks.length > 1) { picks.pop(); k = fit(picks); }
+        let x = x0;
+        for (const [c, sc0] of picks) { const sc = sc0 * k, w = SPR[c][1] * sc; put(c, x, sc, w); x += w - ov; }
+        return;
+      }
       let x = x0, prev = '';
       while (x < x1 - 70) {
         let c; do { c = codes[Math.floor(rnd() * codes.length)]; } while (c === prev); prev = c;
         const sc = 0.92 + rnd() * 0.16, w = SPR[c][1] * sc;
         if (x + w > x1) break;
         put(c, x, sc, w);
-        x += w - 2;
+        x += w - ov;
         if (rnd() < gapChance && x + 40 < x1) { const gw = 30 + rnd() * 26; gap(x, x + gw); x += gw; }
       }
       if (x < x1) gap(x, x1);
     };
     const shrineL = SHRINE_POS.x - 73, shrineR = SHRINE_POS.x + 73;
     // 北側第一排（有影子；祠堂佔住中間）
+    const SIGNS = ['布莊', '藥鋪', '酒家', '茶館', '鐵匠', '米行', '客棧', '雜貨'];
+    let signN = 0;
     const northPut = (c, x, sc, w) => {
       this.world.push(this.add.ellipse(x + w / 2, top - 2, w * 0.95, 8, 0x000000, 0.25).setDepth(top - 3));
-      draw(c, x, top - 4, sc, 0, top - 4);
+      const img = draw(c, x, top - 4, sc, 0, top - 4);
+      if (c !== 'S' && c !== 'H' && rnd() < 0.7) {   // 木招牌掛在門旁（商店圖本身已有招牌）
+        const txt = SIGNS[signN++ % SIGNS.length], sx = x + w * (rnd() < 0.5 ? 0.13 : 0.87), sy = top - 4 - img.displayHeight * 0.3;
+        const sg = this.add.graphics().setDepth(top - 3); this.world.push(sg);
+        sg.fillStyle(0x2a1a10, 1); sg.fillRect(sx - 7, sy - 14, 14, 30); sg.fillStyle(0xb98a3e, 1); sg.fillRect(sx - 6, sy - 13, 12, 28);
+        this.world.push(this.add.text(sx, sy + 1, txt[0] + '\n' + txt[1], { fontFamily: 'system-ui, sans-serif', fontSize: '9px', fontStyle: 'bold', color: '#2a1408', align: 'center', lineSpacing: 1, resolution: 3 }).setOrigin(0.5).setDepth(top - 2));
+      }
     };
-    const northGap = (a, b) => {
-      const cx = (a + b) / 2, span = b - a;
-      this.world.push(this.add.ellipse(cx, top - 2, Math.min(span, 70), 8, 0x000000, 0.22).setDepth(top - 3));
-      if (span > 22) tree(cx, top - 5, 96 + rnd() * 30, 0.9, top - 5);
-      if (span > 34) prop('bush_01_k', a + 8 + rnd() * 6, top - 2, 20 + rnd() * 8, top - 2);
-      if (span > 50) prop('bush_01_k', b - 8 - rnd() * 6, top - 2, 18 + rnd() * 8, top - 2);
+    const northGap = (a, b) => {   // 排不下的零頭：補一小段磚牆，不留空地、不放植物
+      if (b - a < 4) return;
+      const wg2 = this.add.graphics().setDepth(top - 4); this.world.push(wg2);
+      wg2.fillStyle(0x59534a, 1); wg2.fillRect(a, top - 46, b - a, 44); wg2.fillStyle(0x3a352f, 1); wg2.fillRect(a, top - 46, b - a, 4);
+      wg2.fillStyle(0x45403a, 1); for (let py = top - 38; py < top - 4; py += 9) wg2.fillRect(a, py, b - a, 1);
     };
-    fillRow(14, shrineL - 10, northPut, northGap);
-    fillRow(shrineR + 10, W - 14, northPut, northGap);
+    fillRow(14, shrineL - 10, northPut, northGap, 0, 14);
+    fillRow(shrineR + 10, W - 14, northPut, northGap, 0, 14);
     {   // 祠堂（暫用舊圖，之後換新圖）
       const x = SHRINE_POS.x, by = SHRINE_POS.y, w = 146, tex = this.textures.get('shrine_ext_k').getSourceImage(), h = w * tex.height / tex.width;
       this.world.push(this.add.image(x, by, 'shrine_ext_k').setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(by));
@@ -1796,19 +1817,23 @@ class VillageScene extends Phaser.Scene {
     this.world.push(this.add.image(0, 0, 'town_sky2').setOrigin(0).setScale(2).setDepth(-4));
     { const hz = this.add.graphics().setDepth(top - 6); this.world.push(hz);
       hz.fillStyle(0x3d5030, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x587240, 1); hz.fillRect(0, top - 10, W, 2); }
-    // 南側：只有一排建築黑影（取代完整貼圖），帶綠的深灰，緊貼大街下緣；乾淨的屋頂輪廓，不重疊
-    const southTop = bot + 4;
-    const south = (c, x, sc, w) => {
-      const tex = this.textures.get(SPR[c][0]).getSourceImage(), h = w * tex.height / tex.width;
-      draw(c, x, southTop + h, sc, 0, 400).setTint(0x36443c).setAlpha(0.96);
-    };
-    fillRow(14, W - 14, south, () => {}, 0.12);
+    // 南側：不放實體建築。畫面最底部貼一排建築的上半截（半透明黑影，像前景遮擋），上下不動、只隨左右捲動
+    this.bandImgs = [];
+    {
+      const CROP = 0.55;
+      fillRow(-20, W + 40, (c, x, sc, w) => {
+        const img = draw(c, x, 0, sc * 1.5, CROP, 900);
+        img.setOrigin(0.5, CROP).setTint(0x1f2a24).setAlpha(0.72);
+        this.bandImgs.push(img);
+      }, () => {}, 0, 18);
+    }
     this.sils = [];
     this.stage = { phase: 'walk', t0: 0 };
   }
 
   // 前景黑影：主角靠近或走到後面時變透明
   fadeSils() {
+    if (this.bandImgs && this.bandImgs.length) { const vb = this.cameras.main.worldView; for (const im of this.bandImgs) im.y = vb.bottom; }
     if (!this.sils) return;
     const px = this.playerBody.x, py = this.playerBody.y;
     for (const o of this.sils) {
