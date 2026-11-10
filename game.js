@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.12.1';   // 每次更新請加一
+const VERSION = 'v0.12.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -1941,7 +1941,7 @@ class VillageScene extends Phaser.Scene {
     if (this.down || this.cine || this.roll || this.atk || this.drink) return;
     const order = [this.quick, 'flask', 'jc', 'xq'];
     const id = order.find(k => this.itemUseful(k));
-    if (!id) { this.stamFlash = t; this.potFlash = t + 300; return; }
+    if (!id) return;   // 沒東西可用或滿血：不閃、不提示
     this.drink = { id, start: t, healed: false };
     this.mv.x = 0; this.mv.y = 0;
   }
@@ -2058,7 +2058,7 @@ class VillageScene extends Phaser.Scene {
     this.invBtnText.setAlpha((can ? 1 : 0.35) * k).setVisible(!this.invOpen && !this.panelOpen);
     // 藥鍵
     const pp = this.potPos(), id = [this.quick, 'flask', 'jc', 'xq'].find(q => this.itemUseful(q)), shown = id || this.quick;
-    const flash = t < (this.potFlash || 0) && Math.floor(t / 80) % 2;
+    const flash = false;   // 藥鍵不閃爍
     if (this.invOpen) this.potText.setVisible(false); else this.potText.setVisible(true);
     if (!this.invOpen) {
     g.fillStyle(0x16201a, this.drink ? 0.75 : 0.45); g.fillCircle(pp.x, pp.y, 28);
