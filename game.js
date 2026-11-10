@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.2';   // 每次更新請加一
+const VERSION = 'v0.14.3';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -389,9 +389,10 @@ class VillageScene extends Phaser.Scene {
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
     this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
-    this.load.image('shrine_interior', A + 'shrine_interior_v3.png');
+    this.load.image('shrine_interior', A + 'shrine_interior_v4.png');
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
+    for (let k = 1; k <= 4; k++) this.load.image('road_t' + k, A + 'tiles/town_road_tile_0' + k + '.png');
     this.load.image('town_grass', A + 'tiles/town_grass.png');
     this.load.image('forest_floor', A + 'tiles/forest_floor.png');
     this.load.image('dirt_path', A + 'tiles/dirt_path.png');
@@ -481,7 +482,7 @@ class VillageScene extends Phaser.Scene {
     this.makePeds();   // 分層路人：先疊好染色後的貼圖，零件原圖隨後釋放
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
-      if (k.startsWith('__') || k === 'forest_floor' || k === 'dirt_path' || k === 'stone_floor' || k === 'town_grass') continue;   // 兩張地面圖要留到 buildForest 用完再釋放
+      if (k.startsWith('__') || k.startsWith('road_t') || k === 'forest_floor' || k === 'dirt_path' || k === 'stone_floor' || k === 'town_grass') continue;   // 路磚留到 buildTown 用完再釋放   // 兩張地面圖要留到 buildForest 用完再釋放
       if (this.textures.get(k).getSourceImage() instanceof HTMLImageElement) this.textures.remove(k);
     }
 
@@ -1743,18 +1744,29 @@ class VillageScene extends Phaser.Scene {
         x.drawImage(this.textures.get(key).getSourceImage(), 0, 0, TW, TW);
         return x.getImageData(0, 0, TW, TW).data;
       };
-      const st = tileData('stone_floor'), gr = tileData('dirt_path');
+      const gr = tileData('dirt_path');
+      // 大街：32px 路磚四種變化，依格子位置隨機挑一種（固定種子，每次開game都一樣）
+      const RT = 32, roadData = [1, 2, 3, 4].map(k => {
+        const c = document.createElement('canvas'); c.width = c.height = RT;
+        const x = c.getContext('2d'); x.drawImage(this.textures.get('road_t' + k).getSourceImage(), 0, 0, RT, RT);
+        return x.getImageData(0, 0, RT, RT).data;
+      });
+      const pickRoad = (wx, wy) => { const h = ((Math.floor(wx / RT) * 73856093) ^ (Math.floor(wy / RT) * 19349663)) >>> 0; return roadData[h % 4]; };
       const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
       const g = cv.getContext('2d'), img = g.createImageData(cw, ch), od = img.data;
       let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
         const street = Math.abs(j * C - R.y + (rnd() - 0.5) * 6) < R.hw;
-        const o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4, src = street ? st : gr, kr = street ? 1.18 : 1.25, kg = street ? 1.18 : 1.2, kb = street ? 1.18 : 1.05;
+        const d = (j * cw + i) * 4, kr = street ? 1.1 : 1.25, kg = street ? 1.1 : 1.2, kb = street ? 1.1 : 1.05;
+        let src, o;
+        if (street) { const wx = i * C, wy = j * C; src = pickRoad(wx, wy); o = (((wy % RT) * RT) + (wx % RT)) * 4; }
+        else { src = gr; o = ((j % TW) * TW + (i % TW)) * 4; }
         od[d] = Math.min(255, src[o] * kr); od[d + 1] = Math.min(255, src[o + 1] * kg); od[d + 2] = Math.min(255, src[o + 2] * kb); od[d + 3] = 255;
       }
       g.putImageData(img, 0, 0);
       this.textures.addCanvas('town_ground7', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
       if (this.textures.exists('stone_floor')) this.textures.remove('stone_floor');
+      for (let k = 1; k <= 4; k++) if (this.textures.exists('road_t' + k)) this.textures.remove('road_t' + k);
       if (this.textures.exists('town_grass')) this.textures.remove('town_grass');
     }
     this.world.push(this.add.image(0, 0, 'town_ground7').setOrigin(0).setScale(2).setDepth(-20));
