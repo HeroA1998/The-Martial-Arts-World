@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.1';   // 每次更新請加一
+const VERSION = 'v0.14.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -126,7 +126,7 @@ const PED_COLORS = {   // 欄位 → 可選染色（RGB）
   hat:   [[200, 175, 110], [150, 120, 80], [180, 170, 150]],
 };
 const PED_SLOT_COLOR = { base: 'skin', face: 'skin', bottom: 'cloth', top: 'cloth', beard: 'hair', hair: 'hair', hat: 'hat' };
-const PED_COUNT = 8;
+const PED_COUNT = 0;   // 分層路人暫停（品質不如敵人）；改用單一角色後再開
 const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
@@ -368,7 +368,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
-    for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
+    if (PED_COUNT > 0) for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
       for (const d of PED_DIRS) this.load.image('npc_' + nm + '_' + d, A + 'characters/npc_' + nm + '_walk_' + d + '.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
     this.load.image('hero_attack_front', A + 'characters/hero_attack_front.png');
