@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.11.6';   // 每次更新請加一
+const VERSION = 'v0.12.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -354,7 +354,8 @@ class VillageScene extends Phaser.Scene {
     }
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
-    this.load.image('shrine_exterior', A + 'buildings/shrine_exterior.png');
+    this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
+    this.load.image('shrine_interior', A + 'shrine_interior_v2.png');
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
     this.load.image('town_grass', A + 'tiles/town_grass.png');
@@ -379,6 +380,15 @@ class VillageScene extends Phaser.Scene {
   // 去背素材（只做一次；切換區域重啟場景時不用重做）
   prepareTextures() {
     this.keyTex('shrine_exterior', 'shrine_ext_k');
+    {   // 祠堂內部：去洋紅但不裁切（尺寸要和地圖一樣）
+      const im = this.textures.get('shrine_interior').getSourceImage(), c = document.createElement('canvas');
+      c.width = im.width; c.height = im.height;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+      for (let i = 0; i < p.length; i += 4) if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) p[i + 3] = 0;
+      g.putImageData(d, 0, 0);
+      this.textures.addCanvas('shrine_int_k', c);
+    }
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.keyTex(n, n + '_k');
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
@@ -1723,9 +1733,9 @@ class VillageScene extends Phaser.Scene {
     this.block(14, 22, W - 14, top - 2); this.block(14, bot + 2, W - 14, BOT);
 
     // 建築與風景：街北第一排門朝南、緊貼大街，建築之間偶爾夾樹與灌木，後面是樹林；街南是疏落的屋後，之間有樹、柵欄、矮牆，再後面是樹林
-    const SPR = { A: ['house_a_k', 108], B: ['house_b_k', 110], S: ['shop_k', 138], G: ['courtyard_gate_k', 118], H: ['shrine_ext_k', 146] };
+    const SPR = { A: ['house_a_k', 108], B: ['house_b_k', 110], S: ['shop_k', 138], G: ['courtyard_gate_k', 118], H: ['shrine_ext_k', 172] };
     let seed = 13; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const codes = 'ABSAGBHAB';
+    const codes = 'ABSAGBSAB';   // 祠堂 H 不放進隨機建築池（只在大街正中放一座）
     const shade = v => { const c = Math.round(255 * v); return (c << 16) | (c << 8) | c; };
     const tree = (x, baseY, h, sh, depth) => {
       const key = 'forest_tree_0' + (1 + Math.floor(rnd() * 3)) + '_k', tex = this.textures.get(key).getSourceImage(), w = h * tex.width / tex.height;
@@ -1768,7 +1778,7 @@ class VillageScene extends Phaser.Scene {
       }
       if (x < x1) gap(x, x1);
     };
-    const shrineL = SHRINE_POS.x - 73, shrineR = SHRINE_POS.x + 73;
+    const shrineL = SHRINE_POS.x - 86, shrineR = SHRINE_POS.x + 86;
     // 北側第一排（有影子；祠堂佔住中間）
     const SIGNS = ['布莊', '藥鋪', '酒家', '茶館', '鐵匠', '米行', '客棧', '雜貨'];
     let signN = 0;
@@ -1790,10 +1800,10 @@ class VillageScene extends Phaser.Scene {
     };
     fillRow(14, shrineL - 10, northPut, northGap, 0, 14);
     fillRow(shrineR + 10, W - 14, northPut, northGap, 0, 14);
-    {   // 祠堂（暫用舊圖，之後換新圖）
-      const x = SHRINE_POS.x, by = SHRINE_POS.y, w = 146, tex = this.textures.get('shrine_ext_k').getSourceImage(), h = w * tex.height / tex.width;
+    {   // 祠堂（陳家祠風格 v4）
+      const x = SHRINE_POS.x, by = SHRINE_POS.y, w = 172, tex = this.textures.get('shrine_ext_k').getSourceImage(), h = w * tex.height / tex.width;
       this.world.push(this.add.image(x, by, 'shrine_ext_k').setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(by));
-      this.world.push(this.add.text(x, by - h * 0.425, '祠堂', { fontFamily: 'system-ui, sans-serif', fontSize: '10px', fontStyle: 'bold', color: '#3a1a10', resolution: 3 }).setOrigin(0.5).setDepth(by + 1));
+      this.world.push(this.add.text(x, by - h * 0.533, '祠堂', { fontFamily: 'system-ui, sans-serif', fontSize: '7px', fontStyle: 'bold', color: '#e8c55a', resolution: 4 }).setOrigin(0.5).setDepth(by + 1));
       this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 2, y1: by + 18, to: 'shrine', spawn: { x: 150, y: 392 }, facing: 'up' });
     }
     // 北側後面：天空（陰天、薄霧、遠山），建築與樹站在天空前；大街上緣有一條暗色地平帶接住天空
@@ -1861,46 +1871,39 @@ class VillageScene extends Phaser.Scene {
   // ---------- 祠堂室內 ----------
   buildShrine() {
     const W = MAP_W, H = MAP_H;
-    this.makeGround('shrine_floor', W, H, 2, (x, y, rnd) => {
-      if (y < 78) { const n = (rnd() - 0.5) * 8; return [44 + n, 34 + n, 28 + n]; }           // 後牆
-      const plank = Math.floor(x / 20), seam = x % 20 < 1;
-      const v = 66 + (plank * 13 % 9) * 2 + (rnd() - 0.5) * 8;
-      return seam ? [34, 26, 20] : [v, v * 0.76, v * 0.55];                                       // 木地板
-    });
-    const g = this.add.graphics().setDepth(-5); this.world.push(g);
-    g.fillStyle(0x2a1e18, 1); g.fillRect(0, 0, 22, H); g.fillRect(W - 22, 0, 22, H);               // 側牆
-    g.fillStyle(0x7a2a22, 1); g.fillRect(22, 40, 8, 40); g.fillRect(W - 30, 40, 8, 40);            // 柱
-    g.fillStyle(0x8a2a22, 1); g.fillRect(60, 14, 22, 46); g.fillRect(W - 82, 14, 22, 46);          // 兩側紅幡
-    g.fillStyle(0xc9a43a, 1); g.fillRect(66, 24, 10, 26); g.fillRect(W - 76, 24, 10, 26);
-    // 門口（下方）：亮色缺口
-    g.fillStyle(0xcdbf9a, 0.85); g.fillRect(W / 2 - 34, H - 18, 68, 18);
-    g.fillStyle(0x2a1e18, 1); g.fillRect(22, H - 18, W / 2 - 56, 18); g.fillRect(W / 2 + 34, H - 18, W / 2 - 56, 18);
-    // 祭壇：長桌、牌位、香爐
-    const a = this.add.graphics().setDepth(118); this.world.push(a);
-    a.fillStyle(0x000000, 0.3); a.fillEllipse(150, 120, 120, 12);
-    a.fillStyle(0x4a2a1a, 1); a.fillRect(98, 92, 104, 26);
-    a.fillStyle(0x6a3e26, 1); a.fillRect(98, 92, 104, 6);
-    a.fillStyle(0x2a1810, 1);
-    for (let k = 0; k < 5; k++) { a.fillRect(106 + k * 18, 70, 12, 22); a.fillStyle(0xc9a43a, 1); a.fillRect(109 + k * 18, 74, 6, 8); a.fillStyle(0x2a1810, 1); }
-    a.fillStyle(0x8a7a40, 1); a.fillRect(144, 98, 12, 9); a.fillRect(146, 94, 8, 4);               // 香爐
+    const g = this.add.graphics().setDepth(-6); this.world.push(g);
+    g.fillStyle(0x16120e, 1); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xcdbf9a, 1); g.fillRect(W / 2 - 38, H - 40, 76, 40);          // 門口外透進來的亮光
+    this.world.push(this.add.image(0, 0, 'shrine_int_k').setOrigin(0).setDepth(-5));
+    this.block(0, 0, 36, H); this.block(W - 36, 0, W, H); this.block(0, 0, W, 64);
+    this.block(50, 64, 250, 152);          // 長桌與牌位
+    this.block(106, 150, 194, 204);        // 香爐
+    this.block(0, H - 38, 112, H); this.block(188, H - 38, W, H);
     this.altarFx = this.add.graphics().setDepth(119); this.world.push(this.altarFx);
-    this.block(98, 90, 202, 116);
-    this.block(0, 0, 22, H); this.block(W - 22, 0, W, H); this.block(0, 0, W, 66); this.block(0, H - 30, W / 2 - 34, H); this.block(W / 2 + 34, H - 30, W, H);
-    this.camps = [{ x: 150, y: 128 }];   // 參拜的位置
-    this.exits.push({ x0: W / 2 - 34, x1: W / 2 + 34, y0: H - 24, y1: H + 5, to: 'town', spawn: { x: SHRINE_POS.x, y: SHRINE_POS.y + 34 }, facing: 'down' });
+    this.camps = [{ x: 150, y: 226 }];     // 參拜的位置（香爐前）
+    this.exits.push({ x0: W / 2 - 32, x1: W / 2 + 32, y0: H - 24, y1: H + 5, to: 'town', spawn: { x: SHRINE_POS.x, y: SHRINE_POS.y + 34 }, facing: 'down' });
     this.stage = { phase: 'walk', t0: 0 };
   }
 
-  // 祭壇的燭火
+  // 祭壇：燭火閃動與香爐飄煙
   drawCamps(time) {
     if (this.area !== 'shrine' || !this.altarFx) return;
     const g = this.altarFx; g.clear();
-    for (const cx of [90, 210]) {
-      g.fillStyle(0x6a4a2a, 1); g.fillRect(cx - 2, 100, 4, 16);
+    for (const cx of [68, 233]) {
       const f = 1 + 0.25 * Math.sin(time / 80 + cx) + 0.12 * Math.sin(time / 47);
-      g.fillStyle(0xf2b23c, 1); g.fillTriangle(cx - 3, 100, cx + 3, 100, cx, 100 - 9 * f);
-      g.fillStyle(0xfff0b0, 1); g.fillTriangle(cx - 1.5, 100, cx + 1.5, 100, cx, 100 - 5 * f);
-      g.fillStyle(0xf2b23c, 0.10); g.fillCircle(cx, 96, 22 + 3 * f);
+      g.fillStyle(0xf2b23c, 0.12); g.fillCircle(cx, 90, 20 + 3 * f);
+      g.fillStyle(0xf2b23c, 1); g.fillTriangle(cx - 2.5, 88, cx + 2.5, 88, cx, 88 - 7 * f);
+      g.fillStyle(0xfff0b0, 1); g.fillTriangle(cx - 1.2, 88, cx + 1.2, 88, cx, 88 - 4 * f);
+    }
+    // 香煙：幾縷淡煙從爐口升起，慢慢飄散變淡
+    const N = 7, LIFE = 3600;
+    for (let k = 0; k < N; k++) {
+      const t = ((time + k * LIFE / N) % LIFE) / LIFE;          // 0→1
+      const x = 150 + Math.sin(t * 6 + k * 1.7) * (2 + 9 * t) + (k % 2 ? 1 : -1) * 3 * t;
+      const y = 148 - t * 70;
+      const r = 1.6 + t * 4.5;
+      g.fillStyle(0xdad6cc, 0.5 * (1 - t) * Math.min(1, t * 8));
+      g.fillCircle(x, y, r);
     }
   }
 
