@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.12.0';   // 每次更新請加一
+const VERSION = 'v0.12.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -1829,7 +1829,7 @@ class VillageScene extends Phaser.Scene {
     { const hz = this.add.graphics().setDepth(top - 6); this.world.push(hz);
       hz.fillStyle(0x5a4a38, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x7a6850, 1); hz.fillRect(0, top - 10, W, 2); }
     {   // 上排建築背後的圍牆：青灰磚牆，頂上瓦片壓頂，從西到東連續；建築與招牌疊在它前面，天空只剩牆上一條
-      const wTop = top - 4 - 165, wb = top - 8, wl = this.add.graphics().setDepth(top - 7); this.world.push(wl);
+      const wTop = top - 8 - 84, wb = top - 8, wl = this.add.graphics().setDepth(top - 7); this.world.push(wl);
       wl.fillStyle(0x6f7b73, 1); wl.fillRect(0, wTop, W, wb - wTop);
       wl.fillStyle(0x58645d, 1);
       for (let py = wTop + 10, row = 0; py < wb; py += 9, row++) {
