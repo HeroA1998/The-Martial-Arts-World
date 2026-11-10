@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.13.0';   // 每次更新請加一
+const VERSION = 'v0.13.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -363,7 +363,7 @@ class VillageScene extends Phaser.Scene {
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
     this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
-    this.load.image('shrine_interior', A + 'shrine_interior_v2.png');
+    this.load.image('shrine_interior', A + 'shrine_interior_v3.png');
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
     this.load.image('town_grass', A + 'tiles/town_grass.png');
