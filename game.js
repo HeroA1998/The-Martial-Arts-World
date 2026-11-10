@@ -4,7 +4,7 @@
 let MAP_W = 460, MAP_H = 1120;   // 目前區域的大小（切換區域時改變）
 const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
-  town:   { w: 1400, h: 560,  bg: '#1c1a16', name: '鎮內' },
+  town:   { w: 1400, h: 420,  bg: '#1c1a16', name: '鎮內' },
   shrine: { w: 300, h: 440,  bg: '#0c0a08', name: '祠堂' },
 };
 
@@ -35,7 +35,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.11.4';   // 每次更新請加一
+const VERSION = 'v0.11.5';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -723,7 +723,8 @@ class VillageScene extends Phaser.Scene {
 
   applyZoom() {
     // 視野約寬 230、高 460（世界單位）：拉近，上下也會跟著移動
-    const z = Math.max(1.0, Math.min(2.2, Math.min(this.scale.width / 230, this.scale.height / 460)));
+    const town = this.area === 'town';   // 鎮內拉得更近
+    const z = Math.max(1.0, Math.min(town ? 2.7 : 2.2, Math.min(this.scale.width / (town ? 175 : 230), this.scale.height / (town ? 370 : 460))));
     this.cameras.main.setZoom(z);
   }
 
@@ -1680,9 +1681,9 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 鎮內 ----------
   buildTown() {
-    const W = MAP_W, H = MAP_H, BOT = 536, R = TOWN_ROAD, top = R.y - R.hw, bot = R.y + R.hw;
+    const W = MAP_W, H = MAP_H, BOT = 396, R = TOWN_ROAD, top = R.y - R.hw, bot = R.y + R.hw;
     // 地面：大街用石板圖、其餘用泥地圖（只做一次，之後以 key 快取）
-    if (!this.textures.exists('town_ground6')) {
+    if (!this.textures.exists('town_ground7')) {
       const C = 2, TW = 72, cw = Math.ceil(W / C), ch = Math.ceil(H / C);
       const tileData = key => {
         const c = document.createElement('canvas'); c.width = c.height = TW;
@@ -1690,21 +1691,21 @@ class VillageScene extends Phaser.Scene {
         x.drawImage(this.textures.get(key).getSourceImage(), 0, 0, TW, TW);
         return x.getImageData(0, 0, TW, TW).data;
       };
-      const st = tileData('stone_floor'), gr = tileData('town_grass');
+      const st = tileData('stone_floor'), gr = tileData('dirt_path');
       const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
       const g = cv.getContext('2d'), img = g.createImageData(cw, ch), od = img.data;
       let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
         const street = Math.abs(j * C - R.y + (rnd() - 0.5) * 6) < R.hw;
-        const o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4, src = street ? st : gr, kr = street ? 1.18 : 1.5, kg = street ? 1.18 : 1.55, kb = street ? 1.18 : 1.3;
+        const o = ((j % TW) * TW + (i % TW)) * 4, d = (j * cw + i) * 4, src = street ? st : gr, kr = street ? 1.18 : 1.25, kg = street ? 1.18 : 1.2, kb = street ? 1.18 : 1.05;
         od[d] = Math.min(255, src[o] * kr); od[d + 1] = Math.min(255, src[o + 1] * kg); od[d + 2] = Math.min(255, src[o + 2] * kb); od[d + 3] = 255;
       }
       g.putImageData(img, 0, 0);
-      this.textures.addCanvas('town_ground6', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.textures.addCanvas('town_ground7', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);
       if (this.textures.exists('stone_floor')) this.textures.remove('stone_floor');
       if (this.textures.exists('town_grass')) this.textures.remove('town_grass');
     }
-    this.world.push(this.add.image(0, 0, 'town_ground6').setOrigin(0).setScale(2).setDepth(-20));
+    this.world.push(this.add.image(0, 0, 'town_ground7').setOrigin(0).setScale(2).setDepth(-20));
 
     // 外牆：四周；鎮門在東牆、大街高度
     const gy0 = TOWN_GATE.y - R.hw, gy1 = TOWN_GATE.y + R.hw;
@@ -1816,13 +1817,27 @@ class VillageScene extends Phaser.Scene {
     }
     this.world.push(this.add.image(0, 0, 'town_sky2').setOrigin(0).setScale(2).setDepth(-4));
     { const hz = this.add.graphics().setDepth(top - 6); this.world.push(hz);
-      hz.fillStyle(0x3d5030, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x587240, 1); hz.fillRect(0, top - 10, W, 2); }
+      hz.fillStyle(0x5a4a38, 1); hz.fillRect(0, top - 10, W, 12); hz.fillStyle(0x7a6850, 1); hz.fillRect(0, top - 10, W, 2); }
+    {   // 上排建築背後的圍牆：青灰磚牆，頂上瓦片壓頂，從西到東連續；建築與招牌疊在它前面，天空只剩牆上一條
+      const wTop = top - 4 - 165, wb = top - 8, wl = this.add.graphics().setDepth(top - 7); this.world.push(wl);
+      wl.fillStyle(0x6f7b73, 1); wl.fillRect(0, wTop, W, wb - wTop);
+      wl.fillStyle(0x58645d, 1);
+      for (let py = wTop + 10, row = 0; py < wb; py += 9, row++) {
+        wl.fillRect(0, py, W, 1);
+        for (let px = (row % 2) * 14; px < W; px += 28) wl.fillRect(px, py - 9, 1, 9);
+      }
+      wl.fillStyle(0x84918a, 1); for (let px = 3; px < W; px += 41) wl.fillRect(px, wTop + 14 + (px % 4) * 9, 12, 2);   // 磚面淺色斑塊
+      wl.fillStyle(0x464f50, 1); wl.fillRect(-2, wTop - 7, W + 4, 9);      // 瓦頂
+      wl.fillStyle(0x333b3c, 1); for (let px = 0; px < W; px += 6) wl.fillRect(px, wTop - 6, 1, 8);   // 瓦楞
+      wl.fillStyle(0x5a6667, 1); wl.fillRect(-2, wTop - 8, W + 4, 2);
+      wl.fillStyle(0x2f3638, 1); wl.fillRect(-2, wTop + 2, W + 4, 2);      // 壓頂陰影
+    }
     // 南側：不放實體建築。畫面最底部貼一排建築的上半截（半透明黑影，像前景遮擋），上下不動、只隨左右捲動
     this.bandImgs = [];
     {
-      const CROP = 0.55;
+      const CROP = 0.5;
       fillRow(-20, W + 40, (c, x, sc, w) => {
-        const img = draw(c, x, 0, sc * 1.5, CROP, 900);
+        const img = draw(c, x, 0, sc * 1.1, CROP, 900);
         img.setOrigin(0.5, CROP).setTint(0x1f2a24).setAlpha(0.72);
         this.bandImgs.push(img);
       }, () => {}, 0, 18);
