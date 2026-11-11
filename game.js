@@ -86,7 +86,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.6';   // 每次更新請加一
+const VERSION = 'v0.14.7';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -163,7 +163,7 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
            '遇到賊人別硬拚，看準他出手的空檔再還手。',
            '聽說外頭有人在招義勇……算了，當我沒說。',
            '鎮上有祠堂、有藥鋪，比外頭安穩多了。'] },
-  { id: 'elder', name: '老農', x: 480, y: 326, look: 'farmer', face: 'right',
+  { id: 'elder', name: '老村民', x: 480, y: 326, look: 'elder_man', face: 'right',
     lines: ['年輕人，亂世不太平啊。',
             '今年的收成又被官差收走一半，剩下的連過冬都不夠。',
             '祠堂在大街正中。進去參拜，能把身子骨練得更結實。',
@@ -199,8 +199,13 @@ const PED_COLORS = {   // 欄位 → 可選染色（RGB）
   hat:   [[200, 175, 110], [150, 120, 80], [180, 170, 150]],
 };
 const PED_SLOT_COLOR = { base: 'skin', face: 'skin', bottom: 'cloth', top: 'cloth', beard: 'hair', hair: 'hair', hat: 'hat' };
-const ALL_NPC_IDS = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hunter', 'refugee'];   // 要載入的單一角色
-const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee'];   // 在大街上走動的路人（farmer、vendor、hunter 已當固定 NPC）   // 鎮內路人（單一角色，assets/characters/npc_<id>_walk_<方向>.png）
+const NPC_MEN = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hunter', 'refugee'];
+const NPC_WOMEN = ['farmwife', 'vegseller', 'washerwoman', 'innkeeper', 'maiden', 'villager_girl', 'maid'];
+const NPC_OLD = ['elder_man', 'elder_woman', 'old_fisher', 'old_sage'];
+const NPC_KIDS = ['child_boy', 'child_girl', 'child_beggar', 'child_shepherd'];   // 孩童在遊戲裡縮到 0.7 倍
+const ALL_NPC_IDS = [...NPC_MEN, ...NPC_WOMEN, ...NPC_OLD, ...NPC_KIDS];   // 要載入的單一角色（assets/characters/npc_<id>_walk_<方向>.png）
+// 在大街上走動的路人：固定 NPC 用掉的（elder_man、vendor、hunter）不再重複出現
+const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee', 'farmer', ...NPC_WOMEN, 'elder_woman', 'old_fisher', 'old_sage', ...NPC_KIDS];
 const PED_COUNT = 0;   // 分層路人暫停（品質不如敵人）；改用單一角色後再開
 const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
@@ -562,8 +567,9 @@ class VillageScene extends Phaser.Scene {
     }
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
     for (const id of ALL_NPC_IDS) for (const d of PED_DIRS)   // 單一角色：去洋紅並裁成 4 格
-      keyAndTrimFrames(this.textures.get('npcsrc_' + id + '_' + d).getSourceImage(), 4, 1)
+    { keyAndTrimFrames(this.textures.get('npcsrc_' + id + '_' + d).getSourceImage(), 4, 1)
         .forEach((cv, i) => this.textures.addCanvas('npcw_' + id + '_' + d + '_' + i, cv));
+      this.textures.remove('npcsrc_' + id + '_' + d); }   // 處理完馬上釋放原圖，手機記憶體才不會爆
     this.makePeds();   // 分層路人：先疊好染色後的貼圖，零件原圖隨後釋放
     // 去背完成：原始大圖（共約 100MB）之後不會再用，釋放掉，減輕手機（尤其 iPhone）的記憶體壓力；地磚 stone 要保留
     for (const k of this.textures.getTextureKeys()) {
@@ -2194,7 +2200,7 @@ class VillageScene extends Phaser.Scene {
       const sprite = this.add.image(x, y, 'npcw_' + id + '_front_1').setOrigin(0.5, 1).setDepth(y);
       const sh = this.add.ellipse(x, y - 1, 22, 8, 0x000000, 0.35).setDepth(y - 1);
       this.world.push(sprite); this.world.push(sh);
-      this.walkers.push({ id, x, y, sprite, sh, vx: 0, vy: 0, dir: 'front', flip: false, until: 0, t: rnd() * 1000, sp: 20 + rnd() * 14, y0, y1, sc: 1 });
+      this.walkers.push({ id, x, y, sprite, sh, vx: 0, vy: 0, dir: 'front', flip: false, until: 0, t: rnd() * 1000, sp: (NPC_OLD.includes(id) ? 13 + rnd() * 5 : NPC_KIDS.includes(id) ? 30 + rnd() * 10 : 20 + rnd() * 14), y0, y1, sc: NPC_KIDS.includes(id) ? 0.7 : 1 });
     });
     this.walkerT = this.time.now;
   }
