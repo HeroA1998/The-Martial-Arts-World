@@ -2,12 +2,62 @@
 'use strict';
 
 let MAP_W = 460, MAP_H = 1120;   // 目前區域的大小（切換區域時改變）
-const SHRINE_S = 0.7;            // 祠堂室內大小 = 210×308 單位（v5 圖 1500×2200 的 0.14 倍），主角大小不變
 const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
   town:   { w: 1400, h: 420,  bg: '#1c1a16', name: '鎮內' },
-  shrine: { w: Math.round(300 * SHRINE_S), h: Math.round(440 * SHRINE_S),  bg: '#0c0a08', name: '祠堂' },
 };
+
+// ---------- 室內（祠堂、之後的店舖）----------
+// 一種室內 = 一份版面（座標，單位和世界一樣）＋多個城市版本（只指定圖檔）。
+// 主角在哪個城市進門，就載入那個城市的版本；找不到就用 'town' 版。
+// 某個城市的格局真的不同時，在該版本加 layout: { ... }，只覆蓋要改的欄位。
+// 圖片規格：高清、每單位約 7 像素（和主角、建築同密度），洋紅 #FF00FF 當透明；圖的長寬比要等於 w:h。
+let CURRENT_CITY = 'town';       // 目前所在城市（之後有別的城市時，進城時改這個）
+const INTERIORS = {
+  shrine: {
+    name: '祠堂', bg: '#0c0a08',
+    w: 210, h: 308,
+    doorLight: { x: 74, y: 277, w: 62 },                          // 門洞外透進來的亮光（到房間底邊）
+    blocks: [                                                     // 碰撞方塊 [x0, y0, x1, y1]；x1 = 'W'、y1 = 'H' 代表到邊
+      [0, 0, 26, 'H'], [184, 0, 'W', 'H'],                        // 左右牆
+      [0, 0, 'W', 117],                                           // 後牆、供桌與桌腳（含牌位、香爐）
+      [0, 273, 74, 'H'], [136, 273, 'W', 'H'],                    // 門兩側的牆
+    ],
+    camps: [{ x: 105, y: 138 }],                                  // 參拜的位置（供桌前、小香爐正前方）
+    exit: { x0: 77, x1: 133, y0: 288, to: 'town', spawn: () => ({ x: SHRINE_POS.x, y: SHRINE_POS.y + 34 }), facing: 'down' },
+    fx: [{ type: 'incense', x: 106, y: 79 }],                     // 小香爐的煙（向左飄）
+    variants: {
+      town: { image: 'shrine_interior_v5.png' },
+    },
+  },
+};
+const isInterior = a => !!INTERIORS[a];
+// 取得某種室內在某個城市的完整版面（共用版面＋該版本的覆蓋）
+function interiorLayout(type, city = CURRENT_CITY) {
+  const I = INTERIORS[type], key = I.variants[city] ? city : 'town', v = I.variants[key];
+  return Object.assign({}, I, v.layout || {}, { variantKey: key, image: v.image, texKey: 'int_' + type + '_' + key + '_k' });
+}
+// 區域資訊（森林、鎮內、室內都從這裡拿大小、背景色、名稱）
+function areaInfo(a) {
+  if (isInterior(a)) { const L = interiorLayout(a); return { w: L.w, h: L.h, bg: L.bg, name: L.name }; }
+  return AREAS[a];
+}
+// 進門時主角出現的位置（預設在房間下方正中）
+function interiorEntry(type) { const L = interiorLayout(type); return L.entry || { x: L.w / 2, y: L.h * 0.83 }; }
+// 香煙：算出每一縷煙在某一刻的位置、大小、透明度（越往上越偏左、越淡）
+function incensePuffs(time, fx) {
+  const N = 7, LIFE = 3600, out = [];
+  for (let i = 0; i < N; i++) {
+    const t = ((time + i * LIFE / N) % LIFE) / LIFE;          // 0→1
+    out.push({
+      x: fx.x + Math.sin(t * 6 + i * 1.7) * (0.8 + 2 * t) - 12 * t,
+      y: fx.y - t * 26,
+      r: 0.9 + t * 2.6,
+      a: 0.6 * (1 - t) * Math.min(1, t * 8),
+    });
+  }
+  return out;
+}
 
 // ---------- 森林小道 ----------
 // 小道中心線（略為彎曲）、中段的林間空地（戰場）、左右兩條側小徑（伏兵從這裡衝出）
@@ -359,7 +409,7 @@ class VillageScene extends Phaser.Scene {
     this.spawnFacing = (data && data.facing) || 'up';
     this.carry = (data && data.carry) || null;
     this.transitioning = false;
-    MAP_W = AREAS[this.area].w; MAP_H = AREAS[this.area].h;
+    MAP_W = areaInfo(this.area).w; MAP_H = areaInfo(this.area).h;
   }
 
   preload() {
@@ -392,7 +442,7 @@ class VillageScene extends Phaser.Scene {
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
     this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
-    this.load.image('shrine_interior', A + 'shrine_interior_v5.png');
+    for (const t of Object.keys(INTERIORS)) { const L = interiorLayout(t); this.load.image('int_' + t + '_' + L.variantKey, A + L.image); }   // 只載入目前城市的版本
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
     for (let k = 1; k <= 4; k++) this.load.image('road_t' + k, A + 'tiles/town_road_tile_0' + k + '.png');
@@ -415,18 +465,24 @@ class VillageScene extends Phaser.Scene {
     this.buildScene();
   }
 
+  // 室內圖：去洋紅但不裁切（尺寸要和地圖一樣）。已做過就直接回傳貼圖名稱
+  keyInterior(type) {
+    const L = interiorLayout(type);
+    if (this.textures.exists(L.texKey)) return L.texKey;
+    const im = this.textures.get('int_' + type + '_' + L.variantKey).getSourceImage(), c = document.createElement('canvas');
+    c.width = im.width; c.height = im.height;
+    const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) p[i + 3] = 0;
+    g.putImageData(d, 0, 0);
+    this.textures.addCanvas(L.texKey, c);
+    return L.texKey;
+  }
+
   // 去背素材（只做一次；切換區域重啟場景時不用重做）
   prepareTextures() {
     this.keyTex('shrine_exterior', 'shrine_ext_k');
-    {   // 祠堂內部：去洋紅但不裁切（尺寸要和地圖一樣）
-      const im = this.textures.get('shrine_interior').getSourceImage(), c = document.createElement('canvas');
-      c.width = im.width; c.height = im.height;
-      const g = c.getContext('2d'); g.drawImage(im, 0, 0);
-      const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
-      for (let i = 0; i < p.length; i += 4) if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) p[i + 3] = 0;
-      g.putImageData(d, 0, 0);
-      this.textures.addCanvas('shrine_int_k', c);
-    }
+    for (const t of Object.keys(INTERIORS)) this.keyInterior(t);
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.keyTex(n, n + '_k');
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
@@ -503,7 +559,7 @@ class VillageScene extends Phaser.Scene {
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
     else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); this.buildWalkers(); }
-    else this.buildShrine();
+    else this.buildInterior(this.area);
 
     // 固定擺設（目前沒有）：障礙、陰影、排序；this.obstacles 已在 buildForest 建好
     for (const p of PROPS) {
@@ -639,7 +695,7 @@ class VillageScene extends Phaser.Scene {
     // 鏡頭
     const cam = this.cameras.main;
     cam.setBounds(0, 0, MAP_W, MAP_H);
-    cam.setBackgroundColor(AREAS[this.area].bg);
+    cam.setBackgroundColor(areaInfo(this.area).bg);
     cam.fadeIn(260, 0, 0, 0);
     cam.startFollow(this.playerBody, true, 0.22, 0.22);
     this.applyZoom();
@@ -761,7 +817,7 @@ class VillageScene extends Phaser.Scene {
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', () => this.scale.off('resize', this.onResize));
     if (!this.boot) this.hintText.setVisible(false); else this.hintText.setVisible(true);
-    if (!this.boot) this.time.delayedCall(60, () => this.banner(AREAS[this.area].name, 1400));
+    if (!this.boot) this.time.delayedCall(60, () => this.banner(areaInfo(this.area).name, 1400));
   }
 
   // 把去背後的素材存成新的貼圖
@@ -1864,7 +1920,7 @@ class VillageScene extends Phaser.Scene {
       const x = SHRINE_POS.x, by = SHRINE_POS.y, w = 172, tex = this.textures.get('shrine_ext_k').getSourceImage(), h = w * tex.height / tex.width;
       this.world.push(this.add.image(x, by, 'shrine_ext_k').setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(by));
       this.world.push(this.add.text(x, by - h * 0.533, '祠堂', { fontFamily: 'system-ui, sans-serif', fontSize: '7px', fontStyle: 'bold', color: '#e8c55a', resolution: 4 }).setOrigin(0.5).setDepth(by + 1));
-      this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 2, y1: by + 18, to: 'shrine', spawn: { x: AREAS.shrine.w / 2, y: AREAS.shrine.h * 0.83 }, facing: 'up' });
+      this.exits.push({ x0: x - 18, x1: x + 18, y0: by - 2, y1: by + 18, to: 'shrine', spawn: interiorEntry('shrine'), facing: 'up' });
     }
     // 北側後面：天空（陰天、薄霧、遠山），建築與樹站在天空前；大街上緣有一條暗色地平帶接住天空
     if (!this.textures.exists('town_sky2')) {
@@ -1928,37 +1984,30 @@ class VillageScene extends Phaser.Scene {
     }
   }
 
-  // ---------- 祠堂室內 ----------
-  buildShrine() {
-    // v5 圖是 1500×2200，顯示成 210×308 單位（每單位約 7 像素，和主角同密度）。
-    // 下面的座標都是以 210×308 量的，乘上 k（k=1 時就是原尺寸）
-    const W = MAP_W, H = MAP_H, k = W / 210;
+  // ---------- 室內（祠堂、之後的店舖）----------
+  // 版面與版本都在檔案上方的 INTERIORS；這裡只負責依資料把房間蓋起來
+  buildInterior(type) {
+    const L = interiorLayout(type), W = MAP_W, H = MAP_H;
+    const edge = v => v === 'W' ? W : v === 'H' ? H : v;
     const g = this.add.graphics().setDepth(-6); this.world.push(g);
     g.fillStyle(0x16120e, 1); g.fillRect(0, 0, W, H);
-    g.fillStyle(0xcdbf9a, 1); g.fillRect(74 * k, 277 * k, 62 * k, H - 277 * k);          // 門洞外透進來的亮光
-    this.world.push(this.add.image(0, 0, 'shrine_int_k').setOrigin(0).setDisplaySize(W, H).setDepth(-5));
-    this.block(0, 0, 26 * k, H); this.block(184 * k, 0, W, H);     // 左右牆
-    this.block(0, 0, W, 117 * k);                                  // 後牆、供桌與桌腳（含牌位、香爐）
-    this.block(0, 273 * k, 74 * k, H); this.block(136 * k, 273 * k, W, H);   // 門兩側的牆
+    if (L.doorLight) { g.fillStyle(0xcdbf9a, 1); g.fillRect(L.doorLight.x, L.doorLight.y, L.doorLight.w, H - L.doorLight.y); }   // 門洞外透進來的亮光
+    this.world.push(this.add.image(0, 0, this.keyInterior(type)).setOrigin(0).setDisplaySize(W, H).setDepth(-5));
+    for (const b of L.blocks) this.block(edge(b[0]), edge(b[1]), edge(b[2]), edge(b[3]));
     this.altarFx = this.add.graphics().setDepth(119); this.world.push(this.altarFx);
-    this.camps = [{ x: 105 * k, y: 138 * k }];     // 參拜的位置（供桌前、小香爐正前方）
-    this.exits.push({ x0: 77 * k, x1: 133 * k, y0: 288 * k, y1: H + 5, to: 'town', spawn: { x: SHRINE_POS.x, y: SHRINE_POS.y + 34 }, facing: 'down' });
+    this.camps = (L.camps || []).map(c => ({ x: c.x, y: c.y }));
+    const e = L.exit;
+    this.exits.push({ x0: e.x0, x1: e.x1, y0: e.y0, y1: H + 5, to: e.to, spawn: e.spawn(), facing: e.facing });
     this.stage = { phase: 'walk', t0: 0 };
   }
 
-  // 祭壇：小香爐的煙（從爐口升起，一路向左飄散變淡）。v5 圖沒有燭台，所以不畫燭火
+  // 室內的動態效果（目前只有香煙；之後店舖的效果也加在 fx 清單裡）
   drawCamps(time) {
-    if (this.area !== 'shrine' || !this.altarFx) return;
+    if (!isInterior(this.area) || !this.altarFx) return;
     const g = this.altarFx; g.clear();
-    const sc = MAP_W / 210;            // 座標以 210×308 量
-    const N = 7, LIFE = 3600;
-    for (let i = 0; i < N; i++) {
-      const t = ((time + i * LIFE / N) % LIFE) / LIFE;          // 0→1
-      const x = (106 + Math.sin(t * 6 + i * 1.7) * (0.8 + 2 * t) - 12 * t) * sc;   // 越往上越偏左
-      const y = (79 - t * 26) * sc;
-      const r = (0.9 + t * 2.6) * sc;
-      g.fillStyle(0xe6e2d8, 0.6 * (1 - t) * Math.min(1, t * 8));
-      g.fillCircle(x, y, r);
+    for (const fx of interiorLayout(this.area).fx || []) {
+      if (fx.type !== 'incense') continue;
+      for (const p of incensePuffs(time, fx)) { g.fillStyle(0xe6e2d8, p.a); g.fillCircle(p.x, p.y, p.r); }
     }
   }
 
