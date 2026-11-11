@@ -86,7 +86,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.5';   // 每次更新請加一
+const VERSION = 'v0.14.6';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -152,15 +152,37 @@ const TOWN_START = { x: 90, y: 300 };         // 出生點：大街西端
 const TOWN_GATE = { x: 1330, y: 300 };        // 鎮門：大街東端（往森林）；從森林回來也站這裡
 // 鎮內 NPC：暫用官軍站立圖（tint 區分），之後換正式美術；對話文字為測試用
 const NPC_R = 44;   // 走到這個距離內才出現「對話」鈕
-const NPCS = [
-  { id: 'guard', name: '鎮門守衛', x: 1290, y: 274, tex: 'hansoldier', face: 'left',
-    lines: ['站住……啊，是本鎮的人。', '東邊鎮門外就是林間小道，聽說最近黃巾賊常在那一帶出沒。', '要出去的話，先到祠堂拜一拜，補足精神再走。'] },
-  { id: 'elder', name: '老村民', x: 480, y: 326, tex: 'hansoldier', tint: 0xc8a878, face: 'right',
-    lines: ['年輕人，亂世不太平啊。', '祠堂在大街正中。進去參拜，能把身子骨練得更結實。', '藥壺用完也別慌，拜過祠堂就會補滿。'] },
-  { id: 'merchant', name: '雜貨商販', x: 900, y: 326, tex: 'hansoldier', tint: 0x9ab4c8, face: 'right',
-    lines: ['客官，要買點傷藥還是丹藥？'],
+const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）；lines＝第一次對話；chat＝之後隨機說的閒話；shop＝商店
+  { id: 'guard', name: '鎮門守衛', x: 1290, y: 274, look: 'hunter', face: 'left',
+    lines: ['站住……啊，是本鎮的人。',
+            '東邊鎮門外就是林間小道，聽說最近黃巾賊常在那一帶出沒。',
+            '前幾天有個貨郎說，林子裡的賊人不只一夥，還有個領頭的，使一手好刀。',
+            '要出去的話，先到祠堂拜一拜，補足精神再走。'],
+    chat: ['這道門我守了五年，從沒像今年這樣不安心。',
+           '夜裡聽見林子裡有動靜，我也不敢睡死。',
+           '遇到賊人別硬拚，看準他出手的空檔再還手。',
+           '聽說外頭有人在招義勇……算了，當我沒說。',
+           '鎮上有祠堂、有藥鋪，比外頭安穩多了。'] },
+  { id: 'elder', name: '老農', x: 480, y: 326, look: 'farmer', face: 'right',
+    lines: ['年輕人，亂世不太平啊。',
+            '今年的收成又被官差收走一半，剩下的連過冬都不夠。',
+            '祠堂在大街正中。進去參拜，能把身子骨練得更結實。',
+            '藥壺用完也別慌，拜過祠堂就會補滿。'],
+    chat: ['我這雙手種了一輩子地，如今連地都快守不住了。',
+           '黃巾賊多半也是窮苦人出身，只是走錯了路。',
+           '大街上人來人往，聽聽各家的閒話，總有用得上的。',
+           '出門在外，肚子餓了就吃，別硬撐。',
+           '年輕人，路上小心，這世道不比從前。'] },
+  { id: 'merchant', name: '雜貨商販', x: 900, y: 326, look: 'vendor', face: 'right',
+    lines: ['客官，要買點傷藥還是丹藥？',
+            '金創藥止血療傷，行氣丹提振氣力，都是我親手配的。'],
+    chat: ['小本生意，童叟無欺，客官隨便看。',
+           '這年頭路不好走，貨也難進，價錢只能這樣了。',
+           '前幾天過林子差點被劫，貨全靠運氣保住的。',
+           '要什麼自己挑，缺了什麼我下回進貨幫你留意。'],
     shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
 ];
+const TALKED = {};   // 本次遊戲已經跟哪些 NPC 說過話（第一次說完整對話，之後隨機閒話）
 // ---------- 分層路人：基礎人偶＋零件（淺灰單色），執行時染色、疊合 ----------
 // 檔案：assets/characters/npc_<零件名>_walk_<front|back|side>.png（2048×512，4 格）。新增零件：把檔名（不含 npc_ 與方向）加進下面欄位即可
 const PED_PARTS = {
@@ -177,7 +199,8 @@ const PED_COLORS = {   // 欄位 → 可選染色（RGB）
   hat:   [[200, 175, 110], [150, 120, 80], [180, 170, 150]],
 };
 const PED_SLOT_COLOR = { base: 'skin', face: 'skin', bottom: 'cloth', top: 'cloth', beard: 'hair', hair: 'hair', hat: 'hat' };
-const WALKER_IDS = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hunter', 'refugee'];   // 鎮內路人（單一角色，assets/characters/npc_<id>_walk_<方向>.png）
+const ALL_NPC_IDS = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hunter', 'refugee'];   // 要載入的單一角色
+const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee'];   // 在大街上走動的路人（farmer、vendor、hunter 已當固定 NPC）   // 鎮內路人（單一角色，assets/characters/npc_<id>_walk_<方向>.png）
 const PED_COUNT = 0;   // 分層路人暫停（品質不如敵人）；改用單一角色後再開
 const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
@@ -420,7 +443,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
-    for (const id of WALKER_IDS) for (const d of PED_DIRS) this.load.image('npcsrc_' + id + '_' + d, A + 'characters/npc_' + id + '_walk_' + d + '.png');
+    for (const id of ALL_NPC_IDS) for (const d of PED_DIRS) this.load.image('npcsrc_' + id + '_' + d, A + 'characters/npc_' + id + '_walk_' + d + '.png');
     if (PED_COUNT > 0) for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
       for (const d of PED_DIRS) this.load.image('npc_' + nm + '_' + d, A + 'characters/npc_' + nm + '_walk_' + d + '.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
@@ -538,7 +561,7 @@ class VillageScene extends Phaser.Scene {
       }
     }
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
-    for (const id of WALKER_IDS) for (const d of PED_DIRS)   // 路人：去洋紅並裁成 4 格
+    for (const id of ALL_NPC_IDS) for (const d of PED_DIRS)   // 單一角色：去洋紅並裁成 4 格
       keyAndTrimFrames(this.textures.get('npcsrc_' + id + '_' + d).getSourceImage(), 4, 1)
         .forEach((cv, i) => this.textures.addCanvas('npcw_' + id + '_' + d + '_' + i, cv));
     this.makePeds();   // 分層路人：先疊好染色後的貼圖，零件原圖隨後釋放
@@ -2091,12 +2114,13 @@ class VillageScene extends Phaser.Scene {
 
   buildNpcs() {
     for (const d of NPCS) {
-      const sprite = this.add.image(d.x, d.y, d.tex + '_standk_front').setOrigin(0.5, 1).setDepth(d.y);
-      if (d.tint) sprite.setTint(d.tint);
+      const key = 'npcw_' + d.look + '_side_1';   // 站姿：取側面走路圖的中立那一格，依 face 決定朝向
+      const sprite = this.add.image(d.x, d.y, key).setOrigin(0.5, 1).setDepth(d.y).setFlipX(d.face === 'left');
       const sh = this.add.ellipse(d.x, d.y - 1, 22, 8, 0x000000, 0.35).setDepth(d.y - 1);
       this.world.push(sprite); this.world.push(sh);
       this.block(d.x - 8, d.y - 6, d.x + 8, d.y + 2);
-      this.setSpriteTex(sprite, d.tex + '_standk_front', HERO_H);
+      const tex = this.textures.get(key).getSourceImage(), k = HERO_H / this.textures.get('hero_walk_side_0').getSourceImage().height;
+      sprite.setDisplaySize(tex.width * k, tex.height * k);
       this.npcs.push(Object.assign({ sprite }, d));
     }
   }
@@ -2235,14 +2259,21 @@ class VillageScene extends Phaser.Scene {
   }
 
   openDialog(npc) {
-    this.dlg = { npc, i: 0 };
+    const first = !TALKED[npc.id]; TALKED[npc.id] = true;
+    let lines = npc.lines;
+    if (!first && npc.chat && npc.chat.length) {   // 之後：隨機說兩句不同的閒話
+      const pool = npc.chat.slice(), pick = [];
+      for (let n = 0; n < 2 && pool.length; n++) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      lines = pick;
+    }
+    this.dlg = { npc, i: 0, lines };
     this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
   }
 
   advanceDialog() {
     if (!this.dlg) return;
     this.dlg.i++;
-    if (this.dlg.i >= this.dlg.npc.lines.length) {
+    if (this.dlg.i >= this.dlg.lines.length) {
       const n = this.dlg.npc; this.dlg = null;
       if (n.shop) this.openShop(n);
     }
@@ -2272,7 +2303,10 @@ class VillageScene extends Phaser.Scene {
         if (Math.abs(dx) > Math.abs(dy) * 1.25) { dir = 'side'; flip = dx < 0; }
         else dir = dy < 0 ? 'back' : 'front';
       } else if (n.face) { dir = 'side'; }
-      this.setSpriteTex(n.sprite, n.tex + '_standk_' + dir, HERO_H);
+      const nk = 'npcw_' + n.look + '_' + dir + '_1', nt = this.textures.get(nk).getSourceImage();
+      const ks = HERO_H / this.textures.get('hero_walk_' + dir + '_0').getSourceImage().height;
+      if (n.sprite.texture.key !== nk) n.sprite.setTexture(nk);
+      n.sprite.setDisplaySize(nt.width * ks, nt.height * ks);
       n.sprite.setFlipX(dir === 'side' && flip);
     }
     // 「對話」鈕
@@ -2289,8 +2323,8 @@ class VillageScene extends Phaser.Scene {
     g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(bx, by, bw, bh, 10);
     g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(bx, by, bw, bh, 10);
     this.dlgName.setText(d.npc.name).setPosition(bx + 14, by + 10);
-    this.dlgBody.setText(d.npc.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28);
-    this.dlgHint.setText(d.i >= d.npc.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
+    this.dlgBody.setText(d.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28);
+    this.dlgHint.setText(d.i >= d.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
   }
 
   // ---------- 商店（五銖）----------
