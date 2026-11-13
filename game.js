@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.16.0';   // 每次更新請加一
+const VERSION = 'v0.16.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -486,8 +486,26 @@ class VillageScene extends Phaser.Scene {
     MAP_W = areaInfo(this.area).w; MAP_H = areaInfo(this.area).h;
   }
 
+  // 載入畫面：標題、進度條、百分比（只有真的有東西要載才會出現）
+  makeLoadUI() {
+    const W = this.scale.width, H = this.scale.height, cx = W / 2, cy = H / 2, bw = Math.min(240, Math.round(W * 0.6));
+    const font = { fontFamily: 'system-ui, sans-serif', resolution: 2 };
+    const title = this.add.text(cx, cy - 36, '大江湖', Object.assign({ fontSize: '28px', fontStyle: 'bold', color: '#f0e6c8', stroke: '#000000', strokeThickness: 4 }, font)).setOrigin(0.5);
+    const frame = this.add.rectangle(cx, cy, bw + 4, 12, 0x000000, 0.55).setStrokeStyle(1, 0x8a7a50);
+    const fill = this.add.rectangle(cx - bw / 2, cy, 1, 8, 0xd4b45a).setOrigin(0, 0.5);
+    const label = this.add.text(cx, cy + 22, '載入中 0%', Object.assign({ fontSize: '12px', color: '#b8ad8a' }, font)).setOrigin(0.5);
+    return { bw, fill, label, objs: [title, frame, fill, label],
+      set(v) { fill.width = Math.max(1, bw * v); label.setText('載入中 ' + Math.round(v * 100) + '%'); },
+      destroy() { for (const o of this.objs) o.destroy(); } };
+  }
+
   preload() {
     const A = 'assets/';
+    this.loadUI = null;
+    this.load.once('start', () => { this.loadUI = this.makeLoadUI(); });
+    this.load.on('progress', v => { if (this.loadUI) this.loadUI.set(v); });
+    // 第一次載完並整理好之後，原始大圖都已釋放、處理後的貼圖留在記憶體；之後切換區域不必把一百多張圖再載一遍
+    if (this.game.texReady) { if (isInterior(this.area)) this.queueInteriors(); return; }
     this.load.image('hero_front', A + 'characters/hero_front.png');
     this.load.image('hero_back', A + 'characters/hero_back.png');
     this.load.image('hero_side', A + 'characters/hero_side.png');
@@ -521,7 +539,7 @@ class VillageScene extends Phaser.Scene {
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
     this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
-    for (const t of Object.keys(INTERIORS)) { const L = interiorLayout(t); this.load.image('int_' + t + '_' + L.variantKey, A + L.image); }   // 只載入目前城市的版本
+    if (isInterior(this.area)) this.queueInteriors();   // 室內圖不在開場載入：進鎮後背景載，直接進室內才在這裡載
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
     for (let k = 1; k <= 4; k++) this.load.image('road_t' + k, A + 'tiles/town_road_tile_0' + k + '.png');
@@ -540,8 +558,33 @@ class VillageScene extends Phaser.Scene {
   }
 
   create() {
-    if (!this.game.texReady) this.prepareTextures();
-    this.buildScene();
+    if (this.game.texReady) {   // 之後的區域切換：素材都處理過了，直接蓋場景
+      this.buildScene(); this.built = true;
+      if (this.loadUI) { this.loadUI.destroy(); this.loadUI = null; }
+      return;
+    }
+    // 第一次：去背與組圖要花一點時間，先讓畫面顯示「整理圖片」，下一刻再做
+    this.built = false;
+    if (!this.loadUI) this.loadUI = this.makeLoadUI();
+    this.loadUI.set(1); this.loadUI.label.setText('整理圖片…');
+    this.time.delayedCall(60, () => {
+      this.prepareTextures();
+      this.buildScene(); this.built = true;
+      this.loadUI.destroy(); this.loadUI = null;
+    });
+  }
+
+  // 把室內圖加進載入佇列（已載過的貼圖，載入器會自動略過）
+  queueInteriors() {
+    for (const t of Object.keys(INTERIORS)) {
+      const L = interiorLayout(t);
+      if (!this.textures.exists(L.texKey)) this.load.image('int_' + t + '_' + L.variantKey, 'assets/' + L.image);   // 去背版已做好就不用再載
+    }
+  }
+  // 在鎮內時，趁玩家逛街在背景把室內圖載好（沒有進度條，不影響操作）
+  loadInteriorsInBackground() {
+    this.queueInteriors();
+    if (this.load.list.size > 0 && !this.load.isLoading()) this.load.start();
   }
 
   // 室內圖：去洋紅但不裁切（尺寸要和地圖一樣）。已做過就直接回傳貼圖名稱
@@ -555,13 +598,14 @@ class VillageScene extends Phaser.Scene {
     for (let i = 0; i < p.length; i += 4) if (p[i] > 180 && p[i + 1] < 110 && p[i + 2] > 180) p[i + 3] = 0;
     g.putImageData(d, 0, 0);
     this.textures.addCanvas(L.texKey, c);
+    this.textures.remove('int_' + type + '_' + L.variantKey);   // 去背版做好了，原始大圖釋放
     return L.texKey;
   }
 
   // 去背素材（只做一次；切換區域重啟場景時不用重做）
   prepareTextures() {
     this.keyTex('shrine_exterior', 'shrine_ext_k');
-    for (const t of Object.keys(INTERIORS)) this.keyInterior(t);
+    // 室內圖改在進室內時才去背（buildInterior 會呼叫 keyInterior）
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.keyTex(n, n + '_k');
     this.keyTex('hero_front', 'hero_down');
     this.keyTex('hero_back', 'hero_up');
@@ -915,6 +959,7 @@ class VillageScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', this.onResize));
     if (!this.boot) this.hintText.setVisible(false); else this.hintText.setVisible(true);
     if (!this.boot) this.time.delayedCall(60, () => this.banner(areaInfo(this.area).name, 1400));
+    if (this.area === 'town') this.loadInteriorsInBackground();
   }
 
   // 把去背後的素材存成新的貼圖
@@ -963,6 +1008,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   update(realTime, delta) {
+    if (!this.built) return;   // 第一次載入：素材整理好、場景蓋好之前先不跑
     this.realT = realTime;
     if (realTime < this.hitstopUntil) {   // 打擊停頓：全場凍結一瞬間，動作計時也一起停
       this.playerBody.body.setVelocity(0, 0);
