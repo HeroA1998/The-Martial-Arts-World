@@ -67,13 +67,16 @@ const pathCX = y => 230 + 16 * Math.sin(y / 170);       // 小道中心 x
 const CLEAR = { x: 230, y: 560, rx: 175, ry: 120 };     // 林間空地（橢圓）
 const SIDE_Y0 = 535, SIDE_Y1 = 595;                     // 左右側小徑的上下緣
 const START = { x: pathCX(1060), y: 1060 };             // 主角起點（小道最下方）
-const AMBUSH_Y = 690;
+const CLEAR2 = { x: 230, y: 250, rx: 160, ry: 85 };     // 路線盡頭的空地（Boss 在這裡）
+const SIDE2_Y0 = 215, SIDE2_Y1 = 265;                   // Boss 空地兩側的側小徑（Boss 從這裡衝出）
 const CINE_MS = 3900;                                   // 伏兵出場動畫長度（黑條、主角停住）                                   // 主角往上走到這裡（空地下緣）觸發伏擊
 const EXIT_Y = 50;                                      // 擊退伏兵後，走到小道最上方＝本段結束
 function walkable(x, y) {
   if (y < 6 || y > MAP_H - 6) return false;
   if (Math.abs(x - pathCX(y)) < PATH_HW) return true;
   if (((x - CLEAR.x) / CLEAR.rx) ** 2 + ((y - CLEAR.y) / CLEAR.ry) ** 2 < 1) return true;
+  if (((x - CLEAR2.x) / CLEAR2.rx) ** 2 + ((y - CLEAR2.y) / CLEAR2.ry) ** 2 < 1) return true;
+  if (y > SIDE2_Y0 && y < SIDE2_Y1 && x > 8 && x < MAP_W - 8) return true;
   return y > SIDE_Y0 && y < SIDE_Y1 && x > 8 && x < MAP_W - 8;
 }
 // ---------- 幽州戰場（討黃巾）：大片林間空地，下方一條小路從森林小道接進來 ----------
@@ -113,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.15.0';   // 每次更新請加一
+const VERSION = 'v0.16.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -157,7 +160,7 @@ const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
 const MAX_LV = 1 + STAT_KEYS.length * STAT_CAP;
 const xpNeed = lv => 50 * lv;
 // 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%。整場戰鬥結束才結算
-const KILL_XP = { turban: 8, hansoldier: 25, bandit: 120 };
+const KILL_XP = { turban: 8, hansoldier: 25, hangeneral: 60, bandit: 120 };
 const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
 const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
 const statMaxHp = p => 100 + 3 * p;
@@ -238,7 +241,7 @@ const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
 // 五銖掉落：[機率, 最少, 最多]，數量在範圍內隨機
-const WZ_DROP = { turban: [0.4, 1, 1], hansoldier: [0.6, 2, 4], bandit: [0.8, 8, 12] };
+const WZ_DROP = { turban: [0.4, 1, 1], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -256,6 +259,7 @@ const DROPS = {
   // 全部為機率制，沒有保證掉落
   turban: [['jc', 0.08], ['xq', 0.03]],
   hansoldier: [['jc', 0.15], ['xq', 0.05]],
+  hangeneral: [['jc', 0.45], ['xq', 0.15]],
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
 const SAVE_KEY = 'dajianghu_save_v1';
@@ -272,15 +276,23 @@ const BACK_DUR = 430, BACK_MOVE = 300, BACK_DIST = 34;
 const BACK_I_FROM = 20, BACK_I_TO = 210;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 
-// 敵人出生點與種類：左邊只有一個黃巾渠帥（武將），右邊是一群小兵與精兵
-// 伏兵：一開始藏在兩側樹林（看不到），主角走到空地時從左右側小徑衝出
-// delay：觸發後幾毫秒才現身；ex, ey：衝進空地的落點
-const ENEMY_SPAWNS = [
-  { type: 'turban', x: 92,  y: 572, delay: 500,  ex: 150, ey: 590 },
-  { type: 'bandit', x: 88,  y: 552, delay: 1700, ex: 165, ey: 555 },
-  { type: 'turban', x: 368, y: 552, delay: 800,  ex: 300, ey: 548 },
-  { type: 'turban', x: 372, y: 582, delay: 1100, ex: 310, ey: 600 },
+// ---------- 森林路線的遭遇表（魂系關卡：一條路線，多場小遭遇）----------
+// 從下往上走：遭遇 1、2 是守路的小兵（notice：站在原地，你靠近才發現；離開太遠就回原位）
+// 遭遇 3、Boss 是伏擊（ambush：走進 triggerY 觸發出場動畫，敵人從側小徑衝出）
+// 新增遭遇只要在這裡加一筆；enemies 的 x, y：現身（站立）位置；delay：觸發後幾毫秒才現身；ex, ey：衝進空地的落點
+const FOREST_ENCOUNTERS = [
+  { id: 'guard1', mode: 'notice', enemies: [
+    { type: 'turban', x: 200, y: 905 }, { type: 'turban', x: 240, y: 888 } ] },
+  { id: 'guard2', mode: 'notice', enemies: [
+    { type: 'turban', x: 184, y: 802 }, { type: 'turban', x: 244, y: 792 }, { type: 'turban', x: 214, y: 766 } ] },
+  { id: 'ambush1', mode: 'ambush', triggerY: 675, enemies: [
+    { type: 'hangeneral', x: 92,  y: 572, delay: 700,  ex: 160, ey: 580 },
+    { type: 'turban',     x: 368, y: 556, delay: 1500, ex: 300, ey: 552 } ] },
+  { id: 'boss', mode: 'ambush', triggerY: 365, boss: true, enemies: [
+    { type: 'bandit', x: 92, y: 240, delay: 900, ex: 172, ey: 248 } ] },
 ];
+const FOREST_SPAWNS = [];
+FOREST_ENCOUNTERS.forEach((e, i) => e.enemies.forEach(h => FOREST_SPAWNS.push(Object.assign({ enc: i, mode: e.mode }, h))));
 
 // 所有敵人共用同一套戰鬥規則，強弱只靠這張數值表決定（新增敵人填一行即可）
 const ENEMY_TYPES = {
@@ -362,6 +374,11 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
   poise: 28, stun: 500, respawnMs: 15000,
   reactCdMs: 2500,
   counterOnHit: 0, recoverCounter: 0, preempt: false, pCombo: 0.3,   // 精兵維持原本手感
+});
+// 官軍武將：沿用武將的完整招式（揮砍、衝刺、重劈、連刺、假動作、防禦、閃避），血量比黃巾渠帥少一點，是路線中段的小頭目
+ENEMY_TYPES.hangeneral = Object.assign({}, ENEMY_TYPES.bandit, {
+  tex: 'hangeneral', walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',
+  name: '官軍武將', showName: true, hp: 38,
 });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
@@ -491,10 +508,15 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_hurt_back', A + 'characters/hero_hurt_back.png');
     this.load.image('hero_down_side', A + 'characters/hero_down_side.png');
     this.load.image('hero_down_front', A + 'characters/hero_down_front.png');
-    // 黃巾武將；官兵武將圖 hangeneral_*、盜賊染色暫代圖 yturban_* 保留在資料夾，沒有在用
+    // 黃巾武將；盜賊染色暫代圖 yturban_* 保留在資料夾，沒有在用
     for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back',
                      'attack_side', 'attack_front', 'attack_back', 'hurt_side', 'down_side']) {
       this.load.image('ytgeneral_' + f, A + 'characters/ytgeneral_' + f + '.png');
+    }
+    // 官軍武將（森林路線第三場遭遇）
+    for (const f of ['walk_side', 'walk_front', 'walk_back', 'stand_side', 'stand_front', 'stand_back',
+                     'attack_side', 'attack_front', 'attack_back', 'hurt_side', 'down_side']) {
+      this.load.image('hangeneral_' + f, A + 'characters/hangeneral_' + f + '.png');
     }
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
@@ -690,13 +712,14 @@ class VillageScene extends Phaser.Scene {
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
     const f0 = FIELD_SPAWNS[0];
-    const spawns = this.area === 'forest' ? ENEMY_SPAWNS
+    const spawns = this.area === 'forest' ? FOREST_SPAWNS
       : this.area === 'field' ? FIELD_BATTLE.roster.map(type => ({ type, x: f0.x, y: f0.y, ex: f0.ex, ey: f0.ey, delay: 0 }))
       : [];
     for (const h of spawns) {
       // 伏擊戰、戰場：被觸發後一路追到底（不會因距離放棄），倒下不重生
       const T = Object.assign({}, ENEMY_TYPES[h.type], this.area === 'field'
         ? { aggro: 2000, lose: 3000, respawnMs: Infinity }
+        : h.mode === 'notice' ? { aggro: 120, lose: 200, respawnMs: Infinity }   // 守路小兵：靠近才發現，跑遠就放棄、回原位
         : { aggro: 600, lose: 1200, respawnMs: Infinity });
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
@@ -725,13 +748,14 @@ class VillageScene extends Phaser.Scene {
         reactCd: 0, dodgeCd: 0, guardHits: 0, gdx: 0, gdy: 1,
         preemptCd: 0, pRoll: false, pd: undefined, pt: 0,
         lastKind: null, feintAt: 0, sx: h.x, sy: h.y, ghostT: 0,
-        spawn: h, hidden: false,
+        spawn: h, hidden: false, enc: h.enc, mode: h.mode,
       });
     }
-    for (const b of this.bandits) this.hideBandit(b);
+    if (this.area !== 'forest') for (const b of this.bandits) this.hideBandit(b);   // 森林的敵人由 resetForest 依遭遇模式安排
     if (this.area === 'forest') this.exits.push({ x0: START.x - 60, x1: START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left' });
     if (this.area === 'field') this.exits.push({ x0: FIELD_START.x - 60, x1: FIELD_START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left', when: 'walk' });   // 開戰前可以退回鎮內
-    this.stage = { phase: 'walk', t0: 0 };   // walk：往上走 → fight：伏兵出現 → cleared：擊退 → end：本段結束
+    this.stage = { phase: 'walk', t0: 0, amb: 0 };   // walk：往上走（等下一個伏擊）→ intro／fight：伏兵出現 → cleared：擊敗 Boss → end：本段結束
+    if (this.area === 'forest') this.resetForest();
     if (this.area === 'field') this.resetBattle();
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
@@ -1349,7 +1373,15 @@ class VillageScene extends Phaser.Scene {
         else faceToward();                                  // 到位後盯著主角，等動畫結束
         if (!this.cine && (ed < 10 || time - b.t0 > 3000)) { b.state = this.down ? 'idle' : 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
       } else if (b.state === 'idle') {
+        b.ret = false;
         if (!this.down && dist < b.t.aggro) { b.state = 'chase'; b.stalked = false; b.closeIn = false; b.nextKind = null; }
+        else if (b.mode === 'notice') {
+          const hx = b.home.x - bx, hy = b.home.y - by, hd = Math.hypot(hx, hy);
+          if (hd > 6) {   // 追丟了：慢慢走回原位站好
+            vx = hx / hd * b.t.speed * 0.7; vy = hy / hd * b.t.speed * 0.7; b.ret = true;
+            b.facing = Math.abs(hx) > Math.abs(hy) ? (hx > 0 ? 'right' : 'left') : (hy > 0 ? 'down' : 'up');
+          } else if (dist < 220) faceToward();   // 站著守路，轉身看著走近的你
+        }
       } else if (b.state === 'chase') {
         if (this.down || dist > b.t.lose) {
           b.state = 'idle';
@@ -1482,7 +1514,7 @@ class VillageScene extends Phaser.Scene {
         // 移動中（追、繞、逼近）播走路動畫；蓄力、出刀、防禦等維持原本姿勢
         const wdt = time - (b.lastT === undefined ? time : b.lastT); b.lastT = time;
         const sp = Math.hypot(vx, vy);
-        const walkable = b.state === 'enter' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee';
+        const walkable = b.state === 'enter' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee' || b.ret;
         if (!walkable) b.moveOn = false;
         else if (sp > 8) b.moveOn = true;
         else if (sp < 3) b.moveOn = false;
@@ -2450,7 +2482,7 @@ class VillageScene extends Phaser.Scene {
 
   canOpenInv() {
     const ph = this.stage && this.stage.phase;
-    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !this.dlg && !this.shop;
+    return !this.down && !this.cine && !this.transitioning && (ph === 'walk' || ph === 'cleared') && !this.engaged() && !this.atk && !this.roll && !this.drink && !this.dlg && !this.shop;
   }
   invBtnRect() { return { x: this.scale.width - 70, y: 28, w: 62, h: 24 }; }
   potPos() { return { x: this.scale.width - 46, y: this.scale.height - 196 }; }
@@ -2692,9 +2724,9 @@ class VillageScene extends Phaser.Scene {
     const sp0 = this.area === 'field' ? FIELD_START : START;
     this.playerBody.body.reset(sp0.x, sp0.y);
     // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
-    for (const b of this.bandits) this.hideBandit(b);
+    if (this.area === 'forest') this.resetForest(); else for (const b of this.bandits) this.hideBandit(b);
     if (this.area === 'field') this.resetBattle();
-    this.stage = { phase: 'walk', t0: 0 };
+    this.stage = { phase: 'walk', t0: 0, amb: 0 };
     this.bannerText.setVisible(false);
     this.cine = false; this.heroAlert.setVisible(false);
   }
@@ -2741,33 +2773,62 @@ class VillageScene extends Phaser.Scene {
     this.objText.setVisible(st.phase === 'fight').setText('剩餘黃巾 ' + left);
   }
 
-  // ---------- 森林小道：伏擊流程 ----------
-  updateStage(time) {
+  // ---------- 森林路線：遭遇流程 ----------
+  // 有敵人已經發現你、正在打（站著守路或回家中的不算）
+  engaged() { return this.bandits.some(b => !b.hidden && !b.dead && b.state !== 'idle'); }
+
+  // 倒下重來／剛進場：守路小兵站回原位，伏擊的敵人藏回樹林
+  resetForest() {
+    for (const b of this.bandits) { if (b.mode === 'notice') this.idleBandit(b); else this.hideBandit(b); }
+    this.encDone = FOREST_ENCOUNTERS.map(() => false);
+    this.ambushes = [];
+    FOREST_ENCOUNTERS.forEach((e, i) => { if (e.mode === 'ambush') this.ambushes.push(i); });
+    this.stage = { phase: 'walk', t0: 0, amb: 0 };
+  }
+
+  updateForest(time) {
     const st = this.stage, py = this.playerBody.y;
-    if (this.area === 'forest' && st.phase === 'walk' && !this.down && py < AMBUSH_Y) {
+    // 守路的小隊全倒下：結算經驗
+    FOREST_ENCOUNTERS.forEach((e, i) => {
+      if (e.mode !== 'notice' || this.encDone[i] || this.down) return;
+      if (this.bandits.filter(b => b.enc === i).every(b => b.dead)) {
+        this.encDone[i] = true;
+        const got = this.settleXp();
+        this.banner('擊退守兵\n獲得 ' + got + ' 經驗', 2200);
+      }
+    });
+    const ai = this.ambushes[st.amb], E = FOREST_ENCOUNTERS[ai];
+    if (st.phase === 'walk' && E && !this.down && py < E.triggerY) {
       // 出場動畫：黑條滑入、主角停住（無敵、不能操作），頭頂跳出紅色驚嘆號，伏兵慢慢走出來
       st.phase = 'intro'; st.t0 = time;
       this.cine = true; this.atk = null; this.roll = null; this.atkBuf = 0; this.rollBuf = 0;
       this.heroAlert.setVisible(true).setScale(0.6); this.heroAlertUntil = time + 1400;
       this.hintText.setVisible(false);
     }
-    if (this.area === 'field') this.updateBattle(time);
-    if (this.area === 'forest' && (st.phase === 'intro' || st.phase === 'fight')) {
-      for (const b of this.bandits) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
+    if (E && (st.phase === 'intro' || st.phase === 'fight')) {
+      const grp = this.bandits.filter(b => b.enc === ai);
+      for (const b of grp) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
+      if (st.phase === 'intro' && time - st.t0 >= CINE_MS) { st.phase = 'fight'; this.cine = false; }
+      if (st.phase === 'fight' && grp.every(b => !b.hidden && b.dead)) {
+        const got = this.settleXp();
+        if (E.boss) { st.phase = 'cleared'; this.banner('擊敗黃巾渠帥\n獲得 ' + got + ' 經驗\n往北前進', 3500); }
+        else { st.phase = 'walk'; st.amb++; this.banner('擊退伏兵\n獲得 ' + got + ' 經驗', 2600); }
+      }
     }
-    if (st.phase === 'intro' && time - st.t0 >= CINE_MS) { st.phase = 'fight'; this.cine = false; }
+    if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
+      st.phase = 'end'; st.t0 = time;
+      this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left');   // 擊敗 Boss、走出森林，回到鎮內
+    }
+  }
+
+  updateStage(time) {
+    if (this.area === 'field') this.updateBattle(time);
+    if (this.area === 'forest') this.updateForest(time);
     // 黑條與操作介面跟著 cine 淡入淡出
     const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
     const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
     this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
     for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
-    if (this.area === 'forest' && st.phase === 'fight') {
-      if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; const got = this.settleXp(); this.banner('擊退伏兵\n獲得 ' + got + ' 經驗\n往北前進', 3000); }
-    }
-    if (this.area === 'forest' && st.phase === 'cleared' && !this.down && py < EXIT_Y) {
-      st.phase = 'end'; st.t0 = time;
-      this.gotoArea('field', { x: FIELD_START.x, y: FIELD_START.y }, 'up');   // 擊退伏兵後往北走出森林，進入幽州戰場
-    }
   }
 
   // 擋在角色前面的樹變半透明，打鬥時看得到人（每 0.1 秒檢查一次）
@@ -2804,6 +2865,18 @@ class VillageScene extends Phaser.Scene {
     b.alert.setVisible(false); b.nameTag.setVisible(false);
     b.respawnAt = Infinity;
     if (this.lockTarget === b) this.lockTarget = null;
+  }
+
+  // 守路小兵：站在原位，看得到、打得到（滿血）
+  idleBandit(b) {
+    this.tweens.killTweensOf(b.sprite);
+    b.hidden = false; b.dead = false; b.state = 'idle'; b.ret = false; b.facing = 'down';
+    b.hp = b.t.hp; b.poise = b.t.poise; b.combo = 0; b.feintAt = 0; b.lastKind = null; b.stalked = false;
+    b.body.body.enable = true; b.body.body.reset(b.home.x, b.home.y - 4); b.body.body.setVelocity(0, 0);
+    b.sprite.setVisible(true).setAngle(0).setAlpha(1).clearTint().setPosition(b.home.x, b.home.y);
+    b.shadow.setVisible(true).setAlpha(1);
+    b.alert.setVisible(false); b.nameTag.setVisible(!!b.t.showName);
+    b.respawnAt = Infinity;
   }
 
   revealBandit(b, time) {
