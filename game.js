@@ -86,7 +86,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.7';   // 每次更新請加一
+const VERSION = 'v0.14.8';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -210,7 +210,8 @@ const PED_COUNT = 0;   // 分層路人暫停（品質不如敵人）；改用單
 const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
-const WZ_DROP = { turban: 2, hansoldier: 5, bandit: 20 };
+// 五銖掉落：[機率, 最少, 最多]，數量在範圍內隨機
+const WZ_DROP = { turban: [0.4, 1, 1], hansoldier: [0.6, 2, 4], bandit: [0.8, 8, 12] };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -225,9 +226,10 @@ const ITEMS = {
 };
 // 掉落：[道具, 機率]，每個敵人倒下時各擲一次
 const DROPS = {
-  turban: [['jc', 0.15], ['xq', 0.05]],
-  hansoldier: [['jc', 0.3], ['xq', 0.1]],
-  bandit: [['jc', 1], ['jc', 0.6], ['xq', 0.5]],
+  // 全部為機率制，沒有保證掉落
+  turban: [['jc', 0.08], ['xq', 0.03]],
+  hansoldier: [['jc', 0.15], ['xq', 0.05]],
+  bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
 const SAVE_KEY = 'dajianghu_save_v1';
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
@@ -2091,7 +2093,10 @@ class VillageScene extends Phaser.Scene {
       if (Math.random() < p) this.spawnDrop(id, b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12);
     }
     const w = WZ_DROP[b.spawn.type];
-    if (w) this.spawnDrop('wz', b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12, w);
+    if (w && Math.random() < w[0]) {
+      const n = w[1] + Math.floor(Math.random() * (w[2] - w[1] + 1));
+      this.spawnDrop('wz', b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12, n);
+    }
   }
   spawnDrop(id, x, y, n) { this.drops.push({ id, x, y, n: n || 1, t0: this.nowT || 0 }); }
   updateDrops(time) {
