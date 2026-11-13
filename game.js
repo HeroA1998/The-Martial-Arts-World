@@ -5,6 +5,7 @@ let MAP_W = 460, MAP_H = 1120;   // 目前區域的大小（切換區域時改�
 const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
   town:   { w: 1400, h: 420,  bg: '#1c1a16', name: '鎮內' },
+  field:  { w: 760, h: 1000, bg: '#16201a', name: '幽州 · 討黃巾' },
 };
 
 // ---------- 室內（祠堂、之後的店舖）----------
@@ -75,6 +76,32 @@ function walkable(x, y) {
   if (((x - CLEAR.x) / CLEAR.rx) ** 2 + ((y - CLEAR.y) / CLEAR.ry) ** 2 < 1) return true;
   return y > SIDE_Y0 && y < SIDE_Y1 && x > 8 && x < MAP_W - 8;
 }
+// ---------- 幽州戰場（討黃巾）：大片林間空地，下方一條小路從森林小道接進來 ----------
+const FIELD_C = { x: 380, y: 470, rx: 320, ry: 370 };   // 戰場空地（不規則橢圓）
+const FIELD_START = { x: 380, y: 960 };                  // 從森林小道上來的位置
+const FIELD_TRIGGER_Y = 820;                             // 走進空地就開戰
+function fieldWalkable(x, y) {
+  if (y < 6 || y > MAP_H - 6 || x < 6 || x > MAP_W - 6) return false;
+  const dx = (x - FIELD_C.x) / FIELD_C.rx, dy = (y - FIELD_C.y) / FIELD_C.ry, a = Math.atan2(dy, dx);
+  const edge = 1 + 0.07 * Math.sin(a * 5 + 0.6) + 0.04 * Math.sin(a * 9 + 2.1);   // 邊緣起伏，不要正圓
+  if (dx * dx + dy * dy < edge * edge) return true;
+  return y > FIELD_C.y + FIELD_C.ry * 0.7 && Math.abs(x - (FIELD_C.x + 10 * Math.sin(y / 60))) < 46;   // 下方小路
+}
+// 黃巾從空地邊緣的樹林裡冒出來（下方入口那一側不出兵）；x,y：現身處，ex,ey：衝進空地的落點
+const FIELD_SPAWNS = [-170, -150, -130, -110, -90, -70, -50, -30, -10, 10, 30, 150, 170].map(d => {
+  const a = d * Math.PI / 180, c = Math.cos(a), si = Math.sin(a);
+  return { x: FIELD_C.x + c * FIELD_C.rx * 0.84, y: FIELD_C.y + si * FIELD_C.ry * 0.84,
+           ex: FIELD_C.x + c * FIELD_C.rx * 0.55, ey: FIELD_C.y + si * FIELD_C.ry * 0.55 };
+});
+// 戰場生成器：同時活躍的敵人有上限（手機效能保證），其餘在待命隊列，有人倒下或時間到才補入
+const FIELD_BATTLE = {
+  name: '幽州 · 討黃巾',
+  cap: 12,            // 同時在場上的敵人上限
+  startActive: 6,     // 開戰時先上幾個
+  rampMs: 5000,       // 之後每隔這麼久，場上人數上限 +1，直到 cap
+  gapMs: 700,         // 兩個敵人現身至少隔這麼久
+  roster: [].concat(Array(8).fill('turban'), ['bandit'], Array(12).fill('turban'), ['bandit']),   // 出場順序（共 22）
+};
 const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const ATK_SRC_BODY_H = 360;   // 揮刀圖裡，頭頂到腳底的像素高度（對應 HERO_H）
@@ -86,7 +113,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.14.8';   // 每次更新請加一
+const VERSION = 'v0.15.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 360;      // 揮劍動作本身的長度
@@ -589,6 +616,7 @@ class VillageScene extends Phaser.Scene {
     this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.walkers = []; this.dlg = null; this.shop = null;
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
+    else if (this.area === 'field') this.buildField();
     else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); this.buildWalkers(); }
     else this.buildInterior(this.area);
 
@@ -626,7 +654,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // 主角：物理碰撞用的腳底框（看不見），圖片跟著它走
-    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'town' ? { x: TOWN_START.x, y: TOWN_START.y } : { x: 150, y: 380 });
+    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'field' ? FIELD_START : this.area === 'town' ? { x: TOWN_START.x, y: TOWN_START.y } : { x: 150, y: 380 });
     this.playerBody = this.add.zone(sp.x, sp.y, 14, 8);
     this.physics.add.existing(this.playerBody);
     this.playerBody.body.setCollideWorldBounds(true);
@@ -649,7 +677,7 @@ class VillageScene extends Phaser.Scene {
     // 玩家狀態
     this.loadGrowth();
     this.php = this.maxHp();
-    if (this.carry && this.area === 'forest') this.php = Math.max(1, Math.min(this.maxHp(), this.carry.php));   // 鎮內與祠堂是安全區，進去會補滿；進森林帶著現有氣血
+    if (this.carry && (this.area === 'forest' || this.area === 'field')) this.php = Math.max(1, Math.min(this.maxHp(), this.carry.php));   // 鎮內與祠堂是安全區，進去會補滿；進森林帶著現有氣血
     this.invulnUntil = 0;
     this.mv = { x: 0, y: 0 };               // 目前的走路速度（有慣性）
     this.pk = { vx: 0, vy: 0, until: 0 };   // 被擊退
@@ -661,9 +689,15 @@ class VillageScene extends Phaser.Scene {
 
     // 山賊：追擊、出刀、受傷、倒下、重生
     this.bandits = [];
-    for (const h of (this.area === 'forest' ? ENEMY_SPAWNS : [])) {
-      // 伏擊戰：被觸發後一路追到底（不會因距離放棄），倒下不重生
-      const T = Object.assign({}, ENEMY_TYPES[h.type], { aggro: 600, lose: 1200, respawnMs: Infinity });
+    const f0 = FIELD_SPAWNS[0];
+    const spawns = this.area === 'forest' ? ENEMY_SPAWNS
+      : this.area === 'field' ? FIELD_BATTLE.roster.map(type => ({ type, x: f0.x, y: f0.y, ex: f0.ex, ey: f0.ey, delay: 0 }))
+      : [];
+    for (const h of spawns) {
+      // 伏擊戰、戰場：被觸發後一路追到底（不會因距離放棄），倒下不重生
+      const T = Object.assign({}, ENEMY_TYPES[h.type], this.area === 'field'
+        ? { aggro: 2000, lose: 3000, respawnMs: Infinity }
+        : { aggro: 600, lose: 1200, respawnMs: Infinity });
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
       const sprite = this.add.image(h.x, h.y, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down').setOrigin(0.5, 1).setDepth(h.y);
       const alert = this.add.text(h.x, h.y - T.h - 4, '!', {
@@ -696,7 +730,9 @@ class VillageScene extends Phaser.Scene {
     }
     for (const b of this.bandits) this.hideBandit(b);
     if (this.area === 'forest') this.exits.push({ x0: START.x - 60, x1: START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left' });
+    if (this.area === 'field') this.exits.push({ x0: FIELD_START.x - 60, x1: FIELD_START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left', when: 'walk' });   // 開戰前可以退回鎮內
     this.stage = { phase: 'walk', t0: 0 };   // walk：往上走 → fight：伏兵出現 → cleared：擊退 → end：本段結束
+    if (this.area === 'field') this.resetBattle();
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
         this.physics.add.collider(this.bandits[i].body, this.bandits[j].body);
@@ -769,6 +805,11 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#d8e0cf', alpha: 0.6,
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(1, 0).setDepth(1001);
+    this.objText = this.add.text(this.scale.width / 2, 30, '', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: '#f0d890',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5, 0).setDepth(1001).setVisible(false);
+    this.ui.push(this.objText);
     this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText,
                  this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.bannerText, this.barTop, this.barBot);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
@@ -841,6 +882,7 @@ class VillageScene extends Phaser.Scene {
       this.applyZoom();
       this.hintText.setX(this.scale.width / 2);
       this.verText.setX(this.scale.width - 6);
+      this.objText.setX(this.scale.width / 2);
       this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
       this.bannerText.setPosition(this.scale.width / 2, this.scale.height * 0.3);
       this.layoutPanel(); this.layoutInv();
@@ -1765,6 +1807,7 @@ class VillageScene extends Phaser.Scene {
     if (this.transitioning || this.down || this.cine) return;
     const px = this.playerBody.x, py = this.playerBody.y;
     for (const e of this.exits) {
+      if (e.when && this.stage.phase !== e.when) continue;   // 例如戰場：開戰後不能從入口離開
       if (px >= e.x0 && px <= e.x1 && py >= e.y0 && py <= e.y1) { this.gotoArea(e.to, e.spawn, e.facing); return; }
     }
   }
@@ -2646,12 +2689,56 @@ class VillageScene extends Phaser.Scene {
     this.stam = this.maxStam(); this.roll = null;
     this.hero.setAngle(0);
     this.downText.setVisible(false);
-    this.playerBody.body.reset(START.x, START.y);
+    const sp0 = this.area === 'field' ? FIELD_START : START;
+    this.playerBody.body.reset(sp0.x, sp0.y);
     // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
     for (const b of this.bandits) this.hideBandit(b);
+    if (this.area === 'field') this.resetBattle();
     this.stage = { phase: 'walk', t0: 0 };
     this.bannerText.setVisible(false);
     this.cine = false; this.heroAlert.setVisible(false);
+  }
+
+  // ---------- 戰場生成器：活躍上限、待命隊列、補入 ----------
+  resetBattle() {
+    this.battle = { queue: this.bandits.slice(), started: 0, lastSpawn: -1e9 };
+    if (this.objText) this.objText.setVisible(false);
+  }
+  battleActive() { return this.bandits.filter(b => !b.hidden && b.state !== 'dead').length; }
+  // 挑一個離主角夠遠的出兵點（盡量在畫面外），找不到就用最遠的幾個
+  pickFieldSpawn() {
+    const px = this.playerBody.x, py = this.playerBody.y, d = s => Math.hypot(s.x - px, s.y - py);
+    const far = FIELD_SPAWNS.filter(s => d(s) > 200);
+    const pool = far.length ? far : FIELD_SPAWNS.slice().sort((a, b) => d(b) - d(a)).slice(0, 3);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  updateBattle(time) {
+    const st = this.stage, B = FIELD_BATTLE, bt = this.battle;
+    if (st.phase === 'walk' && !this.down && this.playerBody.y < FIELD_TRIGGER_Y) {
+      st.phase = 'fight'; st.t0 = time; bt.started = time; bt.lastSpawn = -1e9;
+      this.banner(B.name, 1800);
+    }
+    if (st.phase === 'fight' && !this.down) {
+      // 場上人數目標：開戰先上 startActive 個，之後每 rampMs 多一個，最多 cap；有人倒下就低於目標，自動補入
+      const want = Math.min(B.cap, B.startActive + Math.floor((time - bt.started) / B.rampMs));
+      if (bt.queue.length && this.battleActive() < want && time - bt.lastSpawn >= B.gapMs) {
+        const b = bt.queue.shift(), p = this.pickFieldSpawn();
+        b.spawn = Object.assign({}, b.spawn, { x: p.x, y: p.y, ex: p.ex + (Math.random() - 0.5) * 40, ey: p.ey + (Math.random() - 0.5) * 30 });
+        this.revealBandit(b, time);
+        bt.lastSpawn = time;
+      }
+      if (!bt.queue.length && this.bandits.every(b => !b.hidden && b.dead)) {
+        st.phase = 'cleared'; st.t0 = time;
+        const got = this.settleXp();
+        this.banner('擊退黃巾\n獲得 ' + got + ' 經驗', 3000);
+      }
+    }
+    if (st.phase === 'cleared' && time - st.t0 > 4200) {
+      st.phase = 'end';
+      this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left');   // 戰役結束，回到鎮內
+    }
+    const left = bt.queue.length + this.battleActive();
+    this.objText.setVisible(st.phase === 'fight').setText('剩餘黃巾 ' + left);
   }
 
   // ---------- 森林小道：伏擊流程 ----------
@@ -2664,7 +2751,8 @@ class VillageScene extends Phaser.Scene {
       this.heroAlert.setVisible(true).setScale(0.6); this.heroAlertUntil = time + 1400;
       this.hintText.setVisible(false);
     }
-    if (st.phase === 'intro' || st.phase === 'fight') {
+    if (this.area === 'field') this.updateBattle(time);
+    if (this.area === 'forest' && (st.phase === 'intro' || st.phase === 'fight')) {
       for (const b of this.bandits) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
     }
     if (st.phase === 'intro' && time - st.t0 >= CINE_MS) { st.phase = 'fight'; this.cine = false; }
@@ -2673,14 +2761,13 @@ class VillageScene extends Phaser.Scene {
     const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
     this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
     for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
-    if (st.phase === 'fight') {
+    if (this.area === 'forest' && st.phase === 'fight') {
       if (this.bandits.every(b => !b.hidden && b.dead)) { st.phase = 'cleared'; const got = this.settleXp(); this.banner('擊退伏兵\n獲得 ' + got + ' 經驗\n往北前進', 3000); }
     }
-    if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
+    if (this.area === 'forest' && st.phase === 'cleared' && !this.down && py < EXIT_Y) {
       st.phase = 'end'; st.t0 = time;
-      this.banner('本段結束', 3000);
+      this.gotoArea('field', { x: FIELD_START.x, y: FIELD_START.y }, 'up');   // 擊退伏兵後往北走出森林，進入幽州戰場
     }
-    if (st.phase === 'end' && time - st.t0 > 3400) this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left');   // 本段結束，回到鎮內
   }
 
   // 擋在角色前面的樹變半透明，打鬥時看得到人（每 0.1 秒檢查一次）
@@ -2727,15 +2814,18 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ---------- 森林小道：地面、樹、看不見的牆 ----------
-  buildForest() {
-    let seed = 11;
+  buildForest() { this.buildWoods(walkable, 11, 'forest_ground', true); }
+  buildField() { this.buildWoods(fieldWalkable, 23, 'field_ground', false); }
+
+  buildWoods(walk, seed0, groundKey, forestProps) {
+    let seed = seed0;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     // 1. 先決定樹的位置：小道與空地以外，錯開的格子＋隨機偏移
     const trees = [];
     for (let gy = 10, row = 0; gy < MAP_H + 60; gy += 34, row++) {
       for (let gx = (row % 2) * 22 - 10; gx < MAP_W + 30; gx += 44) {
         const x = gx + (rnd() - 0.5) * 22, y = gy + (rnd() - 0.5) * 16;
-        if (walkable(x, y) || walkable(x, y - 8) || walkable(x - 10, y) || walkable(x + 10, y)) continue;
+        if (walk(x, y) || walk(x, y - 8) || walk(x - 10, y) || walk(x + 10, y)) continue;
         const r = rnd(), kind = r < 0.38 ? 0 : r < 0.72 ? 1 : 2;           // 松、櫟、柏
         const baseH = [104, 98, 118][kind] * (0.88 + rnd() * 0.26);
         trees.push({ x, y, kind, h: baseH, flip: rnd() < 0.5, shade: 0.74 + rnd() * 0.26 });
@@ -2743,7 +2833,7 @@ class VillageScene extends Phaser.Scene {
     }
     // 2. 地面：林地與泥土兩張圖鋪滿，小道與林地交界用噪點做出不規則的草泥過渡（只畫一次、之後當一張圖，手機比較省）
     const C = 2, cw = Math.ceil(MAP_W / C), ch = Math.ceil(MAP_H / C), TW = 72;   // 一格地磚在世界裡約 144 單位
-    const cached = this.textures.exists('forest_ground');
+    const cached = this.textures.exists(groundKey);
     let cv = null;
     if (cached) { for (let n = 0; n < cw * ch; n++) rnd(); }   // 讓之後的亂數與第一次一致（灌木、石頭位置不變）
     else {
@@ -2757,7 +2847,7 @@ class VillageScene extends Phaser.Scene {
     // 「可走」遮罩：每 4 單位一格，模糊後當作泥土比例
     const M = 4, mw = Math.ceil(MAP_W / M), mh = Math.ceil(MAP_H / M);
     let m = new Float32Array(mw * mh);
-    for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) m[j * mw + i] = walkable(i * M + 2, j * M + 2) ? 1 : 0;
+    for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) m[j * mw + i] = walk(i * M + 2, j * M + 2) ? 1 : 0;
     const blur = (src, r) => {
       const a = new Float32Array(src.length), b = new Float32Array(src.length);
       for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) { let t = 0, n = 0; for (let k = -r; k <= r; k++) { const q = i + k; if (q >= 0 && q < mw) { t += src[j * mw + q]; n++; } } a[j * mw + i] = t / n; }
@@ -2781,10 +2871,10 @@ class VillageScene extends Phaser.Scene {
     // 樹下的陰影
     g.fillStyle = 'rgba(0,0,0,0.30)';
     for (const t of trees) { const w = t.h * 0.7; g.beginPath(); g.ellipse(t.x / C, t.y / C, w * 0.42 / C, w * 0.15 / C, 0, 0, Math.PI * 2); g.fill(); }
-    this.textures.addCanvas('forest_ground', cv).setFilter(Phaser.Textures.FilterMode.NEAREST);   // 放大時保持像素硬邊
-    this.textures.remove('forest_floor'); this.textures.remove('dirt_path');   // 原圖用完就釋放
+    this.textures.addCanvas(groundKey, cv).setFilter(Phaser.Textures.FilterMode.NEAREST);   // 放大時保持像素硬邊
+    if (['forest_ground', 'field_ground', 'town_ground7'].every(k => this.textures.exists(k))) { this.textures.remove('forest_floor'); this.textures.remove('dirt_path'); }   // 森林、戰場、鎮內地面都做好了才釋放原圖
     }
-    this.world.push(this.add.image(0, 0, 'forest_ground').setOrigin(0).setScale(C).setDepth(-20));
+    this.world.push(this.add.image(0, 0, groundKey).setOrigin(0).setScale(C).setDepth(-20));
     // 3. 樹：依腳底 y 排前後
     this.forestTrees = [];
     for (const t of trees) {
@@ -2805,19 +2895,21 @@ class VillageScene extends Phaser.Scene {
     };
     const rim = [];   // 緊貼小道與空地外緣的林地點
     for (let y = 20; y < MAP_H - 20; y += 12) for (let x = 14; x < MAP_W - 14; x += 12) {
-      if (walkable(x, y)) continue;
-      if (walkable(x - 14, y) || walkable(x + 14, y) || walkable(x, y - 14) || walkable(x, y + 14)) rim.push([x, y]);
+      if (walk(x, y)) continue;
+      if (walk(x - 14, y) || walk(x + 14, y) || walk(x, y - 14) || walk(x, y + 14)) rim.push([x, y]);
     }
     const pick = () => rim.splice(Math.floor(rnd() * rim.length), 1)[0];
     for (let n = 0; n < 26 && rim.length; n++) { const [x, y] = pick(); place('bush_01_k', x + (rnd() - 0.5) * 8, y, 26 + rnd() * 10, false, rnd() < 0.5); }
     for (let n = 0; n < 8 && rim.length; n++) { const [x, y] = pick(); place('rock_01_k', x, y, 18 + rnd() * 8, false, rnd() < 0.5); }
     for (let n = 0; n < 4 && rim.length; n++) { const [x, y] = pick(); place('log_01_k', x, y, 18, false, rnd() < 0.5); }
-    // 空地邊緣：擋路的石頭與倒木（避開小道出入口與伏兵衝出的位置）
-    place('rock_01_k', 100, 505, 26, true, false);
-    place('rock_01_k', 362, 500, 24, true, true);
-    place('rock_01_k', 322, 655, 22, true, false);
-    place('log_01_k', 118, 628, 20, true, false);
-    place('bush_01_k', 372, 628, 30, false, true);
+    if (forestProps) {
+      // 空地邊緣：擋路的石頭與倒木（避開小道出入口與伏兵衝出的位置）
+      place('rock_01_k', 100, 505, 26, true, false);
+      place('rock_01_k', 362, 500, 24, true, true);
+      place('rock_01_k', 322, 655, 22, true, false);
+      place('log_01_k', 118, 628, 20, true, false);
+      place('bush_01_k', 372, 628, 30, false, true);
+    }
 
     // 4. 看不見的牆：小道、空地、側小徑以外都走不進去（每列連續的區段合併，再把上下相同的合併）
     this.obstacles = this.physics.add.staticGroup();
@@ -2825,7 +2917,7 @@ class VillageScene extends Phaser.Scene {
     for (let y = 0; y < MAP_H; y += S) {
       const runs = []; let x0 = null;
       for (let x = 0; x <= MAP_W; x += S) {
-        const blocked = x < MAP_W && !walkable(x + S / 2, y + S / 2);
+        const blocked = x < MAP_W && !walk(x + S / 2, y + S / 2);
         if (blocked && x0 === null) x0 = x;
         if (!blocked && x0 !== null) { runs.push([x0, x]); x0 = null; }
       }
