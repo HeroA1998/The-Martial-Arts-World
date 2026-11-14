@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.17.1';   // 每次更新請加一
+const VERSION = 'v0.18.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -279,6 +279,8 @@ const BACK_COST = 18;
 const BACK_DUR = 430, BACK_MOVE = 300, BACK_DIST = 34;
 const BACK_I_FROM = 20, BACK_I_TO = 210;
 const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
+const GD_R = 32;                // 擋鍵半徑
+const PARRY_MS = 220, PARRY_LOCK = 700, PARRY_STUN = 1100, RIPOSTE_MUL = 2, GUARD_MOVE = 0.45;   // 彈反窗口／連按鎖定／敵人暈眩／反擊倍率／格擋移速
 
 // ---------- 森林路線的遭遇表（魂系關卡：一條路線，多場小遭遇）----------
 // 從下往上走：遭遇 1、2 是守路的小兵（notice：站在原地，你靠近才發現；離開太遠就回原位）
@@ -371,6 +373,11 @@ ENEMY_TYPES.ytelite = Object.assign({}, ENEMY_TYPES.turban, {
   dmgSlash: 14, slashWindup: 720, slashWindupFast: 520, slashRecover: 850, rest: 1000, pCombo: 0.35,
   reactRange: 90, pGuard: 0.15, pDodge: 0.10, reactCdMs: 2500, dodgeCdMs: 3000,
   preempt: true, preemptDist: 60, pPreempt: 0.45, preemptCdMs: 2400,
+  // v0.18.0：招式多樣化（揮砍、連刺、重劈、衝刺、假動作），重劈擋不住
+  varied: true,
+  dmgThrust: 11, dmgLunge: 14, dmgHeavy: 22, heavyWindup: 820, heavyWindupFast: 520, pFeint: 0.2,
+  pSlashClose: 0.34, pThrustClose: 0.20, pHeavyClose: 0.20, pLungeClose: 0.04, pFeintClose: 0.22,
+  pLungeMid: 0.30, pThrustMid: 0.25, pHeavyMid: 0.20, pSlashMid: 0.25,
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
@@ -827,12 +834,15 @@ class VillageScene extends Phaser.Scene {
     // 戰鬥特效用的繪圖層（劍光、血條）
     this.slashGfx = this.add.graphics().setDepth(5000);
     this.barGfx = this.add.graphics().setDepth(6000);
-    this.world.push(this.slashGfx, this.barGfx);
+    this.guardGfx = this.add.graphics().setDepth(5001);
+    this.world.push(this.slashGfx, this.barGfx, this.guardGfx);
     this.atk = null;          // 目前的揮劍：{ start, dx, dy, hit:Set }
     this.lastAtk = -1e9;
     this.btn = { id: null, held: false };
     this.vt = 0; this.realT = 0; this.hitstopUntil = 0;   // 遊戲時間（打擊停頓時不前進）
     this.btn2 = { id: null };              // 閃避鍵
+    this.btn3 = { id: null }; this.keyGuard = false;   // 擋鍵
+    this.guarding = false; this.guardStart = 0; this.parryLockUntil = 0; this.parryOk = false; this.parryFlash = -1e9;
     this.stam = this.maxStam(); this.stamRegenAt = 0; this.stamFlash = 0;
     this.roll = null;                      // 翻滾中：{ start, dx, dy, lastGhost }
     this.rollIFrom = 0; this.rollIUntil = 0;   // 翻滾無敵的時間窗
@@ -860,6 +870,11 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '22px', color: '#e6f0dc',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(1001);
+    this.gdGfx = this.add.graphics().setDepth(1000);
+    this.gdText = this.add.text(0, 0, '擋', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '20px', color: '#e6f0dc',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(1001);
     this.hpGfx = this.add.graphics().setDepth(1000);
     this.hpText = this.add.text(130, 12, '氣血', {
       fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#e6f0dc',
@@ -877,7 +892,7 @@ class VillageScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '24px', fontStyle: 'bold', color: '#f0d890',
       stroke: '#000000', strokeThickness: 5, align: 'center',
     }).setOrigin(0.5).setDepth(1002).setVisible(false);
-    this.hintText = this.add.text(this.scale.width / 2, 66, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾（前段無敵）\n翻滾後立刻按「攻」＝翻滾攻擊\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾', {
+    this.hintText = this.add.text(this.scale.width / 2, 66, '左半邊拖曳移動 · 右下「攻」揮劍 · 「閃」翻滾 · 「擋」按住格擋\n剛按下「擋」的瞬間被打中＝彈反，敵人暈眩，反擊傷害加倍\n紫色圈的重劈擋不住，要翻滾\n電腦：WASD 移動、空白鍵攻擊、Shift 翻滾、Q 格擋', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#d8e0cf',
       stroke: '#000000', strokeThickness: 3, align: 'center',
     }).setOrigin(0.5, 0).setDepth(1001);
@@ -891,7 +906,7 @@ class VillageScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setDepth(1001).setVisible(false);
     this.ui.push(this.objText);
     this.ui.push(this.joyGfx, this.btnGfx, this.btnText, this.hintText, this.verText,
-                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.bannerText, this.barTop, this.barBot);
+                 this.hpGfx, this.hpText, this.downText, this.dgGfx, this.dgText, this.gdGfx, this.gdText, this.bannerText, this.barTop, this.barBot);
     this.hintTimer = this.time.delayedCall(6000, () => this.hintText.setVisible(false));
 
     cam.ignore(this.ui);
@@ -913,6 +928,8 @@ class VillageScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SHIFT', dodgeKey);
     this.input.keyboard.on('keydown-E', () => this.pressDrink());
     this.input.keyboard.on('keydown-K', dodgeKey);
+    this.input.keyboard.on('keydown-Q', () => { this.keyGuard = true; });
+    this.input.keyboard.on('keyup-Q', () => { this.keyGuard = false; });
     this.input.keyboard.on('keydown-F', () => this.talkKey());
     this.input.keyboard.on('keydown-ENTER', () => this.talkKey());
     this.input.on('pointerdown', p => {
@@ -925,6 +942,11 @@ class VillageScene extends Phaser.Scene {
       if (this.btn2.id === null && Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) {
         this.btn2.id = p.id;
         dodgeKey();
+        return;
+      }
+      const gp = this.guardPos();
+      if (this.btn3.id === null && Math.hypot(p.x - gp.x, p.y - gp.y) <= GD_R * 1.25) {
+        this.btn3.id = p.id;
         return;
       }
       const b = this.btnPos();
@@ -943,6 +965,7 @@ class VillageScene extends Phaser.Scene {
     const endJoy = p => {
       if (p.id === this.btn.id) { this.btn.id = null; this.btn.held = false; return; }
       if (p.id === this.btn2.id) { this.btn2.id = null; return; }
+      if (p.id === this.btn3.id) { this.btn3.id = null; return; }
       if (p.id !== this.joy.id) return;
       this.joy.id = null; this.joy.active = false;
       this.joy.x = 0; this.joy.y = 0; this.joy.dx = 0; this.joy.dy = 0;
@@ -952,8 +975,8 @@ class VillageScene extends Phaser.Scene {
     // 點擊敵人：鎖定／取消／換目標（很快的輕點、幾乎沒移動才算；按鈕上的觸碰不算）
     this.input.on('pointerup', p => {
       if (this.down || this.modal() || p.getDuration() > 260 || p.getDistance() > 14) return;
-      const bp = this.btnPos(), dg = this.dodgePos();
-      if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4) return;
+      const bp = this.btnPos(), dg = this.dodgePos(), gq = this.guardPos();
+      if (Math.hypot(p.x - bp.x, p.y - bp.y) <= BTN_R * 1.4 || Math.hypot(p.x - dg.x, p.y - dg.y) <= DG_R * 1.4 || Math.hypot(p.x - gq.x, p.y - gq.y) <= GD_R * 1.25) return;
       this.tapLock(p);
     });
 
@@ -1048,8 +1071,19 @@ class VillageScene extends Phaser.Scene {
     if (this.atkBuf > time && this.tryAttack(time)) this.atkBuf = 0;
     if (this.atk && time - this.atk.start > this.atk.dur) this.atk = null;
 
+    // 格擋：按住「擋」且沒在揮劍／翻滾／喝藥、氣力沒見底才成立；剛按下的 PARRY_MS 內是彈反窗口（連按有鎖定，亂按沒用）
+    const wantG = !this.down && !this.cine && !this.roll && !this.atk && !this.drink && !this.modal() && this.stam > 0 && (this.btn3.id !== null || this.keyGuard);
+    if (wantG && !this.guarding) {
+      this.guarding = true; this.guardStart = time;
+      this.parryOk = time >= this.parryLockUntil; this.parryLockUntil = time + PARRY_LOCK;
+    } else if (!wantG && this.guarding) this.guarding = false;
+    if (this.guarding) {                       // 格擋中自動面向最近的敵人
+      const tg = this.pickTarget(LOCK_RANGE);
+      if (tg) { const vx = tg.x - this.playerBody.x, vy = tg.y - (this.playerBody.y + 4); this.facing = Math.abs(vx) > Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'down' : 'up'); }
+    }
+
     // 耐力回復（翻滾中不回復）
-    if (time >= this.stamRegenAt && !this.roll) this.stam = Math.min(this.maxStam(), this.stam + STAM_REGEN * delta / 1000);
+    if (time >= this.stamRegenAt && !this.roll && !this.guarding) this.stam = Math.min(this.maxStam(), this.stam + STAM_REGEN * delta / 1000);
 
     // 翻滾：緩衝輸入、結束判定
     if (!this.roll && this.rollBuf > time) this.tryRoll(time);
@@ -1069,7 +1103,7 @@ class VillageScene extends Phaser.Scene {
         this.playerBody.body.setVelocity(0, 0);
       } else {
         // 起步、停步、轉向都有一點慣性：速度朝目標速度逐步靠近
-        const dm0 = this.drink ? DRINK_MOVE : 1;
+        const dm0 = this.drink ? DRINK_MOVE : this.guarding ? GUARD_MOVE : 1;
         const tx = x * SPEED * dm0, ty = y * SPEED * dm0;
         const rate = SPEED / ((m > 0.05 ? ACCEL_MS : DECEL_MS) / 1000);   // 每秒可改變的速度
         const dvx = tx - this.mv.x, dvy = ty - this.mv.y, dm = Math.hypot(dvx, dvy);
@@ -1081,7 +1115,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     if (m > 0.05) {
-      if (!this.atk && !this.roll) {   // 揮劍、翻滾中不改變朝向
+      if (!this.atk && !this.roll && !this.guarding) {   // 揮劍、翻滾、格擋中不改變朝向
         if (Math.abs(x) > Math.abs(y)) this.facing = x > 0 ? 'right' : 'left';
         else this.facing = y > 0 ? 'down' : 'up';
       }
@@ -1166,7 +1200,8 @@ class VillageScene extends Phaser.Scene {
     this.heroShadow.setPosition(fx, fy).setDisplaySize(HERO_H * 0.8, HERO_H * 0.22);
 
     // 受傷表現：閃紅、無敵時間內閃爍
-    if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else if (this.drink) this.hero.setTint(0xbfe8a8); else this.hero.clearTint();
+    if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else if (this.drink) this.hero.setTint(0xbfe8a8); else if (this.guarding) this.hero.setTint(0xb8d4f0); else this.hero.clearTint();
+    this.drawGuard(time);
     this.hero.setAlpha(!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1);
 
     this.updateDrink(time);
@@ -1245,6 +1280,25 @@ class VillageScene extends Phaser.Scene {
     }
     if (!best) return;
     this.lockTarget = this.lockTarget === best ? null : best;
+  }
+
+  // 格擋圖示：面前一道弧線（彈反窗口內偏金色）；彈反成功時爆一圈金光
+  drawGuard(time) {
+    const g = this.guardGfx;
+    g.clear();
+    const fx = this.playerBody.x, fy = this.playerBody.y + 4;
+    if (this.guarding) {
+      const [dx, dy] = DIRS[this.facing], mid = Math.atan2(dy, dx);
+      const win = this.parryOk && time - this.guardStart <= PARRY_MS;
+      g.setDepth(this.facing === 'up' ? fy - 1 : fy + 2);
+      g.lineStyle(win ? 5 : 4, win ? 0xffe08a : 0xbcd8f0, 0.95);
+      g.beginPath(); g.arc(fx + dx * 12, fy - 16 + dy * 8, 17, mid - 1.0, mid + 1.0, false); g.strokePath();
+    }
+    const pt = (time - this.parryFlash) / 260;
+    if (pt >= 0 && pt < 1) {
+      g.setDepth(fy + 3);
+      g.lineStyle(4, 0xffe08a, 1 - pt); g.strokeCircle(fx, fy - 16, 14 + 30 * pt);
+    }
   }
 
   // 鎖定標記：目標頭上紅色倒三角（上下浮動）＋腳下紅圈；沒鎖定時只在剛解除那一刻清掉
@@ -1544,9 +1598,9 @@ class VillageScene extends Phaser.Scene {
             const cx = bx + b.adx * mv.reach, cy = by - 14 + b.ady * mv.reach;
             hit = Math.hypot(cx - px, cy - (py - 14)) < mv.r;
           }
-          if (hit && this.hurtPlayer(mv.dmg, bx, by, time)) b.did = true;
+          if (hit && this.hurtPlayer(mv.dmg, bx, by, time, b, mv.kind)) b.did = true;
         }
-        if (st >= mv.strike) {
+        if (b.state === 'strike' && st >= mv.strike) {
           if (b.combo > 0 && !this.down) { b.combo--; this.startWindup(b, time, true, ux, uy); }
           else { b.state = 'recover'; b.t0 = time; }
         }
@@ -1678,7 +1732,7 @@ class VillageScene extends Phaser.Scene {
     const T = b.t;
     switch (b.kind) {
       case 'slash': return { kind: 'slash', aimLock: T.slashAimLock, strike: T.slashStrike, hitAt: T.slashHitAt, recover: T.slashRecover, reach: T.slashReach, r: T.slashR, dmg: T.dmgSlash };
-      case 'heavy': return { kind: 'heavy', aimLock: T.heavyAimLock, strike: T.heavyStrike, hitAt: T.heavyHitAt, recover: T.heavyRecover, reach: T.heavyReach, r: T.heavyR, dmg: T.dmgHeavy };
+      case 'heavy': return { kind: 'heavy', unblock: true, aimLock: T.heavyAimLock, strike: T.heavyStrike, hitAt: T.heavyHitAt, recover: T.heavyRecover, reach: T.heavyReach, r: T.heavyR, dmg: T.dmgHeavy };
       case 'thrust': return { kind: 'thrust', lane: true, aimLock: T.thrustAimLock, strike: T.thrustStrike, hitAt: T.thrustHitAt, recover: T.thrustRecover, speed: T.thrustSpeed, tip: T.tip, hw: T.thrustHW, dmg: T.dmgThrust };
       default: return { kind: 'lunge', lane: true, aimLock: T.aimLock, strike: T.strike, hitAt: T.hitAt, recover: T.recover, speed: T.lunge, tip: T.tip, hw: T.laneHW, dmg: T.dmgLunge };
     }
@@ -1719,7 +1773,11 @@ class VillageScene extends Phaser.Scene {
   }
 
   hitBandit(b, dx, dy, time) {
-    const dmg = this.playerDmg();
+    let dmg = this.playerDmg();
+    if (b.riposte && time < b.riposte) {     // 彈反後的反擊：傷害加倍
+      dmg = Math.round(dmg * RIPOSTE_MUL); b.riposte = 0;
+      this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '破綻', '#ffe08a');
+    }
     b.hp -= dmg;
     b.lastHit = time;
     this.hitstop(b.hp <= 0 ? HIT_STOP_KILL : HIT_STOP);
@@ -2746,8 +2804,40 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ---------- 玩家受傷與倒下 ----------
-  hurtPlayer(dmg, sx, sy, time) {
+  hurtPlayer(dmg, sx, sy, time, atk, kind) {
     if (this.down || this.cine || time < this.invulnUntil || (time >= this.rollIFrom && time < this.rollIUntil)) return false;
+    // 格擋／彈反：只擋正面（與敵人出招方向相對）；重劈擋不住
+    if (this.guarding && atk && kind !== 'heavy') {
+      const [fx, fy] = DIRS[this.facing];
+      if (-(atk.adx * fx + atk.ady * fy) > GUARD_FRONT) {
+        const px = this.playerBody.x, py = this.playerBody.y + 4;
+        if (this.parryOk && time - this.guardStart <= PARRY_MS) {
+          // 彈反：不扣血不耗氣，敵人暈眩，下一刀傷害加倍
+          atk.state = 'hurt'; atk.until = time + PARRY_STUN; atk.hurtT0 = time; atk.hurtDur = PARRY_STUN;
+          atk.kx = 0; atk.ky = 0; atk.combo = 0; atk.feintAt = 0; atk.riposte = time + PARRY_STUN;
+          this.parryFlash = time;
+          this.invulnUntil = time + 300;
+          this.spawnDamage(atk.body.x, atk.body.y - atk.t.h - 18, '彈反', '#ffe08a');
+          this.hitstop(170);
+          this.cameras.main.shake(130, 0.008);
+          return true;
+        }
+        const cost = Math.round(dmg * 1.1) + 4;
+        if (this.stam >= cost) {
+          this.useStamina(cost, time);
+          this.invulnUntil = time + 250;
+          this.spawnDamage(px, py - HERO_H - 4, '擋', '#cfe8ff');
+          this.hitstop(70);
+          this.cameras.main.shake(80, 0.004);
+          return true;
+        }
+        // 氣力不夠＝破防：氣力清空，吃六成傷害
+        this.useStamina(this.stam, time);
+        this.guarding = false;
+        dmg = Math.round(dmg * 0.6);
+        this.spawnDamage(px, py - HERO_H - 18, '破防', '#9fd8ff');
+      }
+    }
     dmg = Math.max(1, Math.round(dmg * (1 - statDef(this.stats.def))));
     this.php = Math.max(0, this.php - dmg);
     this.roll = null; this.drink = null;
@@ -2886,7 +2976,7 @@ class VillageScene extends Phaser.Scene {
     const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
     const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
     this.barTop.setSize(W, bh).setVisible(bh > 0); this.barBot.setPosition(0, this.scale.height - bh).setSize(W, bh).setVisible(bh > 0);
-    for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
+    for (const o of [this.joyGfx, this.btnGfx, this.btnText, this.dgGfx, this.dgText, this.gdGfx, this.gdText, this.hpGfx, this.hpText, this.lvText, this.pnBtnText]) o.setAlpha(1 - k);
   }
 
   // 擋在角色前面的樹變半透明，打鬥時看得到人（每 0.1 秒檢查一次）
@@ -3086,7 +3176,7 @@ class VillageScene extends Phaser.Scene {
         const mv = this.moveStats(b);
         const wt = time - b.t0, k = Math.min(1, wt / b.windup);
         const locked = wt >= b.windup - mv.aimLock;
-        lg.fillStyle(locked ? 0xffffff : 0xe8604a, locked ? 0.45 : 0.10 + 0.22 * k);
+        lg.fillStyle(locked ? 0xffffff : (b.kind === 'heavy' ? 0xb860f0 : 0xe8604a), locked ? 0.45 : 0.10 + 0.22 * k);   // 紫色＝擋不住，只能翻滾
         if (mv.lane) {
           // 紅線長度與寬度＝實際判定（衝刺距離＋刀尖、紅線半寬），畫多長就打多遠
           const len = mv.speed * mv.strike / 1000 + mv.tip;
@@ -3195,6 +3285,10 @@ class VillageScene extends Phaser.Scene {
     return { x: this.scale.width - 70, y: this.scale.height - 110 };
   }
 
+  guardPos() {
+    return { x: this.scale.width - 172, y: this.scale.height - 140 };
+  }
+
   dodgePos() {
     return { x: this.scale.width - 160, y: this.scale.height - 62 };
   }
@@ -3255,6 +3349,13 @@ class VillageScene extends Phaser.Scene {
       bg.strokePath();
     }
     this.btnText.setPosition(b.x, b.y);
+
+    // 擋鍵
+    const gpz = this.guardPos(), gg = this.gdGfx;
+    gg.clear();
+    gg.fillStyle(0x16201a, this.guarding ? 0.75 : 0.45); gg.fillCircle(gpz.x, gpz.y, GD_R);
+    gg.lineStyle(3, this.stam <= 0 ? 0xc0503a : (this.guarding ? 0xbcd8f0 : 0xe6f0dc), this.guarding ? 0.95 : 0.55); gg.strokeCircle(gpz.x, gpz.y, GD_R);
+    this.gdText.setPosition(gpz.x, gpz.y).setAlpha((this.stam <= 0 ? 0.5 : 1) * (1 - this.cineK));
 
     // 閃避鍵
     const dp = this.dodgePos(), dg = this.dgGfx;
