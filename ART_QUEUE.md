@@ -20,7 +20,7 @@
 
 ---
 
-## 1. 劉備 走路圖　狀態：待生成
+## 1. 劉備 走路圖　狀態：已推送（2026-11-14）
 - 檔名：`assets/characters/npc_liubei_walk_front.png`、`npc_liubei_walk_side.png`、`npc_liubei_walk_back.png`
 - 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。
 - 底稿：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例與主角相同。
