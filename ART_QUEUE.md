@@ -52,6 +52,13 @@
 ## 6. 老農（城外被搶的百姓）　狀態：暫不需要
 - 遊戲目前直接用現有的 `npc_farmer_walk_*`，夠用。
 
+## 7. 黃巾兵 重做（森林與城外的普通小兵）　狀態：待生成
+- 檔名（覆蓋現有檔）：`assets/characters/turban_walk_front.png`、`turban_walk_side.png`、`turban_walk_back.png`
+- 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。底稿與主角相同：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例、地面線與主角一致。
+- 造型：普通黃巾兵，頭戴黃色頭巾，身穿粗布短褐，腰繫布帶，手持鐵刀或木棍（武器不要超出格子）。神情兇悍但不誇張，體格精瘦，比武將小。現代審美，粗深色輪廓。
+- 注意：這是普通小兵，不要做成黃巾渠帥（武將）那種盔甲或披風。
+- 另外：若程式需要站立圖，也一併覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`（每張 1024×1024，人物置中、貼近下緣，姿勢不要僵硬）。
+
 ---
 
 ## 遊戲目前的暫代做法（Claude 記錄）
