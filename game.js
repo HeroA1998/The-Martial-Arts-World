@@ -6,6 +6,8 @@ const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
   town:   { w: 1400, h: 420,  bg: '#1c1a16', name: '鎮內' },
   field:  { w: 760, h: 1000, bg: '#16201a', name: '幽州 · 討黃巾' },
+  outskirts: { w: 460, h: 760, bg: '#16201a', name: '涿縣城外' },   // 第 1 章開場：新手戰
+  peach:  { w: 460, h: 560, bg: '#16201a', name: '桃園' },          // 第 1 章：桃園結義
 };
 
 // ---------- 室內（祠堂、之後的店舖）----------
@@ -79,6 +81,23 @@ function walkable(x, y) {
   if (y > SIDE2_Y0 && y < SIDE2_Y1 && x > 8 && x < MAP_W - 8) return true;
   return y > SIDE_Y0 && y < SIDE_Y1 && x > 8 && x < MAP_W - 8;
 }
+// ---------- 涿縣城外（開場）：一條往北的土路，中段一塊小空地（黃巾兵在搶劫老農）----------
+const OUT_START = { x: 230, y: 720 };
+const outCX = y => 230 + 22 * Math.sin(y / 130);
+function outWalkable(x, y) {
+  if (y < 4 || y > MAP_H - 6) return false;
+  if (Math.abs(x - outCX(y)) < 46) return true;
+  return ((x - 230) / 125) ** 2 + ((y - 380) / 85) ** 2 < 1;
+}
+// ---------- 桃園：一塊圓形空地，正中香案，下方小路接回城東門 ----------
+const PEACH_START = { x: 230, y: 520 };
+const PEACH_ALTAR = { x: 230, y: 196 };
+function peachWalkable(x, y) {
+  if (y < 6 || y > MAP_H - 4) return false;
+  const dx = (x - 230) / 175, dy = (y - 240) / 150;
+  if (dx * dx + dy * dy < 1) return true;
+  return y > 330 && Math.abs(x - 230) < 46;
+}
 // ---------- 幽州戰場（討黃巾）：大片林間空地，下方一條小路從森林小道接進來 ----------
 const FIELD_C = { x: 380, y: 470, rx: 320, ry: 370 };   // 戰場空地（不規則橢圓）
 const FIELD_START = { x: 380, y: 960 };                  // 從森林小道上來的位置
@@ -116,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.19.1';   // 每次更新請加一
+const VERSION = 'v0.20.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -163,7 +182,7 @@ const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
 const MAX_LV = 1 + STAT_KEYS.length * STAT_CAP;
 const xpNeed = lv => 50 * lv;
 // 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%。整場戰鬥結束才結算
-const KILL_XP = { turban: 8, ytelite: 22, hansoldier: 25, hangeneral: 60, bandit: 120 };
+const KILL_XP = { robber: 10, turban: 8, ytelite: 22, hansoldier: 25, hangeneral: 60, bandit: 120 };
 const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
 const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
 const statMaxHp = p => 100 + 3 * p;
@@ -198,7 +217,7 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
              chat: ['官軍裡也有這種敗類，難怪百姓寒心。', '前頭的賊首還沒除，別大意。'] },
       boss: { lines: ['黃巾的渠帥……真被你打倒了？',
                       '今晚鎮上總算能睡個安穩覺。',
-                      '剛才鎮門外來了三個人，說是要招募鄉勇，你去看看吧。'],
+                      '劉備三兄弟在鎮門口等你回去，快去吧。'],
               chat: ['這道門我守了五年，今天才真的鬆口氣。', '去見見鎮門外那三位吧，我看他們不是普通人。'] },
     },
     chat: ['這道門我守了五年，從沒像今年這樣不安心。',
@@ -214,7 +233,7 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
     story: {
       gen: { lines: ['聽說你在林子裡打倒了一個逃兵？', '官差收我們的糧，逃兵搶我們的路……這世道，誰來管管。'],
              chat: ['你去過林子，應該明白，百姓要的不過是一口飯吃。', '年輕人，別被刀劍迷了眼。'] },
-      boss: { lines: ['你替鄉親們除了一大害。', '聽說鎮門外來了幾位英雄，正在招人。年輕人，這是個機會。'],
+      boss: { lines: ['你替鄉親們除了一大害。', '鎮門口那三位英雄在等你。年輕人，跟著他們，是條正路。'],
               chat: ['我活了大半輩子，頭一回見黃巾的頭目倒在鎮外。', '去吧，別讓好機會溜了。'] },
     },
     chat: ['我這雙手種了一輩子地，如今連地都快守不住了。',
@@ -236,7 +255,18 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
            '前幾天過林子差點被劫，貨全靠運氣保住的。',
            '要什麼自己挑，缺了什麼我下回進貨幫你留意。'],
     shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
-  // 第 1 章結尾：打倒渠帥後，在鎮門外遇見劉備、關羽、張飛（暫用現有人物圖染色，之後換正式美術）
+  // ---- 第 1 章劇情角色（暫用現有人物圖染色、頭上顯示名字；正式圖見 ART_QUEUE.md）----
+  // 城外：被搶的老農
+  { id: 'victim', area: 'outskirts', name: '老農', x: 266, y: 344, look: 'farmer', face: 'left', showName: true,
+    lines: ['救命啊！誰來救救我……'], chat: ['小哥小心，那黃巾兵手裡有刀！'],
+    story: { robber: { lines: ['多謝小哥救命之恩。往北走就是涿縣城了。'], chat: ['城裡正在招募義勇，小哥去看看吧。', '這年頭，連一袋糧都保不住……'] } } },
+  // 鎮內：關羽在城門口看見主角，邀他當結義見證人（走近自動開始）
+  { id: 'guanyu_t', name: '關羽', x: 250, y: 292, look: 'smith', face: 'left', tint: 0xcfe8c8, showName: true, scene: 'guan', auto: true, lines: [], when: () => STORY.robber && !STORY.guan },
+  // 桃園：劉關張站在香案前，走近按「對話」開始結義
+  { id: 'liubei_p', area: 'peach', name: '劉備', x: 230, y: 240, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'guanyu_p', area: 'peach', name: '關羽', x: 190, y: 232, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'zhangfei_p', area: 'peach', name: '張飛', x: 270, y: 232, look: 'porter', face: 'left', tint: 0x9c9aa8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  // 鎮內：打倒渠帥回來，三兄弟在鎮門口等主角
   { id: 'liubei', name: '劉備', x: 1210, y: 300, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'guanyu', name: '關羽', x: 1172, y: 278, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'zhangfei', name: '張飛', x: 1172, y: 324, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
@@ -245,8 +275,38 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
 // 每句：[說話者, 內容]。主角是無名少年，說話者寫「你」
 const STORY_INTRO = [
   ['榜文', '中平元年（公元一八四年）。黃巾賊作亂，天下大亂。州郡各舉義兵，凡有勇力者皆可應募，共討賊寇。'],
-  ['你', '黃巾已經鬧到涿縣一帶了。家裡的田再被搶，今年就沒得吃了。'],
-  ['你', '總不能一直等著。先去祠堂拜一拜，再出東邊鎮門，到林道上看看。'],
+  ['你', '家裡的田又被搶了。聽說涿縣城裡正在募兵……往北走，進城看看。'],
+  ['老農', '救命啊！來人啊——'],
+  ['你', '前面有人呼救！'],
+];
+const STORY_ROBBER = [
+  ['老農', '多謝小哥救命！這黃巾兵搶了我的糧，還要拿刀砍人……'],
+  ['你', '老人家沒受傷就好。'],
+  ['老農', '小哥好身手。往北再走一段就是涿縣城，城裡正在招募義勇，你這樣的人，正是他們要找的。'],
+];
+const STORY_GUAN = [
+  ['關羽', '這位小兄弟，請留步。'],
+  ['關羽', '方才在城外，我遠遠看見你一人擊倒那黃巾兵，出手乾淨，膽識過人。'],
+  ['你', '……閣下是？'],
+  ['關羽', '在下關羽，字雲長，河東解良人。近日在此結識兩位豪傑：劉備劉玄德、張飛張翼德。'],
+  ['關羽', '我三人意氣相投，要在城東桃園結為兄弟，同心報國。只是尚缺一位見證之人。'],
+  ['關羽', '小兄弟俠義心腸，可願為我等作見證？'],
+  ['你', '承蒙看重，我願意。'],
+  ['關羽', '好！出城東門便是桃園，我們在那裡等你。'],
+];
+const STORY_OATH = [
+  ['劉備', '你便是雲長說的那位小兄弟？在下劉備，字玄德。'],
+  ['張飛', '俺是張飛！聽說你一個人就撂倒了黃巾兵，好！'],
+  ['關羽', '見證之人已到。玄德公、翼德，可以開始了。'],
+  ['劉備', '念劉備、關羽、張飛，雖然異姓，既結為兄弟，則同心協力，救困扶危；上報國家，下安黎庶。'],
+  ['劉備', '不求同年同月同日生，但願同年同月同日死。皇天后土，實鑒此心。背義忘恩，天人共戮！'],
+  ['你', '（三人焚香再拜。我站在一旁，看著香煙升起，心頭一熱。）'],
+  ['張飛', '大哥！二哥！從今以後，咱們就是兄弟了！'],
+  ['關羽', '大哥，三弟。'],
+  ['劉備', '二弟、三弟。——小兄弟，多謝你作見證。'],
+  ['劉備', '城東林道有黃巾賊首盤據，又有逃兵冒充官軍，搶掠往來百姓。我們兄弟先在縣中招募鄉勇。'],
+  ['劉備', '你身手好，能否先替我們走一趟林道，除掉賊首？事成之後，回城東門與我們會合。'],
+  ['你', '好，我這就去。'],
 ];
 const STORY_GEN = [
   ['潰逃的武將', '咳……你這小子……我可是官軍……'],
@@ -261,14 +321,19 @@ const STORY_BOSS = [
   ['你', '但路還是要走下去。先回鎮上，告訴大家賊首倒了。'],
 ];
 const STORY_MEET = [
-  ['劉備', '這位小兄弟，剛才鎮門守衛說，是你一個人打倒了林子裡的賊首？'],
-  ['你', '……只是為了活下去。'],
-  ['張飛', '哈哈！好身手！大哥，這小子有種！'],
-  ['關羽', '三弟，不可無禮。——小兄弟，我們兄弟三人，正要去投校尉鄒靖，討伐黃巾。'],
-  ['劉備', '朝廷詔令州郡舉義兵。我劉備雖是布衣，也想為天下出一份力。你願意同行嗎？'],
-  ['你', '……好。我跟你們去。'],
-  ['劉備', '好！那便啟程，路上慢慢說。'],
+  ['張飛', '回來了！大哥，俺就說這小子行！'],
+  ['劉備', '林中賊首已除，辛苦你了。我們兄弟也募到了五百鄉勇。'],
+  ['關羽', '校尉鄒靖正要出兵討伐黃巾，大哥已答應帶鄉勇前往。'],
+  ['劉備', '小兄弟，你可願隨我們同去？'],
+  ['你', '願意。'],
+  ['劉備', '好！那便一同啟程。'],
 ];
+// 劇情場景：NPC 的 scene 欄位對應這裡。flag＝看完後設的旗標；after＝看過之後再對話說的話；banner＝看完跳出的提示
+const STORY_SCENES = {
+  guan: { flag: 'guan', script: STORY_GUAN, after: '出城東門便是桃園，我們在那裡等你。', banner: '出鎮東門，前往桃園' },
+  oath: { flag: 'oath', script: STORY_OATH, after: '林道的賊首，就拜託你了。', banner: '桃園結義\n出鎮東門，往林道討賊' },
+  meet: { flag: 'met', script: STORY_MEET, after: '走吧，路上慢慢說。', banner: '第一章　完\n隨劉備三兄弟，投校尉鄒靖' },
+};
 const TALKED = {};   // 本次遊戲已經跟哪些 NPC 說過話（第一次說完整對話，之後隨機閒話）
 // ---------- 分層路人：基礎人偶＋零件（淺灰單色），執行時染色、疊合 ----------
 // 檔案：assets/characters/npc_<零件名>_walk_<front|back|side>.png（2048×512，4 格）。新增零件：把檔名（不含 npc_ 與方向）加進下面欄位即可
@@ -299,7 +364,7 @@ const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
 // 五銖掉落：[機率, 最少, 最多]，數量在範圍內隨機
-const WZ_DROP = { turban: [0.4, 1, 1], ytelite: [0.55, 2, 3], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
+const WZ_DROP = { robber: [0.8, 2, 3], turban: [0.4, 1, 1], ytelite: [0.55, 2, 3], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -315,6 +380,7 @@ const ITEMS = {
 // 掉落：[道具, 機率]，每個敵人倒下時各擲一次
 const DROPS = {
   // 全部為機率制，沒有保證掉落
+  robber: [['jc', 0.5]],
   turban: [['jc', 0.08], ['xq', 0.03]],
   ytelite: [['jc', 0.22], ['xq', 0.08]],
   hansoldier: [['jc', 0.15], ['xq', 0.05]],
@@ -357,6 +423,12 @@ const FOREST_ENCOUNTERS = [
   { id: 'boss', mode: 'ambush', triggerY: 365, boss: true, enemies: [
     { type: 'bandit', x: 92, y: 240, delay: 900, ex: 172, ey: 248 } ] },
 ];
+// 城外：一個搶劫老農的黃巾兵（新手戰）。打倒後的劇情見 STORY_ROBBER
+const OUT_ENCOUNTERS = [
+  { id: 'robber', mode: 'notice', banner: '擊退黃巾兵', enemies: [{ type: 'robber', x: 222, y: 394 }] },
+];
+const OUT_SPAWNS = [];
+OUT_ENCOUNTERS.forEach((e, i) => e.enemies.forEach(h => OUT_SPAWNS.push(Object.assign({ enc: i, mode: e.mode }, h))));
 const FOREST_SPAWNS = [];
 FOREST_ENCOUNTERS.forEach((e, i) => e.enemies.forEach(h => FOREST_SPAWNS.push(Object.assign({ enc: i, mode: e.mode }, h))));
 
@@ -427,6 +499,8 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   counterOnHit: 0, recoverCounter: 0,
   preempt: true, preemptDist: 60, pPreempt: 0.4, preemptCdMs: 2600, preemptCloseSpd: 70,   // 你揮刀或衝近的當下，小兵有機率搶先出刀（前搖不縮短，仍看得出來）
 });
+// 搶劫的黃巾兵：城外新手戰，和小兵一樣，只是頭上有名字
+ENEMY_TYPES.robber = Object.assign({}, ENEMY_TYPES.turban, { name: '搶劫的黃巾兵', showName: true });
 // 黃巾力士：路上守路的精銳（取代成群的小兵——貴精不貴多）。用黃巾小兵的圖，血多、傷害高、會防禦閃避，被打中不僵直也不擊退
 ENEMY_TYPES.ytelite = Object.assign({}, ENEMY_TYPES.turban, {
   name: '黃巾力士', showName: true,
@@ -558,7 +632,10 @@ class VillageScene extends Phaser.Scene {
 
   init(data) {
     this.boot = !data || !data.area;
-    this.area = (data && data.area) || 'town';
+    let bootArea = 'town';
+    if (this.boot) { const d = readSave(); if (!d || (d.story && !d.story.robber)) bootArea = 'outskirts'; }   // 新遊戲從城外開始
+    this.area = (data && data.area) || bootArea;
+    this.loadGrowth();   // 先讀存檔（劇情旗標決定 NPC 與出口）
     this.spawnAt = (data && data.spawn) || null;
     this.spawnFacing = (data && data.facing) || 'up';
     this.carry = (data && data.carry) || null;
@@ -759,10 +836,12 @@ class VillageScene extends Phaser.Scene {
     this.world = [];   // 世界物件，會被鏡頭看到
     this.bandImgs = [];
     this.ui = [];      // 螢幕固定物件
-    this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.walkers = []; this.dlg = null; this.shop = null;
+    this.altarSmoke = null; this.forestTrees = []; this.camps = []; this.exits = []; this.npcs = []; this.walkers = []; this.dlg = null; this.shop = null;
     this.obstacles = this.physics.add.staticGroup();
     if (this.area === 'forest') this.buildForest();
     else if (this.area === 'field') this.buildField();
+    else if (this.area === 'outskirts') { this.buildWoods(outWalkable, 31, 'out_ground', false); this.buildNpcs(); }
+    else if (this.area === 'peach') { this.buildWoods(peachWalkable, 47, 'peach_ground', false, true); this.buildAltar(); this.buildNpcs(); }
     else if (this.area === 'town') { this.buildTown(); this.buildNpcs(); this.buildWalkers(); }
     else this.buildInterior(this.area);
 
@@ -800,7 +879,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // 主角：物理碰撞用的腳底框（看不見），圖片跟著它走
-    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'field' ? FIELD_START : this.area === 'town' ? { x: TOWN_START.x, y: TOWN_START.y } : { x: 150, y: 380 });
+    const sp = this.spawnAt || (this.area === 'forest' ? START : this.area === 'outskirts' ? OUT_START : this.area === 'peach' ? PEACH_START : this.area === 'field' ? FIELD_START : this.area === 'town' ? { x: TOWN_START.x, y: TOWN_START.y } : { x: 150, y: 380 });
     this.playerBody = this.add.zone(sp.x, sp.y, 14, 8);
     this.physics.add.existing(this.playerBody);
     this.playerBody.body.setCollideWorldBounds(true);
@@ -837,6 +916,7 @@ class VillageScene extends Phaser.Scene {
     this.bandits = [];
     const f0 = FIELD_SPAWNS[0];
     const spawns = this.area === 'forest' ? FOREST_SPAWNS
+      : this.area === 'outskirts' ? OUT_SPAWNS
       : this.area === 'field' ? FIELD_BATTLE.roster.map(type => ({ type, x: f0.x, y: f0.y, ex: f0.ex, ey: f0.ey, delay: 0 }))
       : [];
     for (const h of spawns) {
@@ -875,11 +955,13 @@ class VillageScene extends Phaser.Scene {
         spawn: h, hidden: false, enc: h.enc, mode: h.mode,
       });
     }
-    if (this.area !== 'forest') for (const b of this.bandits) this.hideBandit(b);   // 森林的敵人由 resetForest 依遭遇模式安排
+    if (!this.encArea()) for (const b of this.bandits) this.hideBandit(b);   // 森林的敵人由 resetForest 依遭遇模式安排
     if (this.area === 'forest') this.exits.push({ x0: START.x - 60, x1: START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left' });
+    if (this.area === 'outskirts') this.exits.push({ x0: 120, x1: 340, y0: -5, y1: 26, to: 'town', spawn: { x: TOWN_START.x, y: TOWN_START.y }, facing: 'right', need: 'robber', msg: '前面有人呼救，先過去看看' });
+    if (this.area === 'peach') this.exits.push({ x0: PEACH_START.x - 60, x1: PEACH_START.x + 60, y0: MAP_H - 24, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left' });
     if (this.area === 'field') this.exits.push({ x0: FIELD_START.x - 60, x1: FIELD_START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left', when: 'walk' });   // 開戰前可以退回鎮內
     this.stage = { phase: 'walk', t0: 0, amb: 0 };   // walk：往上走（等下一個伏擊）→ intro／fight：伏兵出現 → cleared：擊敗 Boss → end：本段結束
-    if (this.area === 'forest') this.resetForest();
+    if (this.encArea()) this.resetForest();
     if (this.area === 'field') this.resetBattle();
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
@@ -2009,7 +2091,8 @@ class VillageScene extends Phaser.Scene {
       if (d) this.wz = Math.max(0, d.wz | 0);
       if (!SAVE_META_READY) {            // 第一次讀檔：取出存檔點與世界進度
         SAVE_META_READY = true; SAVED = null; PROG = { enc: [] }; STORY = (d && d.story && typeof d.story === 'object') ? Object.assign({}, d.story) : {};
-        if (d && (!d.story || (d.inv && d.inv.flask > 0))) STORY.flask = true;   // 舊存檔或已經有藥壺：視為已拿到
+        if (d && (!d.story || (d.inv && d.inv.flask > 0))) STORY.flask = true;
+        if (d && !d.story) { STORY.robber = true; STORY.intro = true; }   // v0.19 以前的舊存檔：城外那段視為已完成   // 舊存檔或已經有藥壺：視為已拿到
         if (d && d.area && d.prog && Array.isArray(d.prog.enc)) {
           SAVED = { area: d.area === 'shrine' ? 'shrine' : 'town', prog: { enc: d.prog.enc.map(Boolean) }, at: d.at | 0 };
           PROG = { enc: SAVED.prog.enc.slice() };
@@ -2091,6 +2174,10 @@ class VillageScene extends Phaser.Scene {
     const px = this.playerBody.x, py = this.playerBody.y;
     for (const e of this.exits) {
       if (e.when && this.stage.phase !== e.when) continue;   // 例如戰場：開戰後不能從入口離開
+      if (px >= e.x0 && px <= e.x1 && py >= e.y0 && py <= e.y1 && e.need && !STORY[e.need]) {   // 劇情還沒到：不能走
+        if (!this.exitMsgAt || this.nowT - this.exitMsgAt > 3000) { this.exitMsgAt = this.nowT; this.banner(e.msg || '還不能離開', 1600); }
+        continue;
+      }
       if (px >= e.x0 && px <= e.x1 && py >= e.y0 && py <= e.y1) { this.gotoArea(e.to, e.spawn, e.facing); return; }
     }
   }
@@ -2201,7 +2288,7 @@ class VillageScene extends Phaser.Scene {
     gt.fillStyle(0x6a4a30, 1); gt.fillRect(W - 26, gy0 - 8, 22, 12); gt.fillRect(W - 26, gy1 - 4, 22, 12);
     gt.fillStyle(0x3c4042, 1); gt.fillRect(W - 30, gy0 - 14, 30, 8); gt.fillRect(W - 30, gy1 + 6, 30, 8);
     this.block(W - 26, gy0 - 8, W, gy0 + 4); this.block(W - 26, gy1 - 4, W, gy1 + 8);
-    this.exits.push({ x0: W - 34, x1: W + 6, y0: gy0 + 2, y1: gy1 - 2, to: 'forest', spawn: { x: START.x, y: START.y }, facing: 'up' });
+    this.exits.push({ x0: W - 34, x1: W + 6, y0: gy0 + 2, y1: gy1 - 2, to: STORY.oath ? 'forest' : 'peach', spawn: STORY.oath ? { x: START.x, y: START.y } : { x: PEACH_START.x, y: PEACH_START.y }, facing: 'up' });   // 結義之前東門通往桃園，之後通往林道
     // 大街上下兩側整片擋住，只有大街可走（祠堂門口除外）
     this.block(14, 22, W - 14, top - 2); this.block(14, bot + 2, W - 14, BOT);
 
@@ -2451,6 +2538,7 @@ class VillageScene extends Phaser.Scene {
 
   buildNpcs() {
     for (const d of NPCS) {
+      if ((d.area || 'town') !== this.area) continue;
       if (d.when && !d.when()) continue;   // 劇情角色：到了該出現的時候才站在鎮上
       const key = 'npcw_' + d.look + '_side_1';   // 站姿：取側面走路圖的中立那一格，依 face 決定朝向
       const sprite = this.add.image(d.x, d.y, key).setOrigin(0.5, 1).setDepth(d.y).setFlipX(d.face === 'left');
@@ -2575,7 +2663,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   nearNpc() {
-    if (this.area !== 'town' || !this.playerBody) return null;
+    if (!this.npcs || !this.npcs.length || !this.playerBody) return null;
     let best = null, bd = NPC_R;
     for (const n of this.npcs) {
       const dd = Math.hypot(this.playerBody.x - n.x, this.playerBody.y - n.y);
@@ -2612,7 +2700,7 @@ class VillageScene extends Phaser.Scene {
 
   // 新遊戲開場：榜文與主角的話
   maybeIntro() {
-    if (STORY.intro || !this.boot || this.area !== 'town' || this.menu) return;
+    if (STORY.intro || !this.boot || this.area !== 'outskirts' || this.menu) return;
     STORY.intro = true; this.saveGrowth();
     this.hintText.setVisible(false);
     this.time.delayedCall(500, () => this.openScene(STORY_INTRO, () => this.hintText.setVisible(true)));
@@ -2629,14 +2717,15 @@ class VillageScene extends Phaser.Scene {
   // 劇情推進到哪一步，NPC 就換哪一組對話
   npcVersion(npc) {
     const st = npc.story;
-    if (st) { if (STORY.boss && st.boss) return { key: 'boss', v: st.boss }; if (STORY.gen && st.gen) return { key: 'gen', v: st.gen }; }
+    if (st) for (const k of ['met', 'boss', 'gen', 'oath', 'guan', 'robber']) if (STORY[k] && st[k]) return { key: k, v: st[k] };
     return { key: '', v: npc };
   }
 
   openDialog(npc) {
-    if (npc.scene === 'meet') {
-      if (STORY.met) { this.openScene([[npc.name, '走吧，路上慢慢說。']]); return; }
-      this.openScene(STORY_MEET, () => { STORY.met = true; this.saveGrowth(); this.banner('第一章　完\n往涿縣城外，與劉備三兄弟同行', 4200); });
+    const SC = STORY_SCENES[npc.scene];
+    if (SC) {
+      if (STORY[SC.flag]) { this.openScene([[npc.name, SC.after]]); return; }
+      this.openScene(SC.script, () => { STORY[SC.flag] = true; this.saveGrowth(); if (SC.banner) this.banner(SC.banner, 4200); });
       return;
     }
     const ver = this.npcVersion(npc), tk = npc.id + ':' + ver.key;
@@ -2675,10 +2764,14 @@ class VillageScene extends Phaser.Scene {
   }
 
   drawDialogUI() {
+    if (this.altarSmoke) {   // 桃園香案上的香煙
+      const sg = this.altarSmoke; sg.clear();
+      for (const p of incensePuffs(this.nowT || 0, { x: PEACH_ALTAR.x, y: PEACH_ALTAR.y - 40 })) { sg.fillStyle(0xe8e4dc, p.a); sg.fillCircle(p.x, p.y, p.r); }
+    }
     const g = this.dlgGfx, W = this.scale.width, H = this.scale.height, k = 1 - this.cineK;
     g.clear();
     // NPC 轉向面對主角
-    if (this.area === 'town' && this.playerBody) for (const n of this.npcs) {
+    if (this.playerBody) for (const n of this.npcs) {
       const dx = this.playerBody.x - n.x, dy = this.playerBody.y - n.y;
       let dir = 'front', flip = n.face === 'left';
       if (Math.hypot(dx, dy) < 120) {
@@ -2690,6 +2783,10 @@ class VillageScene extends Phaser.Scene {
       if (n.sprite.texture.key !== nk) n.sprite.setTexture(nk);
       n.sprite.setDisplaySize(nt.width * ks, nt.height * ks);
       n.sprite.setFlipX(dir === 'side' && flip);
+    }
+    // 劇情角色走近自動開口（例如鎮內的關羽）
+    if (!this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.menu && !this.down && !this.cine && !this.transitioning && !this.atk && !this.roll && !this.drink && this.playerBody) {
+      for (const n of this.npcs) if (n.auto && (!n.when || n.when()) && !STORY[(STORY_SCENES[n.scene] || {}).flag] && Math.hypot(this.playerBody.x - n.x, this.playerBody.y - n.y) < 72) { this.openDialog(n); break; }
     }
     // 「對話」鈕
     const can = this.canTalk(), r = this.talkRect();
@@ -3060,13 +3157,13 @@ class VillageScene extends Phaser.Scene {
     this.stam = this.maxStam(); this.roll = null;
     this.hero.setAngle(0);
     this.downText.setVisible(false);
-    const sp0 = this.area === 'field' ? FIELD_START : START;
+    const sp0 = this.area === 'field' ? FIELD_START : this.area === 'outskirts' ? OUT_START : START;
     this.playerBody.body.reset(sp0.x, sp0.y);
     // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
     PROG = { enc: SAVED ? SAVED.prog.enc.slice() : [] };   // 世界進度退回上次存檔
-    if (this.area === 'forest') this.resetForest(); else for (const b of this.bandits) this.hideBandit(b);
+    if (this.encArea()) this.resetForest(); else for (const b of this.bandits) this.hideBandit(b);
     if (this.area === 'field') this.resetBattle();
-    if (this.area !== 'forest') this.stage = { phase: 'walk', t0: 0, amb: 0 };
+    if (!this.encArea()) this.stage = { phase: 'walk', t0: 0, amb: 0 };
     this.bannerText.setVisible(false);
     this.cine = false; this.heroAlert.setVisible(false);
   }
@@ -3118,28 +3215,35 @@ class VillageScene extends Phaser.Scene {
   engaged() { return this.bandits.some(b => !b.hidden && !b.dead && b.state !== 'idle'); }
 
   // 倒下重來／剛進場：守路小兵站回原位，伏擊的敵人藏回樹林
+  // 有遭遇戰的區域（森林、城外）
+  encArea() { return this.area === 'forest' || this.area === 'outskirts'; }
+  encList() { return this.area === 'outskirts' ? OUT_ENCOUNTERS : FOREST_ENCOUNTERS; }
+
   resetForest() {
+    const L = this.encList();
     for (const b of this.bandits) { if (b.mode === 'notice') this.idleBandit(b); else this.hideBandit(b); }
-    this.encDone = FOREST_ENCOUNTERS.map((e, i) => !!PROG.enc[i]);   // 已打倒的遭遇不再出現
+    this.encDone = L.map((e, i) => this.area === 'outskirts' ? !!STORY[e.id] : !!PROG.enc[i]);   // 已打倒的遭遇不再出現（城外那一場記在劇情旗標）
     this.ambushes = [];
-    FOREST_ENCOUNTERS.forEach((e, i) => { if (e.mode === 'ambush' && !this.encDone[i]) this.ambushes.push(i); });
+    L.forEach((e, i) => { if (e.mode === 'ambush' && !this.encDone[i]) this.ambushes.push(i); });
     for (const b of this.bandits) if (this.encDone[b.enc]) this.hideBandit(b);
-    const bossDone = FOREST_ENCOUNTERS.some((e, i) => e.boss && this.encDone[i]);
+    const bossDone = L.some((e, i) => e.boss && this.encDone[i]);
     this.stage = { phase: bossDone ? 'cleared' : 'walk', t0: 0, amb: 0 };
   }
 
   updateForest(time) {
-    const st = this.stage, py = this.playerBody.y;
+    const st = this.stage, py = this.playerBody.y, L = this.encList();
     // 守路的小隊全倒下：結算經驗
-    FOREST_ENCOUNTERS.forEach((e, i) => {
+    L.forEach((e, i) => {
       if (e.mode !== 'notice' || this.encDone[i] || this.down) return;
       if (this.bandits.filter(b => b.enc === i).every(b => b.dead)) {
-        this.encDone[i] = true; PROG.enc[i] = true;
+        this.encDone[i] = true;
+        if (this.area === 'forest') PROG.enc[i] = true;
         const got = this.settleXp();
-        this.banner('擊退守兵\n獲得 ' + got + ' 經驗', 2200);
+        this.banner((e.banner || '擊退守兵') + '\n獲得 ' + got + ' 經驗', 2200);
+        if (e.id === 'robber') this.storyBeat('robber', STORY_ROBBER, 1400);
       }
     });
-    const ai = this.ambushes[st.amb], E = FOREST_ENCOUNTERS[ai];
+    const ai = this.ambushes[st.amb], E = L[ai];
     if (st.phase === 'walk' && E && !this.down && py < E.triggerY) {
       // 出場動畫：黑條滑入、主角停住（無敵、不能操作），頭頂跳出紅色驚嘆號，伏兵慢慢走出來
       st.phase = 'intro'; st.t0 = time;
@@ -3166,7 +3270,7 @@ class VillageScene extends Phaser.Scene {
 
   updateStage(time) {
     if (this.area === 'field') this.updateBattle(time);
-    if (this.area === 'forest') this.updateForest(time);
+    if (this.encArea()) this.updateForest(time);
     // 黑條與操作介面跟著 cine 淡入淡出
     const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
     const bh = Math.round(this.scale.height * 0.11 * k), W = this.scale.width;
@@ -3185,7 +3289,7 @@ class VillageScene extends Phaser.Scene {
       for (const u of who) {
         if (u.y < t.y && u.y > t.y - t.h - 4 && Math.abs(u.x - t.x) < t.hw + 8) { cover = true; break; }
       }
-      if (cover !== t.faded) { t.faded = cover; t.img.setAlpha(cover ? 0.4 : 1); }
+      if (cover !== t.faded) { t.faded = cover; t.img.setAlpha(cover ? 0.4 : 1); if (t.bl) t.bl.setAlpha(cover ? 0.4 : 1); }
     }
   }
 
@@ -3230,10 +3334,27 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ---------- 森林小道：地面、樹、看不見的牆 ----------
+  // 桃園香案（暫代：程式畫的供桌、紅布、香爐、三支香、三碗酒；正式圖見 ART_QUEUE.md）
+  buildAltar() {
+    const { x, y } = PEACH_ALTAR, g = this.add.graphics().setDepth(y);
+    this.world.push(g);
+    g.fillStyle(0x000000, 0.28); g.fillEllipse(x, y + 2, 76, 12);
+    g.fillStyle(0x5a3a22, 1); g.fillRect(x - 32, y - 16, 4, 16); g.fillRect(x + 28, y - 16, 4, 16);   // 桌腳
+    g.fillStyle(0x7a5030, 1); g.fillRect(x - 36, y - 22, 72, 7);                                      // 桌面
+    g.fillStyle(0xa83a2a, 1); g.fillRect(x - 30, y - 16, 60, 10);                                      // 紅桌布
+    g.fillStyle(0xd8b050, 1); g.fillRect(x - 30, y - 7, 60, 1);
+    g.fillStyle(0x8a7a4a, 1); g.fillRect(x - 6, y - 29, 12, 7); g.fillStyle(0x6a5a32, 1); g.fillRect(x - 7, y - 23, 14, 2);   // 香爐
+    g.fillStyle(0xb08060, 1); for (const dx of [-3, 0, 3]) g.fillRect(x + dx, y - 39, 1, 10);       // 三支香
+    g.fillStyle(0xff8a3a, 1); for (const dx of [-3, 0, 3]) g.fillRect(x + dx, y - 40, 1, 2);
+    g.fillStyle(0xd8d0b8, 1); for (const dx of [-24, -16, 16]) g.fillRect(x + dx - 3, y - 26, 6, 4);  // 酒碗
+    this.block(x - 36, y - 10, x + 36, y + 2);
+    this.altarSmoke = this.add.graphics().setDepth(y + 1); this.world.push(this.altarSmoke);
+  }
+
   buildForest() { this.buildWoods(walkable, 11, 'forest_ground', true); }
   buildField() { this.buildWoods(fieldWalkable, 23, 'field_ground', false); }
 
-  buildWoods(walk, seed0, groundKey, forestProps) {
+  buildWoods(walk, seed0, groundKey, forestProps, blossom) {
     let seed = seed0;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     // 1. 先決定樹的位置：小道與空地以外，錯開的格子＋隨機偏移
@@ -3288,7 +3409,7 @@ class VillageScene extends Phaser.Scene {
     g.fillStyle = 'rgba(0,0,0,0.30)';
     for (const t of trees) { const w = t.h * 0.7; g.beginPath(); g.ellipse(t.x / C, t.y / C, w * 0.42 / C, w * 0.15 / C, 0, 0, Math.PI * 2); g.fill(); }
     this.textures.addCanvas(groundKey, cv).setFilter(Phaser.Textures.FilterMode.NEAREST);   // 放大時保持像素硬邊
-    if (['forest_ground', 'field_ground', 'town_ground7'].every(k => this.textures.exists(k))) { this.textures.remove('forest_floor'); this.textures.remove('dirt_path'); }   // 森林、戰場、鎮內地面都做好了才釋放原圖
+    if (['forest_ground', 'field_ground', 'town_ground7', 'out_ground', 'peach_ground'].every(k => this.textures.exists(k))) { this.textures.remove('forest_floor'); this.textures.remove('dirt_path'); }   // 森林、戰場、鎮內地面都做好了才釋放原圖
     }
     this.world.push(this.add.image(0, 0, groundKey).setOrigin(0).setScale(C).setDepth(-20));
     // 3. 樹：依腳底 y 排前後
@@ -3299,7 +3420,17 @@ class VillageScene extends Phaser.Scene {
       const img = this.add.image(t.x, t.y, key).setOrigin(0.5, 1).setDisplaySize(w, h)
         .setFlipX(t.flip).setTint(tint).setDepth(t.y);
       this.world.push(img);
-      this.forestTrees.push({ img, x: t.x, y: t.y, hw: w * 0.42, h: h * 0.92, faded: false });
+      let bl = null;
+      if (blossom) {   // 桃園：在樹冠上點粉紅桃花（暫代，正式桃樹圖見 ART_QUEUE.md）
+        bl = this.add.graphics().setDepth(t.y + 0.5); this.world.push(bl);
+        const cols = [0xf4b8c8, 0xe890a8, 0xfad4dc, 0xd87896];
+        for (let n = 0; n < 40; n++) {
+          bl.fillStyle(cols[Math.floor(rnd() * cols.length)], 1);
+          const bx = t.x + (rnd() - 0.5) * w * 0.7, by = t.y - h * (0.5 + rnd() * 0.42), r = 0.7 + rnd() * 0.9;
+          bl.fillRect(Math.round(bx - r), Math.round(by - r), Math.round(r * 2), Math.round(r * 2));
+        }
+      }
+      this.forestTrees.push({ img, bl, x: t.x, y: t.y, hw: w * 0.42, h: h * 0.92, faded: false });
     }
     // 3b. 灌木、石頭、倒木：林緣散放（不擋路）；空地邊緣另放幾個會擋路的石頭與倒木
     this.propBlocks = [];
