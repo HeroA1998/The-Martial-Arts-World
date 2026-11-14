@@ -135,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.21.0';   // 每次更新請加一
+const VERSION = 'v0.21.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -277,21 +277,21 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
            '前幾天過林子差點被劫，貨全靠運氣保住的。',
            '要什麼自己挑，缺了什麼我下回進貨幫你留意。'],
     shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
-  // ---- 第 1 章劇情角色（暫用現有人物圖染色、頭上顯示名字；正式圖見 ART_QUEUE.md）----
+  // ---- 第 1 章劇情角色（劉關張用正式站立圖 npc_<id>_stand_*；stand＝圖名，ph＝畫面高度，含頭冠與兵器）----
   // 城外：被搶的老農
   { id: 'victim', area: 'outskirts', name: '老農', x: 266, y: 344, look: 'farmer', face: 'left', showName: true,
     lines: ['救命啊！誰來救救我……'], chat: ['小哥小心，那黃巾兵手裡有刀！'],
     story: { robber: { lines: ['多謝小哥救命之恩。往北走就是涿縣城了。'], chat: ['城裡正在招募義勇，小哥去看看吧。', '這年頭，連一袋糧都保不住……'] } } },
   // 鎮內：關羽在城門口看見主角，邀他當結義見證人（走近自動開始）
-  { id: 'guanyu_t', name: '關羽', x: 250, y: 292, look: 'smith', face: 'left', tint: 0xcfe8c8, showName: true, scene: 'guan', auto: true, lines: [], when: () => STORY.robber && !STORY.guan },
+  { id: 'guanyu_t', name: '關羽', x: 250, y: 292, stand: 'guanyu', ph: 56.7, face: 'left', showName: true, scene: 'guan', auto: true, lines: [], when: () => STORY.robber && !STORY.guan },
   // 桃園：劉關張站在香案前，走近按「對話」開始結義
-  { id: 'liubei_p', area: 'peach', name: '劉備', x: 230, y: 240, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
-  { id: 'guanyu_p', area: 'peach', name: '關羽', x: 190, y: 232, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
-  { id: 'zhangfei_p', area: 'peach', name: '張飛', x: 270, y: 232, look: 'porter', face: 'left', tint: 0x9c9aa8, showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'liubei_p', area: 'peach', name: '劉備', x: 230, y: 240, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'guanyu_p', area: 'peach', name: '關羽', x: 190, y: 232, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'zhangfei_p', area: 'peach', name: '張飛', x: 270, y: 232, stand: 'zhangfei', ph: 60.8, face: 'left', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
   // 鎮內：打倒渠帥回來，三兄弟在鎮門口等主角
-  { id: 'liubei', name: '劉備', x: 1210, y: 300, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
-  { id: 'guanyu', name: '關羽', x: 1172, y: 278, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
-  { id: 'zhangfei', name: '張飛', x: 1172, y: 324, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'liubei', name: '劉備', x: 1210, y: 300, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'guanyu', name: '關羽', x: 1172, y: 278, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'zhangfei', name: '張飛', x: 1172, y: 324, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   // ---- 第 2 章：校尉鄒靖（暫用官軍武將圖）、劉關張在鎮東大街；出兵前（zou）與論功（merit）用同一組站位 ----
   { id: 'zoujing', name: '校尉 鄒靖', x: 1120, y: 282, walkTex: 'hangeneral', h: Math.round(HERO_H * 1.1), face: 'left', showName: true, scene: 'zou', lines: [],
     after: '明日出兵，出鎮東門往大興山。', when: () => STORY.met && !STORY.xing },
@@ -301,12 +301,12 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
     lines: ['奉鄒校尉之命，來涿縣招兵。'], chat: ['校尉治軍嚴，不許擾民。', '你是劉玄德帶來的人？看起來有兩下子。'],
     story: { xing: { lines: ['大興山一戰，劉玄德的鄉勇打得比我們還凶。'], chat: ['降卒都送去屯田了，校尉說不能濫殺。', '安喜縣尉……劉玄德這下出頭了。'] } },
     when: () => STORY.met },
-  { id: 'liubei2', name: '劉備', x: 1090, y: 314, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'zou', lines: [], after: '程遠志兵多，我們更要小心。', when: () => STORY.met && !STORY.xing },
-  { id: 'guanyu2', name: '關羽', x: 1064, y: 300, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'zou', lines: [], after: '刀已磨好，隨時可以出發。', when: () => STORY.met && !STORY.xing },
-  { id: 'zhangfei2', name: '張飛', x: 1064, y: 326, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'zou', lines: [], after: '俺的蛇矛等不及了！', when: () => STORY.met && !STORY.xing },
-  { id: 'liubei3', name: '劉備', x: 1090, y: 314, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'merit', lines: [], after: '收拾好行李，我們一同往安喜。', when: () => STORY.xing },
-  { id: 'guanyu3', name: '關羽', x: 1064, y: 300, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'merit', lines: [], after: '縣尉雖小，也是百姓的父母官。', when: () => STORY.xing },
-  { id: 'zhangfei3', name: '張飛', x: 1064, y: 326, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'merit', lines: [], after: '縣尉就縣尉！總有一天，大哥做大官！', when: () => STORY.xing },
+  { id: 'liubei2', name: '劉備', x: 1090, y: 314, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'zou', lines: [], after: '程遠志兵多，我們更要小心。', when: () => STORY.met && !STORY.xing },
+  { id: 'guanyu2', name: '關羽', x: 1064, y: 300, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'zou', lines: [], after: '刀已磨好，隨時可以出發。', when: () => STORY.met && !STORY.xing },
+  { id: 'zhangfei2', name: '張飛', x: 1064, y: 326, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'zou', lines: [], after: '俺的蛇矛等不及了！', when: () => STORY.met && !STORY.xing },
+  { id: 'liubei3', name: '劉備', x: 1090, y: 314, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'merit', lines: [], after: '收拾好行李，我們一同往安喜。', when: () => STORY.xing },
+  { id: 'guanyu3', name: '關羽', x: 1064, y: 300, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'merit', lines: [], after: '縣尉雖小，也是百姓的父母官。', when: () => STORY.xing },
+  { id: 'zhangfei3', name: '張飛', x: 1064, y: 326, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'merit', lines: [], after: '縣尉就縣尉！總有一天，大哥做大官！', when: () => STORY.xing },
 ];
 // ---------- 第 1 章劇情（涿縣，中平元年） ----------
 // 每句：[說話者, 內容]。主角是無名少年，說話者寫「你」
@@ -473,6 +473,7 @@ const NPC_WOMEN = ['farmwife', 'vegseller', 'washerwoman', 'innkeeper', 'maiden'
 const NPC_OLD = ['elder_man', 'elder_woman', 'old_fisher', 'old_sage'];
 const NPC_KIDS = ['child_boy', 'child_girl', 'child_beggar', 'child_shepherd'];   // 孩童在遊戲裡縮到 0.7 倍
 const NPC_FILE = { maiden: 'maiden_px' };   // 路人 id → 圖檔名（assets/characters/npc_<檔名>_walk_<方向>.png）；沒列的就用 id 本身
+const STAND_NPC_IDS = ['liubei', 'guanyu', 'zhangfei'];   // 有正式站立圖的劇情人物（assets/characters/npc_<id>_stand_<方向>.png）
 const ALL_NPC_IDS = [...NPC_MEN, ...NPC_WOMEN, ...NPC_OLD, ...NPC_KIDS];   // 要載入的單一角色（assets/characters/npc_<id>_walk_<方向>.png）
 // 在大街上走動的路人：固定 NPC 用掉的（elder_man、vendor、hunter）不再重複出現
 const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee', 'farmer', ...NPC_WOMEN, 'elder_woman', 'old_fisher', 'old_sage', ...NPC_KIDS];
@@ -816,6 +817,8 @@ class VillageScene extends Phaser.Scene {
     // 森林素材
     for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.load.image(f, A + 'props/' + f + '.png');
     this.load.image('shrine_exterior', A + 'buildings/shrine_exterior_v4.png');
+    for (const id of STAND_NPC_IDS) for (const d of ['front', 'side', 'back']) this.load.image('npcst_' + id + '_' + d, A + 'characters/npc_' + id + '_stand_' + d + '.png');   // 劇情人物站立圖
+    for (const f of ['peach_tree_01', 'peach_tree_02', 'oath_altar']) this.load.image(f, A + 'props/' + f + '.png');   // 桃園
     if (isInterior(this.area)) this.queueInteriors();   // 室內圖不在開場載入：進鎮後背景載，直接進室內才在這裡載
     for (const n of ['house_a', 'house_b', 'shop', 'courtyard_gate']) this.load.image(n, A + 'buildings/' + n + '.png');
     this.load.image('stone_floor', A + 'tiles/stone_floor.png');
@@ -937,7 +940,8 @@ class VillageScene extends Phaser.Scene {
           .forEach((cv, i) => this.textures.addCanvas(P + '_' + dst + '_' + i, cv));
       }
     }
-    for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01']) this.keyTex(f, f + '_k');
+    for (const f of ['forest_tree_01', 'forest_tree_02', 'forest_tree_03', 'bush_01', 'rock_01', 'log_01', 'peach_tree_01', 'peach_tree_02', 'oath_altar']) this.keyTex(f, f + '_k');
+    for (const id of STAND_NPC_IDS) for (const d of ['front', 'side', 'back']) this.keyTex('npcst_' + id + '_' + d, 'npcsk_' + id + '_' + d);
     for (const id of ALL_NPC_IDS) for (const d of PED_DIRS)   // 單一角色：去洋紅並裁成 4 格
     { keyAndTrimFrames(this.textures.get('npcsrc_' + id + '_' + d).getSourceImage(), 4, 1)
         .forEach((cv, i) => this.textures.addCanvas('npcw_' + id + '_' + d + '_' + i, cv));
@@ -2672,17 +2676,18 @@ class VillageScene extends Phaser.Scene {
       if (d.tint) sprite.setTint(d.tint);
       let tag = null;
       if (d.showName) {   // 頭上顯示名字
-        tag = this.add.text(d.x, d.y - (d.h || HERO_H) - 4, d.name, { fontFamily: 'system-ui, sans-serif', fontSize: '6px', color: '#f0d890', stroke: '#000000', strokeThickness: 2, resolution: 4 }).setOrigin(0.5, 1).setDepth(d.y + 1);
+        tag = this.add.text(d.x, d.y - (d.ph || d.h || HERO_H) - 2, d.name, { fontFamily: 'system-ui, sans-serif', fontSize: '6px', color: '#f0d890', stroke: '#000000', strokeThickness: 2, resolution: 4 }).setOrigin(0.5, 1).setDepth(d.y + 1);
         this.world.push(tag);
       }
       this.npcs.push(Object.assign({ sprite, tag, sh, zone }, d));
     }
   }
   // NPC 圖：一般路人用 npcw_<look>；借用敵人走路圖的（例如鄒靖用官軍武將圖）用 <walkTex>_walk
-  npcKey(d, dir) { return d.walkTex ? d.walkTex + '_walk_' + dir + '_1' : 'npcw_' + d.look + '_' + dir + '_1'; }
+  npcKey(d, dir) { if (d.stand) return 'npcsk_' + d.stand + '_' + dir; return d.walkTex ? d.walkTex + '_walk_' + dir + '_1' : 'npcw_' + d.look + '_' + dir + '_1'; }
   sizeNpc(sprite, d, dir) {
     const key = this.npcKey(d, dir), nt = this.textures.get(key).getSourceImage();
     if (sprite.texture.key !== key) sprite.setTexture(key);
+    if (d.stand) { sprite.setDisplaySize(d.ph * nt.width / nt.height, d.ph); return; }
     if (d.walkTex) { sprite.setDisplaySize((d.h || HERO_H) * nt.width / nt.height, d.h || HERO_H); return; }
     const ks = HERO_H / this.textures.get('hero_walk_' + dir + '_0').getSourceImage().height;
     sprite.setDisplaySize(nt.width * ks, nt.height * ks);
@@ -2957,7 +2962,7 @@ class VillageScene extends Phaser.Scene {
   drawDialogUI() {
     if (this.altarSmoke) {   // 桃園香案上的香煙
       const sg = this.altarSmoke; sg.clear();
-      for (const p of incensePuffs(this.nowT || 0, { x: PEACH_ALTAR.x, y: PEACH_ALTAR.y - 40 })) { sg.fillStyle(0xe8e4dc, p.a); sg.fillCircle(p.x, p.y, p.r); }
+      for (const p of incensePuffs(this.nowT || 0, { x: PEACH_ALTAR.x, y: this.altarTop + 1 })) { sg.fillStyle(0xe8e4dc, p.a); sg.fillCircle(p.x, p.y, p.r); }
     }
     const g = this.dlgGfx, W = this.scale.width, H = this.scale.height, k = 1 - this.cineK;
     g.clear();
@@ -3546,19 +3551,12 @@ class VillageScene extends Phaser.Scene {
 
   // ---------- 森林小道：地面、樹、看不見的牆 ----------
   // 桃園香案（暫代：程式畫的供桌、紅布、香爐、三支香、三碗酒；正式圖見 ART_QUEUE.md）
-  buildAltar() {
-    const { x, y } = PEACH_ALTAR, g = this.add.graphics().setDepth(y);
-    this.world.push(g);
-    g.fillStyle(0x000000, 0.28); g.fillEllipse(x, y + 2, 76, 12);
-    g.fillStyle(0x5a3a22, 1); g.fillRect(x - 32, y - 16, 4, 16); g.fillRect(x + 28, y - 16, 4, 16);   // 桌腳
-    g.fillStyle(0x7a5030, 1); g.fillRect(x - 36, y - 22, 72, 7);                                      // 桌面
-    g.fillStyle(0xa83a2a, 1); g.fillRect(x - 30, y - 16, 60, 10);                                      // 紅桌布
-    g.fillStyle(0xd8b050, 1); g.fillRect(x - 30, y - 7, 60, 1);
-    g.fillStyle(0x8a7a4a, 1); g.fillRect(x - 6, y - 29, 12, 7); g.fillStyle(0x6a5a32, 1); g.fillRect(x - 7, y - 23, 14, 2);   // 香爐
-    g.fillStyle(0xb08060, 1); for (const dx of [-3, 0, 3]) g.fillRect(x + dx, y - 39, 1, 10);       // 三支香
-    g.fillStyle(0xff8a3a, 1); for (const dx of [-3, 0, 3]) g.fillRect(x + dx, y - 40, 1, 2);
-    g.fillStyle(0xd8d0b8, 1); for (const dx of [-24, -16, 16]) g.fillRect(x + dx - 3, y - 26, 6, 4);  // 酒碗
-    this.block(x - 36, y - 10, x + 36, y + 2);
+  buildAltar() {   // 結義香案（正式圖 oath_altar.png）；香煙由程式畫，從三支香的頂端飄出
+    const { x, y } = PEACH_ALTAR, tex = this.textures.get('oath_altar_k').getSourceImage(), w = 82, h = w * tex.height / tex.width;
+    this.world.push(this.add.ellipse(x, y + 1, w * 0.95, 10, 0x000000, 0.28).setDepth(y - 1));
+    this.world.push(this.add.image(x, y + 2, 'oath_altar_k').setOrigin(0.5, 1).setDisplaySize(w, h).setDepth(y));
+    this.altarTop = y + 2 - h;   // 香頭的高度
+    this.block(x - w / 2, y - 10, x + w / 2, y + 2);
     this.altarSmoke = this.add.graphics().setDepth(y + 1); this.world.push(this.altarSmoke);
   }
 
@@ -3626,21 +3624,14 @@ class VillageScene extends Phaser.Scene {
     // 3. 樹：依腳底 y 排前後
     this.forestTrees = [];
     for (const t of trees) {
-      const key = 'forest_tree_0' + (t.kind + 1) + '_k', tex = this.textures.get(key).getSourceImage(), h = t.h, w = h * tex.width / tex.height;
-      const v = Math.round(255 * t.shade), tint = (v << 16) | (v << 8) | v;
+      const pk = t.kind % 2;   // 桃園：兩種正式桃樹（01 圓潤、02 高瘦），比森林的樹矮一些、也亮一些
+      const key = blossom ? 'peach_tree_0' + (pk + 1) + '_k' : 'forest_tree_0' + (t.kind + 1) + '_k', tex = this.textures.get(key).getSourceImage();
+      const h = blossom ? t.h * (pk ? 0.95 : 0.72) : t.h, w = h * tex.width / tex.height;
+      const v = Math.round(255 * (blossom ? Math.max(0.88, t.shade) : t.shade)), tint = (v << 16) | (v << 8) | v;
       const img = this.add.image(t.x, t.y, key).setOrigin(0.5, 1).setDisplaySize(w, h)
         .setFlipX(t.flip).setTint(tint).setDepth(t.y);
       this.world.push(img);
-      let bl = null;
-      if (blossom) {   // 桃園：在樹冠上點粉紅桃花（暫代，正式桃樹圖見 ART_QUEUE.md）
-        bl = this.add.graphics().setDepth(t.y + 0.5); this.world.push(bl);
-        const cols = [0xf4b8c8, 0xe890a8, 0xfad4dc, 0xd87896];
-        for (let n = 0; n < 40; n++) {
-          bl.fillStyle(cols[Math.floor(rnd() * cols.length)], 1);
-          const bx = t.x + (rnd() - 0.5) * w * 0.7, by = t.y - h * (0.5 + rnd() * 0.42), r = 0.7 + rnd() * 0.9;
-          bl.fillRect(Math.round(bx - r), Math.round(by - r), Math.round(r * 2), Math.round(r * 2));
-        }
-      }
+      const bl = null;
       this.forestTrees.push({ img, bl, x: t.x, y: t.y, hw: w * 0.42, h: h * 0.92, faded: false });
     }
     // 3b. 灌木、石頭、倒木：林緣散放（不擋路）；空地邊緣另放幾個會擋路的石頭與倒木
