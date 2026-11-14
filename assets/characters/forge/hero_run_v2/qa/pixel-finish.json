@@ -1,0 +1,425 @@
+{
+  "schema": "video2dsprite.finish.v1",
+  "tool": {
+    "name": "finish_frames",
+    "version": "0.6.0"
+  },
+  "mode": "pixel",
+  "clip": "run_right",
+  "character": "hero",
+  "role": "hero",
+  "source": {
+    "frames": "../registered4x",
+    "count": 9,
+    "size": [
+      512,
+      512
+    ],
+    "pattern": "*.png",
+    "registration": null
+  },
+  "rest": {
+    "frame": 8,
+    "topPx": 80,
+    "feetPx": 440,
+    "heightPx": 360,
+    "areaPx": 27008,
+    "stanceX": 260.0,
+    "centroid": [
+      252.11137440758293,
+      244.81990521327015
+    ],
+    "minRun": 6
+  },
+  "anchorMode": "feet",
+  "anchorSource": [
+    260.0,
+    440.0
+  ],
+  "scale": 0.25,
+  "scaleSource": "target-height",
+  "targetHeight": 90.0,
+  "scaleRef": null,
+  "size": [
+    128,
+    128
+  ],
+  "anchor": [
+    64,
+    110
+  ],
+  "canvas": {
+    "size": [
+      128,
+      128
+    ],
+    "anchor": [
+      64,
+      110
+    ],
+    "requestedAnchor": [
+      64,
+      110
+    ]
+  },
+  "engine": {
+    "sourceSize": [
+      128,
+      128
+    ],
+    "sourceAnchor": [
+      64,
+      110
+    ],
+    "sampling": "nearest",
+    "pixelArt": true,
+    "note": "engine_export.py package --clean-dir <out>/frames --source-size W,H --source-anchor X,Y (no --registration; add --pixel-art --sampling nearest for pixel and hibit)"
+  },
+  "resampler": "box",
+  "restOutput": {
+    "heightPx": 90.0,
+    "areaPx": 1688.0,
+    "bodyHeightPx": 90.0,
+    "outlinePx": 0,
+    "measuredHeightPx": 90,
+    "measuredAreaPx": 1681
+  },
+  "displaySizes": [
+    {
+      "label": "1x",
+      "dir": "frames",
+      "scale": 0.25,
+      "size": [
+        128,
+        128
+      ],
+      "anchor": [
+        64,
+        110
+      ],
+      "targetHeight": 90.0,
+      "flicker": {
+        "pairs": 9,
+        "alphaFlipsPerPair": 688.444,
+        "indexFlipsPerPair": 1039.222,
+        "noiseFlipsPerPair": 85.111,
+        "edgeFlipsPerPair": 1.556
+      },
+      "alphaBinary": true
+    }
+  ],
+  "palette": {
+    "path": "../palette.hex",
+    "sha256": "6435f463760e55ea8495e79f851d54d507fb692a44d825c85aaf13c54793e1ed",
+    "bytes": 208,
+    "colors": 26,
+    "built": false,
+    "reserved": 0,
+    "transparentIndex": 255
+  },
+  "pixel": {
+    "alphaThreshold": 0.5,
+    "dither": false,
+    "loopPolicy": "cycle",
+    "margin": 0.0,
+    "alphaBand": [
+      0.4,
+      0.6
+    ],
+    "orphans": 1,
+    "despeckle": true,
+    "downscale": "box",
+    "supersample": 1,
+    "lift": {
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "pivotL": 0.36299
+    },
+    "outline": "none",
+    "outlinePx": 0,
+    "featureDeltaL": null,
+    "shadeGap": null,
+    "shadeMerged": 0,
+    "coloursPerFrameMax": 26,
+    "noiseFlipReduction": 0.0,
+    "perFrameNearest": {
+      "pairs": 9,
+      "alphaFlipsPerPair": 688.444,
+      "indexFlipsPerPair": 1039.222,
+      "noiseFlipsPerPair": 85.111,
+      "edgeFlipsPerPair": 1.556
+    },
+    "heldIndexPx": 0,
+    "heldAlphaPx": 0,
+    "lonePixelsFixed": 3318
+  },
+  "hibit": null,
+  "colourLock": null,
+  "indexedSheet": null,
+  "loopPolicy": "cycle",
+  "frames": [
+    {
+      "file": "frames/frame-00.png",
+      "sha256": "fdb6f4271134f06cada85962e988d9f8876d0c9ca51ce359fe5ceb0a9a90d9c6",
+      "sourceFile": "frame-00.png",
+      "sourceSha256": "3f943d167734f74b004067b856250c89d89f7033392ce46a35b3e1e99a31a1c7",
+      "opaquePx": 1857
+    },
+    {
+      "file": "frames/frame-01.png",
+      "sha256": "2dd4f7e50a65484137ee0330f756808a96a6cb8f2be014068a9d093b9953e296",
+      "sourceFile": "frame-01.png",
+      "sourceSha256": "81540567dac02e8cf54b2ce756d62b85c797256bba1080dacf54579565430ccd",
+      "opaquePx": 1738
+    },
+    {
+      "file": "frames/frame-02.png",
+      "sha256": "a671ec493345638995d83cd2aedb04c02010b3066c9245abe5a659e1f624f34f",
+      "sourceFile": "frame-02.png",
+      "sourceSha256": "74fe9846071fcee00264c2cb15aeb1b6cb9f4df38899b6dc86107484b9431521",
+      "opaquePx": 1827
+    },
+    {
+      "file": "frames/frame-03.png",
+      "sha256": "9406a3acc0e0fa894f711b0d09086e04ddde1568f88cf30b811d1dfab557eccd",
+      "sourceFile": "frame-03.png",
+      "sourceSha256": "37675c1045b7200a94704ee328223c8bc8afd4f761edadb0f3b257cb2d339c9d",
+      "opaquePx": 1679
+    },
+    {
+      "file": "frames/frame-04.png",
+      "sha256": "f58afb2bd6b5aa0a90dee89bf68c7d0f48affebcb3263674d81b4b74a8e49fa6",
+      "sourceFile": "frame-04.png",
+      "sourceSha256": "4335e2c7d95533f95d36b162d7d9b4d0e487aac7975f39cd1e5d82ae12a8bad7",
+      "opaquePx": 1947
+    },
+    {
+      "file": "frames/frame-05.png",
+      "sha256": "b7ec29282b02c4d201d2e7e76687bb66c413c5d908e59d6297d995ebbfa0511a",
+      "sourceFile": "frame-05.png",
+      "sourceSha256": "20ad172004c0cf5abb575249733202372257d6f802cb96717dd24115495b0910",
+      "opaquePx": 1808
+    },
+    {
+      "file": "frames/frame-06.png",
+      "sha256": "405c640051f8557790a7a24903aca6476b2b8519b6e10410ee85485499e49b59",
+      "sourceFile": "frame-06.png",
+      "sourceSha256": "8eb2f09b9f2553da2255f5dc860c010f2787135ac68346d172a00869789825cb",
+      "opaquePx": 1840
+    },
+    {
+      "file": "frames/frame-07.png",
+      "sha256": "56496727c472c5cfb4b9e4a522b1e2d2d20fcd844795bc774ea574c8fb4df11b",
+      "sourceFile": "frame-07.png",
+      "sourceSha256": "63dc5d9c6890dff674ba25fbe4a85958c2e89b29011bebdbbabe08b7c61ab43c",
+      "opaquePx": 1733
+    },
+    {
+      "file": "frames/frame-08.png",
+      "sha256": "970f4660b982c1adf56a9fb7f65d4f0d13d080c2d08e96648c7b0c28a61cb446",
+      "sourceFile": "frame-08.png",
+      "sourceSha256": "cc86ca5ea0255ebcbb9cad279fc0a05eecb346282dd39e3f3ccf71f0e32dd31f",
+      "opaquePx": 1681
+    }
+  ],
+  "flicker": {
+    "pairs": 9,
+    "alphaFlipsPerPair": 688.444,
+    "indexFlipsPerPair": 1039.222,
+    "noiseFlipsPerPair": 85.111,
+    "edgeFlipsPerPair": 1.556
+  },
+  "specksRemoved": 102,
+  "alphaBinary": true,
+  "review": {
+    "path": "review-contact.png",
+    "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  "qa": {
+    "status": "needs-visual-review",
+    "method": "finish_frames pixel v1 (port of game-opus55 pixelate.py): the hd registration and box downscale, then one OKLab palette (given, or forge_palette.build_palette k-means++ on the finished frames), forge_palette.quantize_sequence with temporal hysteresis (index kept within the margin, opacity kept inside alpha 0.4-0.6), cleanup_orphans (1 pass) and cleanup_alpha per frame, binary alpha at 0.5, no dither; flicker counted per frame pair against per-frame nearest quantizing",
+    "notProven": [
+      "identity, pose and readability at the finished size (look at review-contact.png and the frames)",
+      "that the target height suits the game camera and the rest of the cast (run lineup)",
+      "loop seams and timing (gait_loop, retime); finished frames keep the source names",
+      "hysteresis follows file order: the seam pair of a loop window chosen later is not held",
+      "the palette's fit to other clips of the cast (build one shared palette with palette build)"
+    ],
+    "checks": [
+      {
+        "id": "no-upscale",
+        "status": "pass",
+        "value": 0.25,
+        "threshold": 1.0
+      },
+      {
+        "id": "rest-height",
+        "status": "pass",
+        "value": 0.0,
+        "threshold": 1.5,
+        "note": "|measured - nominal| rest-pose body height at 1x (outline included), output px"
+      },
+      {
+        "id": "empty-frames",
+        "status": "pass",
+        "value": [],
+        "threshold": 0
+      },
+      {
+        "id": "flicker",
+        "status": "skipped",
+        "value": {
+          "pairs": 9,
+          "alphaFlipsPerPair": 688.444,
+          "indexFlipsPerPair": 1039.222,
+          "noiseFlipsPerPair": 85.111,
+          "edgeFlipsPerPair": 1.556
+        },
+        "threshold": null
+      },
+      {
+        "id": "pixel-reduction",
+        "status": "pass",
+        "value": 4.0,
+        "threshold": 4.0,
+        "note": "source px per output px; pixel art comes from about 8-12x"
+      },
+      {
+        "id": "alpha-binary",
+        "status": "pass",
+        "value": true,
+        "threshold": true
+      },
+      {
+        "id": "palette-fit",
+        "status": "pass",
+        "value": {
+          "colorsUsed": 26,
+          "paletteColors": 26,
+          "offPaletteColors": 0,
+          "coloursPerFrameMax": 26
+        },
+        "threshold": 0
+      },
+      {
+        "id": "hysteresis",
+        "status": "pass",
+        "value": {
+          "noiseFlipsPerPair": 85.111,
+          "perFrameNearest": 85.111,
+          "reduction": 0.0
+        },
+        "threshold": "<= per-frame nearest"
+      }
+    ],
+    "inputs": [
+      {
+        "path": "../registered4x/frame-00.png",
+        "sha256": "3f943d167734f74b004067b856250c89d89f7033392ce46a35b3e1e99a31a1c7"
+      },
+      {
+        "path": "../registered4x/frame-01.png",
+        "sha256": "81540567dac02e8cf54b2ce756d62b85c797256bba1080dacf54579565430ccd"
+      },
+      {
+        "path": "../registered4x/frame-02.png",
+        "sha256": "74fe9846071fcee00264c2cb15aeb1b6cb9f4df38899b6dc86107484b9431521"
+      },
+      {
+        "path": "../registered4x/frame-03.png",
+        "sha256": "37675c1045b7200a94704ee328223c8bc8afd4f761edadb0f3b257cb2d339c9d"
+      },
+      {
+        "path": "../registered4x/frame-04.png",
+        "sha256": "4335e2c7d95533f95d36b162d7d9b4d0e487aac7975f39cd1e5d82ae12a8bad7"
+      },
+      {
+        "path": "../registered4x/frame-05.png",
+        "sha256": "20ad172004c0cf5abb575249733202372257d6f802cb96717dd24115495b0910"
+      },
+      {
+        "path": "../registered4x/frame-06.png",
+        "sha256": "8eb2f09b9f2553da2255f5dc860c010f2787135ac68346d172a00869789825cb"
+      },
+      {
+        "path": "../registered4x/frame-07.png",
+        "sha256": "63dc5d9c6890dff674ba25fbe4a85958c2e89b29011bebdbbabe08b7c61ab43c"
+      },
+      {
+        "path": "../registered4x/frame-08.png",
+        "sha256": "cc86ca5ea0255ebcbb9cad279fc0a05eecb346282dd39e3f3ccf71f0e32dd31f"
+      },
+      {
+        "path": "../palette.hex",
+        "sha256": "6435f463760e55ea8495e79f851d54d507fb692a44d825c85aaf13c54793e1ed",
+        "bytes": 208
+      }
+    ],
+    "outputs": [
+      {
+        "path": "frames/frame-00.png",
+        "sha256": "fdb6f4271134f06cada85962e988d9f8876d0c9ca51ce359fe5ceb0a9a90d9c6",
+        "bytes": 3903
+      },
+      {
+        "path": "frames/frame-01.png",
+        "sha256": "2dd4f7e50a65484137ee0330f756808a96a6cb8f2be014068a9d093b9953e296",
+        "bytes": 3777
+      },
+      {
+        "path": "frames/frame-02.png",
+        "sha256": "a671ec493345638995d83cd2aedb04c02010b3066c9245abe5a659e1f624f34f",
+        "bytes": 3903
+      },
+      {
+        "path": "frames/frame-03.png",
+        "sha256": "9406a3acc0e0fa894f711b0d09086e04ddde1568f88cf30b811d1dfab557eccd",
+        "bytes": 3724
+      },
+      {
+        "path": "frames/frame-04.png",
+        "sha256": "f58afb2bd6b5aa0a90dee89bf68c7d0f48affebcb3263674d81b4b74a8e49fa6",
+        "bytes": 4059
+      },
+      {
+        "path": "frames/frame-05.png",
+        "sha256": "b7ec29282b02c4d201d2e7e76687bb66c413c5d908e59d6297d995ebbfa0511a",
+        "bytes": 3973
+      },
+      {
+        "path": "frames/frame-06.png",
+        "sha256": "405c640051f8557790a7a24903aca6476b2b8519b6e10410ee85485499e49b59",
+        "bytes": 3976
+      },
+      {
+        "path": "frames/frame-07.png",
+        "sha256": "56496727c472c5cfb4b9e4a522b1e2d2d20fcd844795bc774ea574c8fb4df11b",
+        "bytes": 3816
+      },
+      {
+        "path": "frames/frame-08.png",
+        "sha256": "970f4660b982c1adf56a9fb7f65d4f0d13d080c2d08e96648c7b0c28a61cb446",
+        "bytes": 3614
+      },
+      {
+        "path": "review-contact.png",
+        "sha256": "34c90bef03ec20dcb379f562aa2515ab99649b484124d8a6bb3913a1d2b45530",
+        "bytes": 55559
+      }
+    ],
+    "tool": {
+      "name": "finish_frames",
+      "version": "0.6.0"
+    }
+  }
+}

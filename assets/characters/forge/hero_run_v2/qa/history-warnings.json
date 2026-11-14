@@ -1,0 +1,104 @@
+[
+  {
+    "stage": "qc-registered",
+    "resolved": true,
+    "id": "torso_drift",
+    "status": "warn",
+    "value": 3.86,
+    "threshold": 2.0,
+    "files": [
+      {
+        "path": "../registered/frame-00.png",
+        "sha256": "5ae62d840bd9d9cb5c1cb672542400ba4ec8f840d908dfd197f96e216e6ca0fc",
+        "bytes": 4817
+      },
+      {
+        "path": "../registered/frame-01.png",
+        "sha256": "7a23fad30996b88b54a01f839e547c807ce57c6461c653fd513da4b41eeb5c98",
+        "bytes": 4590
+      },
+      {
+        "path": "../registered/frame-02.png",
+        "sha256": "24d2b09349f04054d16173b8a983aec79393f13d46a8a038c930986ae45ff55e",
+        "bytes": 4772
+      },
+      {
+        "path": "../registered/frame-03.png",
+        "sha256": "db4873cc0cc3fa351d0ebd52e8973638f031dec51d8815c2bfdf50d095b19f52",
+        "bytes": 4527
+      },
+      {
+        "path": "../registered/frame-04.png",
+        "sha256": "3016243d55c2d599fb1ee5d9bd1ac531219a94217dc0bdee0d75a925bca84902",
+        "bytes": 4952
+      },
+      {
+        "path": "../registered/frame-05.png",
+        "sha256": "2e416debff8bfc0ea11a4e4428663aba45a435b1a28ed2ab6ef67ddd41c360c4",
+        "bytes": 4806
+      },
+      {
+        "path": "../registered/frame-06.png",
+        "sha256": "b1000f191f416ad99b5659b59589924fbd3a064deefb1e2278fcd548073d36ff",
+        "bytes": 4784
+      },
+      {
+        "path": "../registered/frame-07.png",
+        "sha256": "1fa2c8b32f7ada1f583461a50245b6244d89f7b54ed60fa6f87c979167c0efb7",
+        "bytes": 4584
+      }
+    ],
+    "resolution": "Final material registration; see qa/motion.json (torso_drift=0.8 <= 2). "
+  },
+  {
+    "stage": "qc-final",
+    "resolved": true,
+    "id": "torso_drift",
+    "status": "warn",
+    "value": 3.93,
+    "threshold": 2.0,
+    "files": [
+      {
+        "path": "../native/frame-00.png",
+        "sha256": "05b0b1cd46e7bd14a664a2f832c3fb49670efbec7e8e775c1a5ddb7cb9bcc98b",
+        "bytes": 4312
+      },
+      {
+        "path": "../native/frame-01.png",
+        "sha256": "6c9d73304ad1c852d02fcabd2daa4686d1d876db81b52f631dd8459e6f04d63d",
+        "bytes": 4166
+      },
+      {
+        "path": "../native/frame-02.png",
+        "sha256": "85310e589c848e21d1f36b4eaccd25cc99d7725fa8252af87d42bd4b9398a015",
+        "bytes": 4312
+      },
+      {
+        "path": "../native/frame-03.png",
+        "sha256": "5d3cee3f7b14d70fcf036a443714f6616a40295efd23b375cf207958dafb2ee9",
+        "bytes": 4120
+      },
+      {
+        "path": "../native/frame-04.png",
+        "sha256": "9b9a397ab792f2fc4f35ffa41867075140e4dbadb1e3afe639b60745fc2105bc",
+        "bytes": 4456
+      },
+      {
+        "path": "../native/frame-05.png",
+        "sha256": "754d35964061a500ec7726e85a67e62151a5302ac27489f2ce0a58e8c4f7d7ac",
+        "bytes": 4386
+      },
+      {
+        "path": "../native/frame-06.png",
+        "sha256": "5ddf0ee121d804018ee3a3408901da19792ae138de6aac4359693ba1e4c60dd1",
+        "bytes": 4355
+      },
+      {
+        "path": "../native/frame-07.png",
+        "sha256": "c257ad04514579e5bb6a01e9039b7e9a1b368ff7e3b171f5af720924ee0d7922",
+        "bytes": 4216
+      }
+    ],
+    "resolution": "Final material registration; see qa/motion.json (torso_drift=0.8 <= 2). "
+  }
+]

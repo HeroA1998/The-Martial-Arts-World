@@ -1,0 +1,185 @@
+{
+  "status": "pass",
+  "frameCount": 8,
+  "frameSize": [
+    128,
+    128
+  ],
+  "displayScale": 4,
+  "displayFrameSize": [
+    512,
+    512
+  ],
+  "paletteUnionVisibleColors": 26,
+  "paletteLimit": 26,
+  "alpha": [
+    0,
+    255
+  ],
+  "sharedAnchor": [
+    64,
+    109
+  ],
+  "groundRow": 109,
+  "headHeight": 40,
+  "headPixelsCopiedExactlyFromNormalizedRepositoryMaster": true,
+  "headTopRows": [
+    20,
+    21,
+    20,
+    18,
+    20,
+    21,
+    20,
+    18
+  ],
+  "landingHeights": [
+    90,
+    89,
+    90,
+    90,
+    89,
+    90
+  ],
+  "maxTransitionRatio": 1.3,
+  "lastToFirstOverMedian": 0.978585298451623,
+  "threshold": 1.5,
+  "gifFrames": 8,
+  "gifDecodedAlphaAndVisibleRgbExact": true,
+  "gifDurationMs": 670,
+  "webpDurationMs": 667,
+  "sourceHashesVerified": true,
+  "visualReview": "All eight poses, both footfalls, master head, root and light/dark edges inspected.",
+  "finalWarnings": [],
+  "resolvedIntermediateWarnings": "qa/history-warnings.json",
+  "frames": [
+    {
+      "frame": 1,
+      "height": 90,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 20,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 61.389,
+      "torsoRegistrationDx": 3,
+      "bbox": [
+        46,
+        20,
+        85,
+        110
+      ]
+    },
+    {
+      "frame": 2,
+      "height": 89,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 21,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 58.932,
+      "torsoRegistrationDx": 5,
+      "bbox": [
+        48,
+        21,
+        84,
+        110
+      ]
+    },
+    {
+      "frame": 3,
+      "height": 90,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 20,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 59.283,
+      "torsoRegistrationDx": 5,
+      "bbox": [
+        47,
+        20,
+        86,
+        110
+      ]
+    },
+    {
+      "frame": 4,
+      "height": 74,
+      "footRow": 91,
+      "headHeight": 40,
+      "headTop": 18,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 59.227,
+      "torsoRegistrationDx": 5,
+      "bbox": [
+        48,
+        18,
+        88,
+        92
+      ]
+    },
+    {
+      "frame": 5,
+      "height": 90,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 20,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 62.214,
+      "torsoRegistrationDx": 2,
+      "bbox": [
+        42,
+        20,
+        82,
+        110
+      ]
+    },
+    {
+      "frame": 6,
+      "height": 89,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 21,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 60.1,
+      "torsoRegistrationDx": 4,
+      "bbox": [
+        48,
+        21,
+        85,
+        110
+      ]
+    },
+    {
+      "frame": 7,
+      "height": 90,
+      "footRow": 109,
+      "headHeight": 40,
+      "headTop": 20,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 62.194,
+      "torsoRegistrationDx": 2,
+      "bbox": [
+        40,
+        20,
+        82,
+        110
+      ]
+    },
+    {
+      "frame": 8,
+      "height": 77,
+      "footRow": 94,
+      "headHeight": 40,
+      "headTop": 18,
+      "headPixelsExact": true,
+      "torsoMaterialXBefore": 60.589,
+      "torsoRegistrationDx": 3,
+      "bbox": [
+        46,
+        18,
+        88,
+        95
+      ]
+    }
+  ]
+}

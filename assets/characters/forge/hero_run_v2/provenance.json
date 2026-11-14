@@ -1,0 +1,107 @@
+{
+  "master": {
+    "path": "assets/characters/hero_side.png",
+    "sha256": "85da6eee546c3742fb73e7d0c73cf8e7f5ec882d9e4faea1fc1996b85d259a23"
+  },
+  "identityCheck": {
+    "path": "assets/characters/hero_front.png",
+    "sha256": "fbcb0a47dcb09234c8f2d5b05c1609efeb7169140d966649f21a84abbe15a9db"
+  },
+  "scaleRuler": {
+    "path": "assets/characters/hero_walk_side.png",
+    "sha256": "0fed8a3146cec47f3bc12d36effecf76252b045c0fff6b94d1219c2de5628c46"
+  },
+  "repositorySourceCommit": "e2ed41a2d47f21ebcdd71d6eaaf40cda505b6b42",
+  "masterNormalization": {
+    "height": 90,
+    "headHeight": 40,
+    "legSectionHeight": 32,
+    "headRowsDuplicated": [
+      1,
+      13,
+      25
+    ],
+    "legRowsDuplicatedWithinSection": [
+      13,
+      25
+    ],
+    "method": "Forge add_rows; existing full rows only, no image regeneration or new pixel colours"
+  },
+  "sourceArt": "image_gen individual key poses",
+  "model": null,
+  "estimateUsd": null,
+  "sources": [
+    {
+      "frame": 1,
+      "route": "host-image_gen",
+      "sourceFile": "exec-723b1d35-3a49-4b48-8f3f-6c36c262b26c.png",
+      "sha256": "ac4cc554377a66097871d76c34c56221c2f4703c93b3796a71976a2e063ca08c",
+      "targetedSoleRepair": true
+    },
+    {
+      "frame": 2,
+      "route": "host-image_gen",
+      "sourceFile": "exec-bc259af1-add8-4e6e-b366-7d462d40ff99.png",
+      "sha256": "8411f4cd3fb670a13f6c28a69e5cf6dedd941b2df1aff0b66c7452b3c2887b13",
+      "targetedSoleRepair": true
+    },
+    {
+      "frame": 3,
+      "route": "host-image_gen",
+      "sourceFile": "exec-afe0eee4-c13b-490e-9221-5628b61e81e3.png",
+      "sha256": "515269efcb2720b82e6111fcd03de02439f3ab8a4ca054c8b16f1c920576af97",
+      "targetedSoleRepair": true
+    },
+    {
+      "frame": 4,
+      "route": "host-image_gen",
+      "sourceFile": "exec-7c39aa1b-1974-425b-bad4-128475a3598c.png",
+      "sha256": "4db031ba63ea24a21baa7c4dfb429e4244e2b93eb8cd5e2575fc501a116e538e",
+      "targetedSoleRepair": false
+    },
+    {
+      "frame": 5,
+      "route": "host-image_gen",
+      "sourceFile": "exec-c65a64ba-cfbb-41e1-97f3-c8347402c4de.png",
+      "sha256": "35dc60bdcfdb6dc8f3f53d45a08dac2b3a033ad398a27ed91f669dd7a7c56817",
+      "targetedSoleRepair": true
+    },
+    {
+      "frame": 6,
+      "route": "host-image_gen",
+      "sourceFile": "exec-003e3133-ba4b-46ae-b6c0-8e1777f1279e.png",
+      "sha256": "b46f6ffe13fb2175e3bbd0f02d5c8d0a5699935d38410c913cfba37107a4f403",
+      "targetedSoleRepair": true
+    },
+    {
+      "frame": 7,
+      "route": "host-image_gen",
+      "sourceFile": "exec-a5f4ae71-6dd6-4e44-a797-bbe2308bfa68.png",
+      "sha256": "12e2fa9bd958a4b0233a1cc65882cc12da1725f2df0bd48b0e212a0ba6825ebc",
+      "targetedSoleRepair": false
+    },
+    {
+      "frame": 8,
+      "route": "host-image_gen",
+      "sourceFile": "exec-852d4da8-0eb8-43e2-a9b1-6e2d562a929a.png",
+      "sha256": "a2bd789e72a5515ee8e51ee5240acb1a5eeb9fc2703be85a452d2d376f6f2ca6",
+      "targetedSoleRepair": false
+    }
+  ],
+  "forge": {
+    "repository": "https://github.com/0x0funky/agent-sprite-forge",
+    "commit": "25203d03900b46b444bdd72a75768c33d1895ad6"
+  },
+  "operations": [
+    "read_lattice",
+    "clean_edge",
+    "lock_palette",
+    "whole-pixel foot registration",
+    "finish_frames.py pixel (26-color palette, 128x128 canvas, no contrast or saturation lift, no added outline)",
+    "exact master-head restoration",
+    "sheet_qc.torso_x material registration",
+    "sheet_qc.py frames --strict",
+    "build_animation_clips.py --strict"
+  ],
+  "calibrationNote": "Pixel finishing uses one separate neutral calibration still for scale and feet edge; only the eight run frames are delivered."
+}
