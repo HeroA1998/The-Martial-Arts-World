@@ -26,7 +26,7 @@
 - 底稿：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例與主角相同。
 - 造型：東漢末年的落魄宗室青年。現代審美、俊朗溫和；長耳垂；淺色布袍加深色外披，腰繫布帶，背後斜背一把雙股劍；頭髮束髻戴布冠。色系米白、淡綠、深棕。
 
-## 2. 關羽 走路圖　狀態：待生成
+## 2. 關羽 走路圖　狀態：已推送（2026-11-14）
 - 檔名：`assets/characters/npc_guanyu_walk_front.png`、`_side.png`、`_back.png`（前綴 `npc_guanyu_walk_`）
 - 尺寸與底稿同第 1 項。
 - 造型：高大威嚴，比主角高約一成；紅臉、丹鳳眼、長鬚垂到胸口；綠色戰袍，裡面露出深色護甲，綠色頭巾；手持青龍偃月刀（刀身不要超出格子）。現代審美。
