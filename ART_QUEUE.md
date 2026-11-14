@@ -76,7 +76,7 @@
 - 注意：這是普通小兵，不要做成黃巾渠帥（武將）那種盔甲或披風。
 - 站立圖（遊戲有用到，必做）：覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`，照共通規則的站立圖規定（不能雙腿並排站直）。
 
-## 8. 現有敵人「側面」站立圖 重做（側面雙腿疊在一起）　狀態：待重新生成
+## 8. 現有敵人「側面」站立圖 重做（側面雙腿疊在一起）　狀態：已推送（2026-11-14）
 - 正面、背面兩腳已分開，不用改。只覆蓋以下**側面**檔案，**造型、服裝、顏色、武器完全照舊**，只把兩腳改成一前一後分開（參考 `hero_side.png`）。每張 1024×1024。
 - 官軍精兵：`assets/characters/hansoldier_stand_side.png`（參考同名舊圖）
 - 官軍武將：`assets/characters/hangeneral_stand_side.png`（參考同名舊圖）
