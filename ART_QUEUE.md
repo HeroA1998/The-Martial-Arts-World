@@ -26,7 +26,7 @@
 ---
 
 ## 1. 劉備 走路圖　狀態：已推送（2026-11-14）
-### 1b. 劉備 站立圖　狀態：待生成
+### 1b. 劉備 站立圖　狀態：已推送（2026-11-14）
 - 檔名：`assets/characters/npc_liubei_stand_front.png`、`npc_liubei_stand_side.png`、`npc_liubei_stand_back.png`（側面朝右）
 - 造型與第 1 項的走路圖完全相同（參考 `npc_liubei_walk_*.png`），照共通規則的站立圖規定。神情溫和，一手自然垂下或輕扶腰帶。
 
