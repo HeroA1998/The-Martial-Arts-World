@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.18.2';   // 每次更新請加一
+const VERSION = 'v0.19.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -191,6 +191,16 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
             '東邊鎮門外就是林間小道，聽說最近黃巾賊常在那一帶出沒。',
             '前幾天有個貨郎說，林子裡的賊人不只一夥，還有個領頭的，使一手好刀。',
             '要出去的話，先到祠堂拜一拜，補足精神再走。'],
+    story: {
+      gen: { lines: ['你從林子裡回來了？聽說那個穿官軍衣甲的，被你打倒了。',
+                     '他是個逃兵，仗著官軍的名頭在路上搶掠，比黃巾還可惡。',
+                     '前面還有賊首，千萬小心。'],
+             chat: ['官軍裡也有這種敗類，難怪百姓寒心。', '前頭的賊首還沒除，別大意。'] },
+      boss: { lines: ['黃巾的渠帥……真被你打倒了？',
+                      '今晚鎮上總算能睡個安穩覺。',
+                      '剛才鎮門外來了三個人，說是要招募鄉勇，你去看看吧。'],
+              chat: ['這道門我守了五年，今天才真的鬆口氣。', '去見見鎮門外那三位吧，我看他們不是普通人。'] },
+    },
     chat: ['這道門我守了五年，從沒像今年這樣不安心。',
            '夜裡聽見林子裡有動靜，我也不敢睡死。',
            '遇到賊人別硬拚，看準他出手的空檔再還手。',
@@ -201,6 +211,12 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
             '今年的收成又被官差收走一半，剩下的連過冬都不夠。',
             '祠堂在大街正中。進去參拜，能把身子骨練得更結實。',
             '藥壺用完也別慌，拜過祠堂就會補滿。'],
+    story: {
+      gen: { lines: ['聽說你在林子裡打倒了一個逃兵？', '官差收我們的糧，逃兵搶我們的路……這世道，誰來管管。'],
+             chat: ['你去過林子，應該明白，百姓要的不過是一口飯吃。', '年輕人，別被刀劍迷了眼。'] },
+      boss: { lines: ['你替鄉親們除了一大害。', '聽說鎮門外來了幾位英雄，正在招人。年輕人，這是個機會。'],
+              chat: ['我活了大半輩子，頭一回見黃巾的頭目倒在鎮外。', '去吧，別讓好機會溜了。'] },
+    },
     chat: ['我這雙手種了一輩子地，如今連地都快守不住了。',
            '黃巾賊多半也是窮苦人出身，只是走錯了路。',
            '大街上人來人往，聽聽各家的閒話，總有用得上的。',
@@ -209,11 +225,49 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
   { id: 'merchant', name: '雜貨商販', x: 900, y: 326, look: 'vendor', face: 'right',
     lines: ['客官，要買點傷藥還是丹藥？',
             '金創藥止血療傷，行氣丹提振氣力，都是我親手配的。'],
+    story: {
+      gen: { lines: ['客官從林子回來了？連官軍裝束的逃兵都被你打倒，真不得了。', '要補貨就說一聲。'],
+             chat: ['聽說客官在林子裡立了大功，我這小店也沾光。', '傷藥備足再走，前頭凶險。'] },
+      boss: { lines: ['黃巾的渠帥倒了？客官，這回我的貨路可以通了。', '今天的藥照舊價錢，算是我的心意。'],
+              chat: ['路通了，生意才做得起來。', '客官要往大地方去，多備些金創藥。'] },
+    },
     chat: ['小本生意，童叟無欺，客官隨便看。',
            '這年頭路不好走，貨也難進，價錢只能這樣了。',
            '前幾天過林子差點被劫，貨全靠運氣保住的。',
            '要什麼自己挑，缺了什麼我下回進貨幫你留意。'],
     shop: [{ id: 'jc', price: 10 }, { id: 'xq', price: 15 }] },
+  // 第 1 章結尾：打倒渠帥後，在鎮門外遇見劉備、關羽、張飛（暫用現有人物圖染色，之後換正式美術）
+  { id: 'liubei', name: '劉備', x: 1210, y: 300, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'guanyu', name: '關羽', x: 1172, y: 278, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'zhangfei', name: '張飛', x: 1172, y: 324, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+];
+// ---------- 第 1 章劇情（涿縣，中平元年） ----------
+// 每句：[說話者, 內容]。主角是無名少年，說話者寫「你」
+const STORY_INTRO = [
+  ['榜文', '中平元年（公元一八四年）。黃巾賊作亂，天下大亂。州郡各舉義兵，凡有勇力者皆可應募，共討賊寇。'],
+  ['你', '黃巾已經鬧到涿縣一帶了。家裡的田再被搶，今年就沒得吃了。'],
+  ['你', '總不能一直等著。先去祠堂拜一拜，再出東邊鎮門，到林道上看看。'],
+];
+const STORY_GEN = [
+  ['潰逃的武將', '咳……你這小子……我可是官軍……'],
+  ['你', '官軍不會在路上搶百姓。'],
+  ['潰逃的武將', '亂世裡……誰手裡有刀……誰就說了算……'],
+  ['你', '他身上的軍牌是偷來的。真正的官軍，不會是這副模樣。……前面，還有賊首。'],
+];
+const STORY_BOSS = [
+  ['黃巾渠帥', '可惡……不過是個農家小子……'],
+  ['黃巾渠帥', '我們也是活不下去……才拿起刀……你們這些人，哪裡懂……'],
+  ['你', '他說的，我聽得出來。黃巾裡有太多人，和我家一樣被逼到絕路。'],
+  ['你', '但路還是要走下去。先回鎮上，告訴大家賊首倒了。'],
+];
+const STORY_MEET = [
+  ['劉備', '這位小兄弟，剛才鎮門守衛說，是你一個人打倒了林子裡的賊首？'],
+  ['你', '……只是為了活下去。'],
+  ['張飛', '哈哈！好身手！大哥，這小子有種！'],
+  ['關羽', '三弟，不可無禮。——小兄弟，我們兄弟三人，正要去投校尉鄒靖，討伐黃巾。'],
+  ['劉備', '朝廷詔令州郡舉義兵。我劉備雖是布衣，也想為天下出一份力。你願意同行嗎？'],
+  ['你', '……好。我跟你們去。'],
+  ['劉備', '好！那便啟程，路上慢慢說。'],
 ];
 const TALKED = {};   // 本次遊戲已經跟哪些 NPC 說過話（第一次說完整對話，之後隨機閒話）
 // ---------- 分層路人：基礎人偶＋零件（淺灰單色），執行時染色、疊合 ----------
@@ -271,6 +325,7 @@ const SAVE_KEY = 'dajianghu_save_v1';   // 沿用舊 key，舊存檔直接能讀
 const SAVE_VER = 2;                    // 存檔格式版本（日後改格式才能遷移）
 let SAVED = null;                      // 最後一次在祠堂存的檔：{ area, prog:{enc:[]}, at }
 let PROG = { enc: [] };                // 目前的世界進度（切換區域時保留）：森林各遭遇是否已打倒
+let STORY = {};                        // 劇情旗標（只增不減，自動存）：intro 開場看過、gen 官軍武將倒下、boss 渠帥倒下、met 遇見劉關張
 let SAVE_META_READY = false, MENU_DONE = false;
 function readSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
@@ -1003,6 +1058,7 @@ class VillageScene extends Phaser.Scene {
     if (!this.boot) this.time.delayedCall(60, () => this.banner(areaInfo(this.area).name, 1400));
     if (this.area === 'town') this.loadInteriorsInBackground();
     if (this.boot && !MENU_DONE && readSave()) this.openMenu();
+    this.maybeIntro();
   }
 
   // ---------- 開始畫面：繼續／新遊戲 ----------
@@ -1036,12 +1092,13 @@ class VillageScene extends Phaser.Scene {
     if (!this.menu) return false;
     const R = this.menuRects(), hit = r => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.y - r.y) <= r.h / 2;
     if (hit(R.c)) {
+      STORY.intro = true;   // 繼續遊戲就不再播開場
       this.closeMenu();
       if (SAVED) this.gotoArea('shrine', interiorEntry('shrine'), 'up');   // 回到存檔點
     } else if (hit(R.n)) {
       if (!this.menu.confirm) { this.menu.confirm = true; return true; }
       try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-      SAVED = null; PROG = { enc: [] }; MENU_DONE = true;
+      SAVED = null; PROG = { enc: [] }; STORY = {}; MENU_DONE = true;
       this.menu = null;
       this.scene.restart({});
     } else this.menu.confirm = false;
@@ -1951,7 +2008,7 @@ class VillageScene extends Phaser.Scene {
       }
       if (d) this.wz = Math.max(0, d.wz | 0);
       if (!SAVE_META_READY) {            // 第一次讀檔：取出存檔點與世界進度
-        SAVE_META_READY = true; SAVED = null; PROG = { enc: [] };
+        SAVE_META_READY = true; SAVED = null; PROG = { enc: [] }; STORY = (d && d.story && typeof d.story === 'object') ? Object.assign({}, d.story) : {};
         if (d && d.area && d.prog && Array.isArray(d.prog.enc)) {
           SAVED = { area: d.area === 'shrine' ? 'shrine' : 'town', prog: { enc: d.prog.enc.map(Boolean) }, at: d.at | 0 };
           PROG = { enc: SAVED.prog.enc.slice() };
@@ -1967,6 +2024,7 @@ class VillageScene extends Phaser.Scene {
   saveGrowth() {
     try {
       const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz };
+      o.story = STORY;
       if (SAVED) { o.area = SAVED.area; o.prog = SAVED.prog; o.at = SAVED.at; }
       localStorage.setItem(SAVE_KEY, JSON.stringify(o));
       return true;
@@ -2392,6 +2450,7 @@ class VillageScene extends Phaser.Scene {
 
   buildNpcs() {
     for (const d of NPCS) {
+      if (d.when && !d.when()) continue;   // 劇情角色：到了該出現的時候才站在鎮上
       const key = 'npcw_' + d.look + '_side_1';   // 站姿：取側面走路圖的中立那一格，依 face 決定朝向
       const sprite = this.add.image(d.x, d.y, key).setOrigin(0.5, 1).setDepth(d.y).setFlipX(d.face === 'left');
       const sh = this.add.ellipse(d.x, d.y - 1, 22, 8, 0x000000, 0.35).setDepth(d.y - 1);
@@ -2399,7 +2458,13 @@ class VillageScene extends Phaser.Scene {
       this.block(d.x - 8, d.y - 6, d.x + 8, d.y + 2);
       const tex = this.textures.get(key).getSourceImage(), k = HERO_H / this.textures.get('hero_walk_side_0').getSourceImage().height;
       sprite.setDisplaySize(tex.width * k, tex.height * k);
-      this.npcs.push(Object.assign({ sprite }, d));
+      if (d.tint) sprite.setTint(d.tint);
+      let tag = null;
+      if (d.showName) {   // 頭上顯示名字
+        tag = this.add.text(d.x, d.y - HERO_H - 4, d.name, { fontFamily: 'system-ui, sans-serif', fontSize: '6px', color: '#f0d890', stroke: '#000000', strokeThickness: 2, resolution: 4 }).setOrigin(0.5, 1).setDepth(d.y + 1);
+        this.world.push(tag);
+      }
+      this.npcs.push(Object.assign({ sprite, tag }, d));
     }
   }
 
@@ -2536,11 +2601,48 @@ class VillageScene extends Phaser.Scene {
     this.dlgHint = mk(this.add.text(0, 0, '點一下繼續', tx(11, '#a8b8a0', 2)).setOrigin(1, 1).setDepth(1301).setVisible(false));
   }
 
+  // 劇情節點：第一次達成時播一段（旗標只增不減，重打不會重播）
+  storyBeat(flag, script, delay) {
+    if (STORY[flag]) return;
+    STORY[flag] = true; this.saveGrowth();
+    const go = () => { if (this.down || this.transitioning || this.dlg) { this.time.delayedCall(600, go); return; } this.openScene(script); };
+    this.time.delayedCall(delay, go);
+  }
+
+  // 新遊戲開場：榜文與主角的話
+  maybeIntro() {
+    if (STORY.intro || !this.boot || this.area !== 'town' || this.menu) return;
+    STORY.intro = true; this.saveGrowth();
+    this.hintText.setVisible(false);
+    this.time.delayedCall(500, () => this.openScene(STORY_INTRO, () => this.hintText.setVisible(true)));
+  }
+
+  // 播一段劇情（每句 [說話者, 內容]），播完呼叫 onDone
+  openScene(script, onDone) {
+    if (this.dlg || this.transitioning || this.down) return false;
+    this.dlg = { npc: { name: '' }, i: 0, lines: script.map(r => r[1]), names: script.map(r => r[0]), onDone };
+    this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
+    return true;
+  }
+
+  // 劇情推進到哪一步，NPC 就換哪一組對話
+  npcVersion(npc) {
+    const st = npc.story;
+    if (st) { if (STORY.boss && st.boss) return { key: 'boss', v: st.boss }; if (STORY.gen && st.gen) return { key: 'gen', v: st.gen }; }
+    return { key: '', v: npc };
+  }
+
   openDialog(npc) {
-    const first = !TALKED[npc.id]; TALKED[npc.id] = true;
-    let lines = npc.lines;
-    if (!first && npc.chat && npc.chat.length) {   // 之後：隨機說兩句不同的閒話
-      const pool = npc.chat.slice(), pick = [];
+    if (npc.scene === 'meet') {
+      if (STORY.met) { this.openScene([[npc.name, '走吧，路上慢慢說。']]); return; }
+      this.openScene(STORY_MEET, () => { STORY.met = true; this.saveGrowth(); this.banner('第一章　完\n往涿縣城外，與劉備三兄弟同行', 4200); });
+      return;
+    }
+    const ver = this.npcVersion(npc), tk = npc.id + ':' + ver.key;
+    const first = !TALKED[tk]; TALKED[tk] = true;
+    let lines = ver.v.lines;
+    if (!first && ver.v.chat && ver.v.chat.length) {
+      const pool = ver.v.chat.slice(), pick = [];   // 之後：隨機說兩句不同的閒話
       for (let n = 0; n < 2 && pool.length; n++) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
       lines = pick;
     }
@@ -2552,8 +2654,9 @@ class VillageScene extends Phaser.Scene {
     if (!this.dlg) return;
     this.dlg.i++;
     if (this.dlg.i >= this.dlg.lines.length) {
-      const n = this.dlg.npc; this.dlg = null;
-      if (n.shop) this.openShop(n);
+      const n = this.dlg.npc, done = this.dlg.onDone; this.dlg = null;
+      if (done) done();
+      else if (n.shop) this.openShop(n);
     }
   }
 
@@ -2600,8 +2703,8 @@ class VillageScene extends Phaser.Scene {
     g.fillStyle(0x000000, 0.35); g.fillRect(0, 0, W, H);
     g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(bx, by, bw, bh, 10);
     g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(bx, by, bw, bh, 10);
-    this.dlgName.setText(d.npc.name).setPosition(bx + 14, by + 10);
-    this.dlgBody.setText(d.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28);
+    this.dlgName.setText(d.names ? d.names[d.i] : d.npc.name).setPosition(bx + 14, by + 10);
+    this.dlgBody.setText(d.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28, true);   // true＝中文也能自動換行
     this.dlgHint.setText(d.i >= d.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
   }
 
@@ -3047,8 +3150,8 @@ class VillageScene extends Phaser.Scene {
       if (st.phase === 'fight' && grp.every(b => !b.hidden && b.dead)) {
         this.encDone[ai] = true; PROG.enc[ai] = true;
         const got = this.settleXp();
-        if (E.boss) { st.phase = 'cleared'; this.banner('擊敗黃巾渠帥\n獲得 ' + got + ' 經驗\n往北前進', 3500); }
-        else { st.phase = 'walk'; st.amb++; this.banner('擊退伏兵\n獲得 ' + got + ' 經驗', 2600); }
+        if (E.boss) { st.phase = 'cleared'; this.banner('擊敗黃巾渠帥\n獲得 ' + got + ' 經驗\n往北前進', 3500); this.storyBeat('boss', STORY_BOSS, 1500); }
+        else { st.phase = 'walk'; st.amb++; this.banner('擊退伏兵\n獲得 ' + got + ' 經驗', 2600); if (E.id === 'ambush1') this.storyBeat('gen', STORY_GEN, 1600); }
       }
     }
     if (st.phase === 'cleared' && !this.down && py < EXIT_Y) {
