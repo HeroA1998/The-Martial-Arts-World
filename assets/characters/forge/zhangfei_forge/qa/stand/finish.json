@@ -1,0 +1,341 @@
+{
+  "schema": "video2dsprite.finish.v1",
+  "tool": {
+    "name": "finish_frames",
+    "version": "0.6.0"
+  },
+  "mode": "pixel",
+  "clip": "stand-pixel",
+  "character": "zhangfei",
+  "role": null,
+  "source": {
+    "frames": "../stand-input",
+    "count": 3,
+    "size": [
+      1024,
+      1024
+    ],
+    "pattern": "*.png",
+    "registration": null
+  },
+  "rest": {
+    "frame": 0,
+    "topPx": 511,
+    "feetPx": 1000,
+    "heightPx": 489,
+    "areaPx": 86592,
+    "stanceX": 500.5,
+    "centroid": [
+      510.98457132298597,
+      785.8634746858833
+    ],
+    "minRun": 6
+  },
+  "anchorMode": "feet",
+  "anchorSource": [
+    500.5,
+    1000.0
+  ],
+  "scale": 1.0,
+  "scaleSource": "scale-ref",
+  "targetHeight": 489.0,
+  "scaleRef": {
+    "path": "../master-pixel/finish.json",
+    "sha256": "f5fda53cd44e56a38c726a57b8f4ab70d07fb47261354e44fdbe6520ab6c56a2",
+    "bytes": 6020,
+    "clip": "master-pixel",
+    "character": "zhangfei",
+    "scale": 1.0,
+    "restAreaPx": 390110.0,
+    "areaRatio": 0.221968,
+    "correction": 2.122534,
+    "applied": 1.0,
+    "clamped": false,
+    "areaNorm": false
+  },
+  "size": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    1000
+  ],
+  "canvas": {
+    "size": [
+      1024,
+      1024
+    ],
+    "anchor": [
+      512,
+      1000
+    ],
+    "requestedAnchor": [
+      512,
+      1000
+    ]
+  },
+  "engine": {
+    "sourceSize": [
+      1024,
+      1024
+    ],
+    "sourceAnchor": [
+      512,
+      1000
+    ],
+    "sampling": "nearest",
+    "pixelArt": true,
+    "note": "engine_export.py package --clean-dir <out>/frames --source-size W,H --source-anchor X,Y (no --registration; add --pixel-art --sampling nearest for pixel and hibit)"
+  },
+  "resampler": "box",
+  "restOutput": {
+    "heightPx": 489.0,
+    "areaPx": 86592.0,
+    "bodyHeightPx": 489.0,
+    "outlinePx": 0,
+    "measuredHeightPx": 489,
+    "measuredAreaPx": 86579
+  },
+  "displaySizes": [
+    {
+      "label": "1x",
+      "dir": "frames",
+      "scale": 1.0,
+      "size": [
+        1024,
+        1024
+      ],
+      "anchor": [
+        512,
+        1000
+      ],
+      "targetHeight": 489.0,
+      "flicker": {
+        "pairs": 2,
+        "alphaFlipsPerPair": 53476.5,
+        "indexFlipsPerPair": 44198.0,
+        "noiseFlipsPerPair": 564.0,
+        "edgeFlipsPerPair": 0.5
+      },
+      "alphaBinary": true
+    }
+  ],
+  "palette": {
+    "path": "../master-pixel/palette.json",
+    "sha256": "f87f74b123ae8989910d89a7ce4753bbd54f7ac9204b9c0b9c4c925135fa9ff0",
+    "bytes": 1358,
+    "colors": 32,
+    "built": false,
+    "reserved": 0,
+    "transparentIndex": 255
+  },
+  "pixel": {
+    "alphaThreshold": 0.5,
+    "dither": false,
+    "loopPolicy": "oneshot",
+    "margin": 0.0004,
+    "alphaBand": [
+      0.4,
+      0.6
+    ],
+    "orphans": 1,
+    "despeckle": true,
+    "downscale": "box",
+    "supersample": 1,
+    "lift": {
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "pivotL": 0.44498
+    },
+    "outline": "none",
+    "outlinePx": 0,
+    "featureDeltaL": null,
+    "shadeGap": null,
+    "shadeMerged": 0,
+    "coloursPerFrameMax": 32,
+    "noiseFlipReduction": 0.3302,
+    "perFrameNearest": {
+      "pairs": 2,
+      "alphaFlipsPerPair": 53476.5,
+      "indexFlipsPerPair": 45010.0,
+      "noiseFlipsPerPair": 842.0,
+      "edgeFlipsPerPair": 0.5
+    },
+    "heldIndexPx": 1741,
+    "heldAlphaPx": 0,
+    "lonePixelsFixed": 27573
+  },
+  "hibit": null,
+  "colourLock": null,
+  "indexedSheet": null,
+  "loopPolicy": "oneshot",
+  "frames": [
+    {
+      "file": "frames/frame-00.png",
+      "sha256": "5ee2a7bb5383cc924e66b633a6e829612cd2b29e5acd3e7def2d7f1a5ac2723d",
+      "sourceFile": "frame-00.png",
+      "sourceSha256": "a361662a336d86c6b82cf43d1221541f576774444f3603b574a8415f09867126",
+      "opaquePx": 86579
+    },
+    {
+      "file": "frames/frame-01.png",
+      "sha256": "7005760e39dcacc6efefc467cc5e868eca27fe19bf55759dcbe88d8730f18736",
+      "sourceFile": "frame-01.png",
+      "sourceSha256": "2a9d853cf741b79ae5305464c84fd2038e155430c72e105f8a54342703f12178",
+      "opaquePx": 64695
+    },
+    {
+      "file": "frames/frame-02.png",
+      "sha256": "a07fe474eacb272d6b21188bb1f818683cd92701bea04fd8238b5a79c982d02b",
+      "sourceFile": "frame-02.png",
+      "sourceSha256": "8b8221384cd4a0a857ae701b0254451db6988a6247969ca83ea69472db3ac971",
+      "opaquePx": 85216
+    }
+  ],
+  "flicker": {
+    "pairs": 2,
+    "alphaFlipsPerPair": 53476.5,
+    "indexFlipsPerPair": 44198.0,
+    "noiseFlipsPerPair": 564.0,
+    "edgeFlipsPerPair": 0.5
+  },
+  "specksRemoved": 46,
+  "alphaBinary": true,
+  "review": {
+    "path": "review-contact.png",
+    "frames": [
+      0,
+      1,
+      2
+    ]
+  },
+  "qa": {
+    "status": "warn",
+    "method": "finish_frames pixel v1 (port of game-opus55 pixelate.py): the hd registration and box downscale, then one OKLab palette (given, or forge_palette.build_palette k-means++ on the finished frames), forge_palette.quantize_sequence with temporal hysteresis (index kept within the margin, opacity kept inside alpha 0.4-0.6), cleanup_orphans (1 pass) and cleanup_alpha per frame, binary alpha at 0.5, no dither; flicker counted per frame pair against per-frame nearest quantizing",
+    "notProven": [
+      "identity, pose and readability at the finished size (look at review-contact.png and the frames)",
+      "that the target height suits the game camera and the rest of the cast (run lineup)",
+      "loop seams and timing (gait_loop, retime); finished frames keep the source names",
+      "hysteresis follows file order: the seam pair of a loop window chosen later is not held",
+      "the palette's fit to other clips of the cast (build one shared palette with palette build)"
+    ],
+    "checks": [
+      {
+        "id": "no-upscale",
+        "status": "pass",
+        "value": 1.0,
+        "threshold": 1.0
+      },
+      {
+        "id": "rest-height",
+        "status": "pass",
+        "value": 0.0,
+        "threshold": 1.5,
+        "note": "|measured - nominal| rest-pose body height at 1x (outline included), output px"
+      },
+      {
+        "id": "empty-frames",
+        "status": "pass",
+        "value": [],
+        "threshold": 0
+      },
+      {
+        "id": "flicker",
+        "status": "skipped",
+        "value": {
+          "pairs": 2,
+          "alphaFlipsPerPair": 53476.5,
+          "indexFlipsPerPair": 44198.0,
+          "noiseFlipsPerPair": 564.0,
+          "edgeFlipsPerPair": 0.5
+        },
+        "threshold": null
+      },
+      {
+        "id": "pixel-reduction",
+        "status": "warn",
+        "value": 1.0,
+        "threshold": 4.0,
+        "note": "source px per output px; pixel art comes from about 8-12x"
+      },
+      {
+        "id": "alpha-binary",
+        "status": "pass",
+        "value": true,
+        "threshold": true
+      },
+      {
+        "id": "palette-fit",
+        "status": "pass",
+        "value": {
+          "colorsUsed": 32,
+          "paletteColors": 32,
+          "offPaletteColors": 0,
+          "coloursPerFrameMax": 32
+        },
+        "threshold": 0
+      },
+      {
+        "id": "hysteresis",
+        "status": "pass",
+        "value": {
+          "noiseFlipsPerPair": 564.0,
+          "perFrameNearest": 842.0,
+          "reduction": 0.3302
+        },
+        "threshold": "<= per-frame nearest"
+      }
+    ],
+    "inputs": [
+      {
+        "path": "../stand-input/frame-00.png",
+        "sha256": "a361662a336d86c6b82cf43d1221541f576774444f3603b574a8415f09867126"
+      },
+      {
+        "path": "../stand-input/frame-01.png",
+        "sha256": "2a9d853cf741b79ae5305464c84fd2038e155430c72e105f8a54342703f12178"
+      },
+      {
+        "path": "../stand-input/frame-02.png",
+        "sha256": "8b8221384cd4a0a857ae701b0254451db6988a6247969ca83ea69472db3ac971"
+      },
+      {
+        "path": "../master-pixel/finish.json",
+        "sha256": "f5fda53cd44e56a38c726a57b8f4ab70d07fb47261354e44fdbe6520ab6c56a2",
+        "bytes": 6020
+      },
+      {
+        "path": "../master-pixel/palette.json",
+        "sha256": "f87f74b123ae8989910d89a7ce4753bbd54f7ac9204b9c0b9c4c925135fa9ff0",
+        "bytes": 1358
+      }
+    ],
+    "outputs": [
+      {
+        "path": "frames/frame-00.png",
+        "sha256": "5ee2a7bb5383cc924e66b633a6e829612cd2b29e5acd3e7def2d7f1a5ac2723d",
+        "bytes": 108505
+      },
+      {
+        "path": "frames/frame-01.png",
+        "sha256": "7005760e39dcacc6efefc467cc5e868eca27fe19bf55759dcbe88d8730f18736",
+        "bytes": 82729
+      },
+      {
+        "path": "frames/frame-02.png",
+        "sha256": "a07fe474eacb272d6b21188bb1f818683cd92701bea04fd8238b5a79c982d02b",
+        "bytes": 97845
+      },
+      {
+        "path": "review-contact.png",
+        "sha256": "fc29d3320168871f9c44f1addb298abbaed810cc84b32068646fecd552b43a5c",
+        "bytes": 259447
+      }
+    ],
+    "tool": {
+      "name": "finish_frames",
+      "version": "0.6.0"
+    }
+  }
+}

@@ -104,7 +104,7 @@
 - 造型沿用現有關羽（參考 `npc_guanyu_stand_front.png`）：比主角高約一成；紅臉、丹鳳眼、長鬚垂到胸口；綠色戰袍、裡面露出深色護甲、綠色頭巾；手持青龍偃月刀（刀不要超出格子）。把現有圖的金邊、龍紋、高光大幅簡化。
 - 檔名（新檔）：走路 `assets/characters/npc_guanyu_forge_walk_front.png`、`_side.png`、`_back.png`（2048×512，4 格，側面朝右）；站立 `npc_guanyu_forge_stand_front.png`、`_side.png`、`_back.png`（1024×1024，兩腳分開）。
 
-## 12. 張飛 重做（Agent Sprite Forge）　狀態：待生成
+## 12. 張飛 重做（Agent Sprite Forge）　狀態：已推送（2026-11-14）
 - 照共通規則的 Agent Sprite Forge 做法與人物風格基準。**不要覆蓋**現有張飛圖。
 - 造型沿用現有張飛（參考 `npc_zhangfei_stand_front.png`）：魁梧粗壯、比主角寬；黑臉、豹頭環眼、短硬落腮鬍；深色短打皮甲、粗布腰帶；手持丈八蛇矛（矛不要超出格子）。把金色護肩與裝飾大幅簡化。
 - 檔名（新檔）：前綴 `npc_zhangfei_forge_walk_`、`npc_zhangfei_forge_stand_`，規格同第 11 項。

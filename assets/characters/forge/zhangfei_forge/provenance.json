@@ -1,0 +1,73 @@
+{
+  "art_source": "host_image",
+  "route": "Codex image_gen",
+  "api": false,
+  "video": false,
+  "code_drawn": false,
+  "forge_commit": "25203d03900b46b444bdd72a75768c33d1895ad6",
+  "sources": {
+    "name": "zhangfei",
+    "master": "exec-d9918b37-7375-4a60-a3f3-3dad6d1b4620.png",
+    "stand": "exec-1b847c53-cb9d-4339-8d68-ad93a0c9fc56.png",
+    "stand_bounds": [
+      0,
+      380,
+      800,
+      1254
+    ],
+    "front": "exec-ed00053f-fbe5-4753-b68e-350f93464e44.png",
+    "side": "exec-4624ae29-ef9a-4750-8f6f-7dbf1ba3955a.png",
+    "back": "exec-93915cbc-71ac-42a1-a40c-7e6322f1a6eb.png"
+  },
+  "outputs": [
+    "assets/characters/npc_zhangfei_forge_stand_front.png",
+    "assets/characters/npc_zhangfei_forge_walk_front.png",
+    "assets/characters/npc_zhangfei_forge_stand_side.png",
+    "assets/characters/npc_zhangfei_forge_walk_side.png",
+    "assets/characters/npc_zhangfei_forge_stand_back.png",
+    "assets/characters/npc_zhangfei_forge_walk_back.png"
+  ],
+  "finish": "pixel; scale1; shared32color master palette; contrast1 saturation1 outline none",
+  "warnings": [
+    {
+      "file": "qa/master/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/stand/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/front/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/side/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/back/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    }
+  ]
+}

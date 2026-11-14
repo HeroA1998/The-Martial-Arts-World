@@ -1,0 +1,104 @@
+{
+  "schema": "generate2dsprite.palette.v1",
+  "colors": [
+    {
+      "hex": "#060405"
+    },
+    {
+      "hex": "#0f0d0c"
+    },
+    {
+      "hex": "#1d0a1c"
+    },
+    {
+      "hex": "#181613"
+    },
+    {
+      "hex": "#281f19"
+    },
+    {
+      "hex": "#390b39"
+    },
+    {
+      "hex": "#372c21"
+    },
+    {
+      "hex": "#5b0d5d"
+    },
+    {
+      "hex": "#473628"
+    },
+    {
+      "hex": "#563f2d"
+    },
+    {
+      "hex": "#712a2c"
+    },
+    {
+      "hex": "#65442e"
+    },
+    {
+      "hex": "#7e1181"
+    },
+    {
+      "hex": "#5e4e38"
+    },
+    {
+      "hex": "#8d3335"
+    },
+    {
+      "hex": "#724c32"
+    },
+    {
+      "hex": "#74593d"
+    },
+    {
+      "hex": "#875b3a"
+    },
+    {
+      "hex": "#a513a6"
+    },
+    {
+      "hex": "#b44140"
+    },
+    {
+      "hex": "#926742"
+    },
+    {
+      "hex": "#a55f3e"
+    },
+    {
+      "hex": "#8d7458"
+    },
+    {
+      "hex": "#b06f44"
+    },
+    {
+      "hex": "#a68159"
+    },
+    {
+      "hex": "#be8755"
+    },
+    {
+      "hex": "#d39059"
+    },
+    {
+      "hex": "#c8a377"
+    },
+    {
+      "hex": "#e99c65"
+    },
+    {
+      "hex": "#dfb47f"
+    },
+    {
+      "hex": "#edca9c"
+    },
+    {
+      "hex": "#fae0b3"
+    }
+  ],
+  "transparent_index": 255,
+  "locked": false,
+  "source": "finish_frames pixel: OKLab k-means++ of 1 finished frame(s), 32 colours, seed 0"
+}
