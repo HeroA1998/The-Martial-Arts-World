@@ -116,23 +116,26 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.16.1';   // 每次更新請加一
+const VERSION = 'v0.17.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
-const ATK_CD = 680;         // 兩次攻擊的最短間隔（毫秒）
-const ATK_SWING = 360;      // 揮劍動作本身的長度
-const ATK_DUR = 580;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
-const ATK_HIT_FROM = 150, ATK_HIT_TO = 320;   // 動作中可以打到人的時間窗
-const ATK_ROLL_CANCEL = 60;                  // 揮劍幾毫秒後就能用翻滾取消（越小越跟手）
+const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
+const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
+const ATK_DUR = 780;        // 揮劍總長度（揮完後還有硬直，期間不能移動與出招）
+const ATK_HIT_FROM = 215, ATK_HIT_TO = 400;   // 動作中可以打到人的時間窗（前搖約 0.2 秒，出手前要想清楚）
+const ATK_ROLL_CANCEL = 110;                 // 揮劍幾毫秒後才能用翻滾取消（出刀有承諾，不能一按就收）
 const LOCK_KEEP = 260;      // 手動鎖定的敵人離玩家超過這個距離就自動解除
 const LOCK_RANGE = 80;      // 揮劍時自動鎖定這個距離內最近的目標
 const ATK_REACH = 22;       // 劍的判定圈中心離身體多遠
 const ATK_RADIUS = 26;      // 劍的判定圈半徑
 const ATK_MOVE_MUL = 0;     // 揮劍時完全不能移動（只能用翻滾閃避）
 // 翻滾攻擊：翻滾無敵結束後立刻按攻擊，出一刀較短較快的反擊
-const QATK_COST = 16;
-const QATK_SWING = 220, QATK_DUR = 380;
-const QATK_HIT_FROM = 60, QATK_HIT_TO = 190;
-const PLAYER_DMG_MIN = 10, PLAYER_DMG_RNG = 5;   // 傷害 10~14
+const QATK_COST = 18;
+const QATK_SWING = 260, QATK_DUR = 440;
+const QATK_HIT_FROM = 80, QATK_HIT_TO = 215;
+const PLAYER_DMG_MIN = 12, PLAYER_DMG_RNG = 5;   // 傷害 12~16（出刀變慢變重，每刀也打得更痛）
+// 命中打擊感
+const HIT_STOP = 150, HIT_STOP_KILL = 230;       // 命中停頓（毫秒）：一般／擊殺
+const HIT_SHAKE = [110, 0.0065], HIT_SHAKE_KILL = [150, 0.01];   // 螢幕震動：[毫秒, 強度]
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // 木人樁（底部中心座標）
@@ -150,7 +153,7 @@ const HURT_ANIM_MS = 330;     // 主角受擊動畫長度
 const STAM_REGEN = 36;          // 每秒回復
 const STAM_DELAY = 750;         // 用完耐力後多久才開始回復
 const STAM_DELAY_EMPTY = 1300;  // 耐力見底時要等更久
-const ATK_COST = 22;
+const ATK_COST = 26;
 
 // ---------- 能力型成長（黑魂式：在祠堂花經驗升級）----------
 // 等級 = 1 + 四項能力投入點數總和；每項最高 50 點，總等級最高 201
@@ -350,15 +353,16 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   walkTex: 'turban', standTex: 'turban', animTex: null, walkBright: { side: 1, front: 1, back: 1 },   // 黃巾走路圖、站立圖（Codex 生成）
   name: '黃巾', showName: false, shadowColor: 0x000000,
   h: HERO_H,   // 小兵與主角等高
-  hp: 12, speed: 50, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
+  hp: 20, speed: 54, aggro: 70, lose: 140, stalkDist: 0, orbitR: 90,
   attackSlots: 2, atkGap: 400,
-  slashWindup: 900, slashWindupFast: 650, slashRecover: 1000, rest: 1800, dmgSlash: 4,
+  slashWindup: 760, slashWindupFast: 560, slashRecover: 900, rest: 1100, dmgSlash: 10,   // 小兵也很痛：一刀約扣 1/10 血
   varied: false, pFeint: 0, reactRange: 90, dodgeCdMs: 3000,   // 小兵維持原本的選招與反應
   fleeOnHit: false,          // 不退縮：被打中後照樣回來
-  pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.1,
+  pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.3,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
-  poise: 10, stun: 500, knock: 140, respawnMs: 20000,
-  counterOnHit: 0, recoverCounter: 0, preempt: false,   // 小兵不反擊、不搶先出刀
+  poise: 1, stun: 560, knock: 190, respawnMs: 20000,   // poise 1：每刀都會被打得僵直、往後退
+  counterOnHit: 0, recoverCounter: 0,
+  preempt: true, preemptDist: 60, pPreempt: 0.4, preemptCdMs: 2600, preemptCloseSpd: 70,   // 你揮刀或衝近的當下，小兵有機率搶先出刀（前搖不縮短，仍看得出來）
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
@@ -1710,12 +1714,12 @@ class VillageScene extends Phaser.Scene {
     const dmg = this.playerDmg();
     b.hp -= dmg;
     b.lastHit = time;
-    this.hitstop(b.hp <= 0 ? 170 : 105);
+    this.hitstop(b.hp <= 0 ? HIT_STOP_KILL : HIT_STOP);
     this.spawnDamage(b.body.x, b.body.y - b.t.h - 4, dmg);
-    b.flashUntil = time + 110;
-    if (b.hp <= 0) { this.killBandit(b, dx, time); return; }
+    b.flashUntil = time + 140;
+    if (b.hp <= 0) { this.cameras.main.shake(HIT_SHAKE_KILL[0], HIT_SHAKE_KILL[1]); this.killBandit(b, dx, time); return; }
     if (b.state === 'guard') { b.state = 'chase'; b.stalked = true; }   // 從側面被打中，防禦解除
-    this.cameras.main.shake(90, 0.003);
+    this.cameras.main.shake(HIT_SHAKE[0], HIT_SHAKE[1]);
     // 架勢值：連續被打才會破勢；破勢之前他不會被打斷，仍會出刀
     b.poise -= dmg;
     if (b.poise <= 0) {
