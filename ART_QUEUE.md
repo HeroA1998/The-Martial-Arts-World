@@ -85,6 +85,17 @@
 
 ---
 
+## 10. 劉備 試做版（用 Agent Sprite Forge）　狀態：待生成
+- 目的：現有劉關張比主角和路人更鮮豔、對比更強、細節更多，站在一起不協調（用戶 2026-11-14）。先用 Agent Sprite Forge（github.com/0x0funky/agent-sprite-forge）試做劉備一個人，看效果再決定要不要三人都重做。**不要覆蓋現有劉備圖**，兩個版本並存方便比較。
+- 做法：先定一張「定稿圖」，再用 Agent Sprite Forge 的 **Pixel 模式**（顏色少、硬邊、不抗鋸齒）長出動作。
+- **定稿圖的風格以主角為準**：參考 `assets/characters/hero_front.png`、`hero_walk_front.png`。粗像素顆粒、粗深色輪廓、低飽和、細節少。**不要比主角更鮮豔、更精細、對比更強**，金邊、花紋、高光都要減少。
+- 造型沿用現有劉備（參考 `npc_liubei_stand_front.png`）：米白淡綠長袍、深色外披、腰繫布帶、背後斜背雙股劍、髮髻戴布冠、長耳垂、神情溫和。身高、比例與主角相同。
+- 檔名（新檔，不覆蓋）：
+  - 走路：`assets/characters/npc_liubei_forge_walk_front.png`、`_side.png`、`_back.png`，每張 2048×512，4 格各 512×512，側面朝右，沿用 `assets/templates/` 姿勢模版。
+  - 站立：`assets/characters/npc_liubei_forge_stand_front.png`、`_side.png`、`_back.png`，每張 1024×1024，兩腳分開（照共通規則）。
+- 先只做 walk 和 stand，不做其他動作。
+- 完成後的回報要說明：實際用了哪種生成方式（Codex 圖片生成或 API）。如果工具退回成「程式畫的圖」，要明說。
+
 ## 每次交給 Codex 的指令（固定不變，整段複製）
 規則有改，Claude 只改這份檔案，這段指令永遠不用改。
 ```
