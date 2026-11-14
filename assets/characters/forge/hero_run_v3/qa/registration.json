@@ -1,0 +1,376 @@
+{
+  "hairHorizontalGridScale": 0.9,
+  "neutralAnatomy": [
+    90,
+    40,
+    32
+  ],
+  "groundRow": 109,
+  "faceOnlyPatch": [
+    64,
+    45,
+    82,
+    60
+  ],
+  "frames": [
+    {
+      "frame": 1,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "sourceHeadTop": 20,
+      "sourceHeadEnd": 61,
+      "headHeight": 40,
+      "upperHairRowCorrection": -1,
+      "upperHairRows": [
+        10
+      ],
+      "torsoDx": 1,
+      "torsoXBefore": 62.76,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 103,
+          "soleRow": 108,
+          "clearance": 1,
+          "near": false,
+          "kneeFixedRow": 90
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 103,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 90
+        }
+      ],
+      "headSilhouetteHash": "3bfbde01b4cb18a2648c4f14a9ac5f995ca82da879a3aff946aadf62f883062b",
+      "height": 90,
+      "bbox": [
+        44,
+        20,
+        85,
+        110
+      ],
+      "paletteLock": {
+        "cells": 2027,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 2,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "sourceHeadTop": 22,
+      "sourceHeadEnd": 61,
+      "headHeight": 40,
+      "upperHairRowCorrection": 1,
+      "upperHairRows": [
+        5
+      ],
+      "torsoDx": 2,
+      "torsoXBefore": 61.62048192771084,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 91
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 98,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": false,
+          "kneeFixedRow": 91
+        }
+      ],
+      "headSilhouetteHash": "e8a6cca837be81d35cb70dbee54c949847d348ce242cca7ebcb1db03a9b0303a",
+      "height": 89,
+      "bbox": [
+        48,
+        21,
+        83,
+        110
+      ],
+      "paletteLock": {
+        "cells": 1739,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 3,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "sourceHeadTop": 19,
+      "sourceHeadEnd": 58,
+      "headHeight": 40,
+      "upperHairRowCorrection": 1,
+      "upperHairRows": [
+        5
+      ],
+      "torsoDx": 2,
+      "torsoXBefore": 62.25460122699386,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 88
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 94,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": false,
+          "kneeFixedRow": 88
+        }
+      ],
+      "headSilhouetteHash": "5fd671918463db2464470fb3853deddb43a6b9aa987863854a4d7e1cd40cdf9d",
+      "height": 92,
+      "bbox": [
+        44,
+        18,
+        84,
+        110
+      ],
+      "paletteLock": {
+        "cells": 1987,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 4,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "sourceHeadTop": 21,
+      "sourceHeadEnd": 59,
+      "headHeight": 40,
+      "upperHairRowCorrection": 2,
+      "upperHairRows": [
+        5,
+        21
+      ],
+      "torsoDx": -1,
+      "torsoXBefore": 64.72857142857143,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 90
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 100,
+          "soleRow": 106,
+          "clearance": 3,
+          "near": false,
+          "kneeFixedRow": 90
+        }
+      ],
+      "headSilhouetteHash": "795cbf6f50f7187ce1377d3d945015d0e8d861a35fab9a5612628a031c360de0",
+      "height": 90,
+      "bbox": [
+        41,
+        20,
+        86,
+        110
+      ],
+      "paletteLock": {
+        "cells": 2114,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 5,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "sourceHeadTop": 20,
+      "sourceHeadEnd": 60,
+      "headHeight": 40,
+      "upperHairRowCorrection": 0,
+      "upperHairRows": [],
+      "torsoDx": -2,
+      "torsoXBefore": 65.95614035087719,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 105,
+          "soleRow": 108,
+          "clearance": 1,
+          "near": true,
+          "kneeFixedRow": 90
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 105,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 90
+        }
+      ],
+      "headSilhouetteHash": "cac5795b50275f88a94f6f54e481f3c9336de9b8e2804987cc525b8d2558d8c3",
+      "height": 90,
+      "bbox": [
+        40,
+        20,
+        83,
+        110
+      ],
+      "paletteLock": {
+        "cells": 2024,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 6,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "sourceHeadTop": 20,
+      "sourceHeadEnd": 60,
+      "headHeight": 40,
+      "upperHairRowCorrection": 0,
+      "upperHairRows": [],
+      "torsoDx": 3,
+      "torsoXBefore": 61.4125,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 106,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 91
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": true,
+          "kneeFixedRow": 91
+        }
+      ],
+      "headSilhouetteHash": "f336131f378b10277762a84a5985a0a6658c9ae36bd3c1c470b6f139d1061aae",
+      "height": 89,
+      "bbox": [
+        45,
+        21,
+        85,
+        110
+      ],
+      "paletteLock": {
+        "cells": 1862,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 7,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "sourceHeadTop": 20,
+      "sourceHeadEnd": 58,
+      "headHeight": 40,
+      "upperHairRowCorrection": 2,
+      "upperHairRows": [
+        5,
+        21
+      ],
+      "torsoDx": -2,
+      "torsoXBefore": 65.74852071005917,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 88
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 96,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": true,
+          "kneeFixedRow": 88
+        }
+      ],
+      "headSilhouetteHash": "5b9ea7f87d49a9c32167ad927edd1cbe2e4a8468be58712364ec284e1f692449",
+      "height": 92,
+      "bbox": [
+        39,
+        18,
+        82,
+        110
+      ],
+      "paletteLock": {
+        "cells": 2091,
+        "moved": 0,
+        "worst": 0.0
+      }
+    },
+    {
+      "frame": 8,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "sourceHeadTop": 21,
+      "sourceHeadEnd": 59,
+      "headHeight": 40,
+      "upperHairRowCorrection": 2,
+      "upperHairRows": [
+        5,
+        21
+      ],
+      "torsoDx": 0,
+      "torsoXBefore": 64.2,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 101,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 90
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 106,
+          "clearance": 3,
+          "near": true,
+          "kneeFixedRow": 90
+        }
+      ],
+      "headSilhouetteHash": "10aafb365f5a56e25dad880b103b19eb0062109c2ea5f34cd5049b2e12fa8afb",
+      "height": 90,
+      "bbox": [
+        43,
+        20,
+        84,
+        110
+      ],
+      "paletteLock": {
+        "cells": 1932,
+        "moved": 0,
+        "worst": 0.0
+      }
+    }
+  ]
+}

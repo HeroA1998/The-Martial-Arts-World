@@ -1,0 +1,62 @@
+[
+  {
+    "stage": "before final chest registration",
+    "id": "torso_drift",
+    "status": "warn",
+    "value": 13.02,
+    "threshold": 2.0,
+    "files": [
+      {
+        "path": "../native-v3/frame-00.png",
+        "sha256": "069e922d13275f4289f820a8cc04130d01b9886c9f15f7f58fd68247959131e6",
+        "bytes": 4180
+      },
+      {
+        "path": "../native-v3/frame-01.png",
+        "sha256": "11660ab87eed9734498cab49ceb37492f81dfd2996d657c28ca20cf7ec5253b4",
+        "bytes": 3759
+      },
+      {
+        "path": "../native-v3/frame-02.png",
+        "sha256": "1568907042cdbdced39556cd446ab3335f24c86d5f3c941a608564bffd6b7976",
+        "bytes": 4310
+      },
+      {
+        "path": "../native-v3/frame-03.png",
+        "sha256": "8f3407b2d889cdbe730d3d2d17927e5e7eddf1bc71aafcf403cc01dcb1b0c1ab",
+        "bytes": 4329
+      },
+      {
+        "path": "../native-v3/frame-04.png",
+        "sha256": "a4ef20b0753fbea8bb756a7c825f7ca49202cef2a7fef4a35627f9c542a3cdfd",
+        "bytes": 4411
+      },
+      {
+        "path": "../native-v3/frame-05.png",
+        "sha256": "4c8c23943dae13ff9627420dd1a098d41e22462999a711eeb0c2107b377fb037",
+        "bytes": 3996
+      },
+      {
+        "path": "../native-v3/frame-06.png",
+        "sha256": "7ad536a2c2decfbcfa154287817530fc9dcb091311db8536991a769e20a4bef4",
+        "bytes": 4282
+      },
+      {
+        "path": "../native-v3/frame-07.png",
+        "sha256": "2cc6b380f7cf85dd3502cbcb0284de1fca73ffeddfed66df3ff843ac6fa5b783",
+        "bytes": 4118
+      }
+    ],
+    "resolved": true,
+    "resolution": "Register the actual trunk below the 40px hair/head band with torso_band=[0.46,0.62]. Final range 0.88px; qa/motion.json."
+  },
+  {
+    "stage": "8-frame loop audit input",
+    "id": "minimum_frame_count",
+    "status": "tool-input-error",
+    "value": 8,
+    "threshold": 12,
+    "resolved": true,
+    "resolution": "Repeat the same 8 drawings for 3 cycles only as an analysis input. Forge selects exactly [0,8); the deliverable still contains eight distinct drawings. No retiming or extra pose generated."
+  }
+]

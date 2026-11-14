@@ -1,0 +1,889 @@
+{
+  "schema": "video2dsprite.loop_report.v1",
+  "tool": {
+    "name": "gait_loop",
+    "version": "0.6.0"
+  },
+  "frames": {
+    "directory": "../loop-audit-3cycles",
+    "count": 24,
+    "first": "frame-00.png",
+    "last": "frame-23.png",
+    "fps": "12/1",
+    "canvas": [
+      128,
+      128
+    ]
+  },
+  "indexing": "0-based positions in the sorted *.png list; intervals are [start, endExclusive)",
+  "kind": "gait",
+  "state": "walk",
+  "analysis": {
+    "union": [
+      38,
+      16,
+      87,
+      112
+    ],
+    "global_size": [
+      49,
+      96
+    ],
+    "legs_size": [
+      49,
+      43
+    ],
+    "legs_top_px": 53,
+    "registration": true,
+    "reduction": 1,
+    "drift": {
+      "cx_slope_px_per_frame": -0.035997,
+      "ground_slope_px_per_frame": -0.010435
+    },
+    "lengths": {
+      "strideWindowFrames": [
+        6,
+        12
+      ]
+    },
+    "stepMedian": 0.108686,
+    "bodyHeightMedianPx": 90.0
+  },
+  "usableRange": {
+    "start": 0,
+    "endExclusive": 24,
+    "reference": [
+      2,
+      10
+    ],
+    "smoothFrames": 9,
+    "tolerance": 0.05,
+    "signals": [
+      "scale"
+    ],
+    "reason": null,
+    "maxDeviation": 0.023256
+  },
+  "holds": [],
+  "unusableFrames": [],
+  "period": {
+    "status": "ok",
+    "local_minima": [
+      [
+        8,
+        0.0
+      ],
+      [
+        12,
+        0.090165
+      ]
+    ],
+    "L1": 8,
+    "harmonics": [
+      {
+        "k": 1,
+        "lag": 8,
+        "lag_subframe": 7.990626,
+        "P": 0.0
+      },
+      {
+        "k": 2,
+        "lag": 16,
+        "lag_subframe": 15.981097,
+        "P": 0.0
+      }
+    ],
+    "T": 7.990564,
+    "T_frames": 7.990564,
+    "T_seconds": 0.66588,
+    "S_frames": 7.990564,
+    "S_seconds": 0.66588,
+    "T_from_whole_clip": 7.990564,
+    "steady_frames": [
+      2,
+      8
+    ],
+    "steady_count": 7,
+    "stride_two_step_test": {
+      "pairs": 7,
+      "fraction_mirror_farther": 1.0,
+      "median_ratio": 8.517993,
+      "p10_ratio": 8.183533,
+      "same_lags": [
+        6,
+        10
+      ],
+      "mirror_lags": [
+        2,
+        5
+      ],
+      "distinct_steps": true
+    },
+    "half_period_test": {
+      "pairs": 7,
+      "fraction_mirror_farther": 1.0,
+      "median_ratio": 8.517993,
+      "p10_ratio": 8.183533,
+      "same_lags": [
+        6,
+        10
+      ],
+      "mirror_lags": [
+        2,
+        5
+      ]
+    },
+    "step_structure": {
+      "silhouette_half_lag": 4,
+      "is_local_min": true,
+      "prominence_in_steps": 0.361703,
+      "required": 0.2,
+      "present": true
+    },
+    "periodicity": 1.000101,
+    "P_over_step_at_T": -8.7e-05,
+    "verdict": "full-stride",
+    "why": "the silhouette dips at the half stride (lag 4, prominence 0.36 steps), so T holds two mirrored steps, and frames one step apart (lags [2, 5]) differ from frames one stride apart (lags [6, 10]) on 100% of steady frames (median x8.52): the steps are distinguishable, so a T window is one full stride and a T/2 window would loop one leg",
+    "unusable_frames": []
+  },
+  "recommendation": {
+    "policy": "cycle",
+    "cycles": 1,
+    "window": {
+      "start": 0,
+      "endExclusive": 8,
+      "lastInclusive": 7,
+      "frames": 8,
+      "seconds": 0.666667,
+      "files": [
+        "frame-00.png",
+        "frame-07.png"
+      ],
+      "step_median": 0.108686,
+      "max_step_over_median": 1.195524,
+      "max_step_over_same_phase": 1.0,
+      "wrap_ratio": 1.0,
+      "wrap_ratio_vs_median_step": 0.67308,
+      "seam_jump_ratio": 0.0,
+      "context_repeat_ratio": 0.0,
+      "context_pairs": 3,
+      "strides_global": 1.001181,
+      "strides": 1,
+      "local_period": 7.995014,
+      "phase_error_frames_local": 0.004986,
+      "tempo_vs_source_pct_global": -0.117951,
+      "tempo_vs_source_pct_local": -0.062324,
+      "nn_lag_median": 4.0,
+      "duplicate_phase_fraction": 0.25,
+      "root_dx_px_per_loop": 0.0,
+      "ground_dy_px_per_loop": 0.0,
+      "root_drift_pct_body": 0.0,
+      "covers": "one full stride (both steps)",
+      "step_durations_est": [
+        3.995282,
+        3.995282
+      ],
+      "steps_sum_vs_frames": -0.009436,
+      "step_asymmetry": 0.0,
+      "unusable_frames_touched": [],
+      "two_step_ratio_min_in_window": 9.073469,
+      "holds_inside": [],
+      "score": 0.0,
+      "classification": {
+        "class": "valid-1-cycle",
+        "reasons": [],
+        "notes": []
+      }
+    },
+    "sourceIndices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "durations_ms": [
+      83,
+      84,
+      83,
+      84,
+      83,
+      83,
+      84,
+      83
+    ],
+    "confidence": {
+      "components": {
+        "periodicity": 1.0,
+        "two_step_evidence": 1.0,
+        "seam": 1.0,
+        "wrap_step": 1.0,
+        "root_drift": 1.0,
+        "smoothness": 1.0,
+        "step_timing": 1.0
+      },
+      "overall": 1.0,
+      "label": "high",
+      "review_priority": "spot-check",
+      "review": [
+        "Play the 3x loop GIF at source fps and inspect the seam pair; pixel metrics cannot certify foot contact, hand or prop identity drift or the art itself."
+      ]
+    },
+    "seam": {
+      "frames": 8,
+      "seam": 29.720407,
+      "adjacent_median": 43.017236,
+      "adjacent_p95": 54.399959,
+      "adjacent_max": 57.238374,
+      "seam_over_median": 0.690895,
+      "seam_over_p95": 0.546331,
+      "method": "premultiplied RGBA mean absolute difference (0-255); seam = last -> first",
+      "mask": "union of visible pixels"
+    }
+  },
+  "candidates": {
+    "oneCycle": [
+      {
+        "start": 0,
+        "endExclusive": 8,
+        "lastInclusive": 7,
+        "frames": 8,
+        "seconds": 0.666667,
+        "files": [
+          "frame-00.png",
+          "frame-07.png"
+        ],
+        "step_median": 0.108686,
+        "max_step_over_median": 1.195524,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 0.67308,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 3,
+        "strides_global": 1.001181,
+        "strides": 1,
+        "local_period": 7.995014,
+        "phase_error_frames_local": 0.004986,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": -0.062324,
+        "nn_lag_median": 4.0,
+        "duplicate_phase_fraction": 0.25,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "one full stride (both steps)",
+        "step_durations_est": [
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.009436,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-1-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 3,
+        "endExclusive": 11,
+        "lastInclusive": 10,
+        "frames": 8,
+        "seconds": 0.666667,
+        "files": [
+          "frame-03.png",
+          "frame-10.png"
+        ],
+        "step_median": 0.108686,
+        "max_step_over_median": 1.195524,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 0.866326,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 5,
+        "strides_global": 1.001181,
+        "strides": 1,
+        "local_period": 7.996739,
+        "phase_error_frames_local": 0.003261,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": -0.040761,
+        "nn_lag_median": 4.0,
+        "duplicate_phase_fraction": 0.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "one full stride (both steps)",
+        "step_durations_est": [
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.009436,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-1-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 6,
+        "endExclusive": 14,
+        "lastInclusive": 13,
+        "frames": 8,
+        "seconds": 0.666667,
+        "files": [
+          "frame-06.png",
+          "frame-13.png"
+        ],
+        "step_median": 0.106852,
+        "max_step_over_median": 1.148074,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 1.216039,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 5,
+        "strides_global": 1.001181,
+        "strides": 1,
+        "local_period": 8.010338,
+        "phase_error_frames_local": -0.010338,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": 0.129221,
+        "nn_lag_median": 4.0,
+        "duplicate_phase_fraction": 0.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "one full stride (both steps)",
+        "step_durations_est": [
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.009436,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-1-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 9,
+        "endExclusive": 17,
+        "lastInclusive": 16,
+        "frames": 8,
+        "seconds": 0.666667,
+        "files": [
+          "frame-09.png",
+          "frame-16.png"
+        ],
+        "step_median": 0.106852,
+        "max_step_over_median": 1.216039,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 1.148074,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 5,
+        "strides_global": 1.001181,
+        "strides": 1,
+        "local_period": 8.005458,
+        "phase_error_frames_local": -0.005458,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": 0.068227,
+        "nn_lag_median": 4.0,
+        "duplicate_phase_fraction": 0.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "one full stride (both steps)",
+        "step_durations_est": [
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.009436,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.140361,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-1-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 12,
+        "endExclusive": 20,
+        "lastInclusive": 19,
+        "frames": 8,
+        "seconds": 0.666667,
+        "files": [
+          "frame-12.png",
+          "frame-19.png"
+        ],
+        "step_median": 0.106852,
+        "max_step_over_median": 1.216039,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 1.017159,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 5,
+        "strides_global": 1.001181,
+        "strides": 1,
+        "local_period": 7.990564,
+        "phase_error_frames_local": 0.009436,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": -0.117951,
+        "nn_lag_median": 4.0,
+        "duplicate_phase_fraction": 0.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "one full stride (both steps)",
+        "step_durations_est": [
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.009436,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.295953,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-1-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      }
+    ],
+    "twoCycle": [
+      {
+        "start": 0,
+        "endExclusive": 16,
+        "lastInclusive": 15,
+        "frames": 16,
+        "seconds": 1.333333,
+        "files": [
+          "frame-00.png",
+          "frame-15.png"
+        ],
+        "step_median": 0.108686,
+        "max_step_over_median": 1.195524,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 0.67308,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 3,
+        "strides_global": 2.002362,
+        "strides": 2,
+        "local_period": 7.996739,
+        "phase_error_frames_local": 0.006522,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": -0.040761,
+        "nn_lag_median": 8.0,
+        "duplicate_phase_fraction": 1.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "two strides (each phase twice)",
+        "step_durations_est": [
+          3.995282,
+          3.995282,
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.018872,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-2-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 3,
+        "endExclusive": 19,
+        "lastInclusive": 18,
+        "frames": 16,
+        "seconds": 1.333333,
+        "files": [
+          "frame-03.png",
+          "frame-18.png"
+        ],
+        "step_median": 0.108686,
+        "max_step_over_median": 1.195524,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 1.0,
+        "wrap_ratio_vs_median_step": 0.866326,
+        "seam_jump_ratio": 0.0,
+        "context_repeat_ratio": 0.0,
+        "context_pairs": 5,
+        "strides_global": 2.002362,
+        "strides": 2,
+        "local_period": 7.996739,
+        "phase_error_frames_local": 0.006522,
+        "tempo_vs_source_pct_global": -0.117951,
+        "tempo_vs_source_pct_local": -0.040761,
+        "nn_lag_median": 8.0,
+        "duplicate_phase_fraction": 1.0,
+        "root_dx_px_per_loop": 0.0,
+        "ground_dy_px_per_loop": 0.0,
+        "root_drift_pct_body": 0.0,
+        "covers": "two strides (each phase twice)",
+        "step_durations_est": [
+          3.995282,
+          3.995282,
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": -0.018872,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 0.0,
+        "classification": {
+          "class": "valid-2-cycle",
+          "reasons": [],
+          "notes": []
+        }
+      },
+      {
+        "start": 6,
+        "endExclusive": 21,
+        "lastInclusive": 20,
+        "frames": 15,
+        "seconds": 1.25,
+        "files": [
+          "frame-06.png",
+          "frame-20.png"
+        ],
+        "step_median": 0.107769,
+        "max_step_over_median": 1.205694,
+        "max_step_over_same_phase": 1.0,
+        "wrap_ratio": 0.880314,
+        "wrap_ratio_vs_median_step": 0.872825,
+        "seam_jump_ratio": 1.205694,
+        "context_repeat_ratio": 0.92313,
+        "context_pairs": 5,
+        "strides_global": 1.877214,
+        "strides": 2,
+        "local_period": 8.010338,
+        "phase_error_frames_local": -1.020675,
+        "tempo_vs_source_pct_global": 6.540853,
+        "tempo_vs_source_pct_local": 6.804502,
+        "nn_lag_median": 8.0,
+        "duplicate_phase_fraction": 1.0,
+        "root_dx_px_per_loop": 1.472167,
+        "ground_dy_px_per_loop": 1.0,
+        "root_drift_pct_body": 1.977427,
+        "covers": "two strides (each phase twice)",
+        "step_durations_est": [
+          3.995282,
+          3.995282,
+          3.995282,
+          3.995282
+        ],
+        "steps_sum_vs_frames": 0.981128,
+        "step_asymmetry": 0.0,
+        "unusable_frames_touched": [],
+        "two_step_ratio_min_in_window": 9.073469,
+        "holds_inside": [],
+        "score": 1.184611,
+        "classification": {
+          "class": "valid-2-cycle",
+          "reasons": [],
+          "notes": [
+            "root drifts 1.98% of body height per loop: lock the root (register the clip) before packaging"
+          ]
+        }
+      }
+    ]
+  },
+  "evaluated": [
+    {
+      "start": 0,
+      "endExclusive": 8,
+      "lastInclusive": 7,
+      "frames": 8,
+      "seconds": 0.666667,
+      "files": [
+        "frame-00.png",
+        "frame-07.png"
+      ],
+      "step_median": 0.108686,
+      "max_step_over_median": 1.195524,
+      "max_step_over_same_phase": 1.0,
+      "wrap_ratio": 1.0,
+      "wrap_ratio_vs_median_step": 0.67308,
+      "seam_jump_ratio": 0.0,
+      "context_repeat_ratio": 0.0,
+      "context_pairs": 3,
+      "strides_global": 1.001181,
+      "strides": 1,
+      "local_period": 7.995014,
+      "phase_error_frames_local": 0.004986,
+      "tempo_vs_source_pct_global": -0.117951,
+      "tempo_vs_source_pct_local": -0.062324,
+      "nn_lag_median": 4.0,
+      "duplicate_phase_fraction": 0.25,
+      "root_dx_px_per_loop": 0.0,
+      "ground_dy_px_per_loop": 0.0,
+      "root_drift_pct_body": 0.0,
+      "covers": "one full stride (both steps)",
+      "step_durations_est": [
+        3.995282,
+        3.995282
+      ],
+      "steps_sum_vs_frames": -0.009436,
+      "step_asymmetry": 0.0,
+      "unusable_frames_touched": [],
+      "two_step_ratio_min_in_window": 9.073469,
+      "holds_inside": [],
+      "score": 0.0,
+      "classification": {
+        "class": "valid-1-cycle",
+        "reasons": [],
+        "notes": []
+      }
+    }
+  ],
+  "aids": {
+    "loop3x": "aids/loop3x.gif",
+    "seam": "aids/seam.png",
+    "onion": "aids/onion.png",
+    "timeline": "aids/timeline.png",
+    "gif": {
+      "frames": 24,
+      "delays_ms_total": 2000,
+      "exact_ms_total": 2001
+    },
+    "gifTiming": "GIF delays are 10 ms units whose running sum tracks durations_ms (minimum 20 ms)"
+  },
+  "qa": {
+    "status": "needs-visual-review",
+    "method": "gait_loop select (walk): harmonic least-squares period 7.99 frames, full-stride half-period guard, unified seam score",
+    "notProven": [
+      "foot contact, sliding and ground penetration",
+      "hand, hair, scarf or prop identity drift between frames",
+      "art quality, anatomy and facing",
+      "left/right alternation beyond the pixel evidence reported here"
+    ],
+    "checks": [
+      {
+        "id": "loop-found",
+        "status": "pass",
+        "value": [
+          0,
+          8
+        ]
+      },
+      {
+        "id": "half-period-guard",
+        "status": "pass",
+        "value": "full-stride"
+      },
+      {
+        "id": "seam_over_p95",
+        "status": "pass",
+        "value": 0.546331,
+        "threshold": 1.0
+      },
+      {
+        "id": "confidence",
+        "status": "pass",
+        "value": 1.0,
+        "threshold": 0.4
+      },
+      {
+        "id": "drift-free-range",
+        "status": "pass",
+        "value": 24
+      },
+      {
+        "id": "visual-review",
+        "status": "needs-visual-review",
+        "value": null
+      }
+    ],
+    "inputs": [
+      {
+        "path": "../loop-audit-3cycles/frame-00.png",
+        "sha256": "50ab0b5649f88d7d0b6c75c652efd945a0b39bbafb621a006b71f39a91cde915",
+        "bytes": 4182
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-01.png",
+        "sha256": "11660ab87eed9734498cab49ceb37492f81dfd2996d657c28ca20cf7ec5253b4",
+        "bytes": 3759
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-02.png",
+        "sha256": "1568907042cdbdced39556cd446ab3335f24c86d5f3c941a608564bffd6b7976",
+        "bytes": 4310
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-03.png",
+        "sha256": "3255a6ea5da5fcae37b78d6ac0be35234f9eb1ea4af70ed2b0724baa7ca0c0ca",
+        "bytes": 4335
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-04.png",
+        "sha256": "386007fb6f07110eee8b6a3fbccf34e01d09d256a7dbf2eef062ff5b097ff4ec",
+        "bytes": 4396
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-05.png",
+        "sha256": "7131a19c0458e1e37dc11065971d520176c976cc0688d28f52bb5cb2e526b98c",
+        "bytes": 3997
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-06.png",
+        "sha256": "7ba8e89e7b2c6a86110af79ea0719dce2d17b10d372c44b55404919d69866002",
+        "bytes": 4280
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-07.png",
+        "sha256": "4f73aab3fea3fff785989e09bfe81debbf89fe449478cc497a954583d8d541b7",
+        "bytes": 4115
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-08.png",
+        "sha256": "50ab0b5649f88d7d0b6c75c652efd945a0b39bbafb621a006b71f39a91cde915",
+        "bytes": 4182
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-09.png",
+        "sha256": "11660ab87eed9734498cab49ceb37492f81dfd2996d657c28ca20cf7ec5253b4",
+        "bytes": 3759
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-10.png",
+        "sha256": "1568907042cdbdced39556cd446ab3335f24c86d5f3c941a608564bffd6b7976",
+        "bytes": 4310
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-11.png",
+        "sha256": "3255a6ea5da5fcae37b78d6ac0be35234f9eb1ea4af70ed2b0724baa7ca0c0ca",
+        "bytes": 4335
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-12.png",
+        "sha256": "386007fb6f07110eee8b6a3fbccf34e01d09d256a7dbf2eef062ff5b097ff4ec",
+        "bytes": 4396
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-13.png",
+        "sha256": "7131a19c0458e1e37dc11065971d520176c976cc0688d28f52bb5cb2e526b98c",
+        "bytes": 3997
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-14.png",
+        "sha256": "7ba8e89e7b2c6a86110af79ea0719dce2d17b10d372c44b55404919d69866002",
+        "bytes": 4280
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-15.png",
+        "sha256": "4f73aab3fea3fff785989e09bfe81debbf89fe449478cc497a954583d8d541b7",
+        "bytes": 4115
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-16.png",
+        "sha256": "50ab0b5649f88d7d0b6c75c652efd945a0b39bbafb621a006b71f39a91cde915",
+        "bytes": 4182
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-17.png",
+        "sha256": "11660ab87eed9734498cab49ceb37492f81dfd2996d657c28ca20cf7ec5253b4",
+        "bytes": 3759
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-18.png",
+        "sha256": "1568907042cdbdced39556cd446ab3335f24c86d5f3c941a608564bffd6b7976",
+        "bytes": 4310
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-19.png",
+        "sha256": "3255a6ea5da5fcae37b78d6ac0be35234f9eb1ea4af70ed2b0724baa7ca0c0ca",
+        "bytes": 4335
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-20.png",
+        "sha256": "386007fb6f07110eee8b6a3fbccf34e01d09d256a7dbf2eef062ff5b097ff4ec",
+        "bytes": 4396
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-21.png",
+        "sha256": "7131a19c0458e1e37dc11065971d520176c976cc0688d28f52bb5cb2e526b98c",
+        "bytes": 3997
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-22.png",
+        "sha256": "7ba8e89e7b2c6a86110af79ea0719dce2d17b10d372c44b55404919d69866002",
+        "bytes": 4280
+      },
+      {
+        "path": "../loop-audit-3cycles/frame-23.png",
+        "sha256": "4f73aab3fea3fff785989e09bfe81debbf89fe449478cc497a954583d8d541b7",
+        "bytes": 4115
+      }
+    ],
+    "outputs": [
+      {
+        "path": "selection.json",
+        "sha256": "e5e82d00158fb0dd3a1a338c60a81316fcf1a26ccbbd7df1c663248924409712",
+        "bytes": 1927
+      },
+      {
+        "path": "aids/loop3x.gif",
+        "sha256": "bd681d5894dc82c34f212a4b1e9efecc02992c832d237aa4d5abe18315571cf2",
+        "bytes": 250762
+      },
+      {
+        "path": "aids/seam.png",
+        "sha256": "89c26378172506a6a5024780518c9c843a3357d4f785623fa865070ee0c7c66a",
+        "bytes": 28341
+      },
+      {
+        "path": "aids/onion.png",
+        "sha256": "b3b64ea44b19f7cc70192d52c7bd32304fbd055128079ed05aa1fb52ed315944",
+        "bytes": 9292
+      },
+      {
+        "path": "aids/timeline.png",
+        "sha256": "7f1626aab229753ed6bd88dfc94dfeb02b6c4ad3e72830401c78925f63b7ddbc",
+        "bytes": 8712
+      }
+    ],
+    "tool": {
+      "name": "gait_loop",
+      "version": "0.6.0"
+    }
+  }
+}

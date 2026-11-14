@@ -1,0 +1,606 @@
+{
+  "status": "pass",
+  "frameCount": 8,
+  "canvas": [
+    128,
+    128
+  ],
+  "displayScale": 4,
+  "displayCanvas": [
+    512,
+    512
+  ],
+  "groundRow": 109,
+  "anchor": [
+    64,
+    109
+  ],
+  "neutralBodyHeight": 90,
+  "headHeight": 40,
+  "neutralLegSectionHeight": 32,
+  "bodyBobPx": [
+    0,
+    1,
+    -2,
+    0,
+    0,
+    1,
+    -2,
+    0
+  ],
+  "actualBboxHeights": [
+    90,
+    89,
+    92,
+    90,
+    90,
+    89,
+    92,
+    90
+  ],
+  "airborneFrameCount": 0,
+  "maximumRaisedFootClearance": 5,
+  "uniqueTranslationNormalizedHairOutlines": 8,
+  "hairPairwiseComparisons": [
+    {
+      "frames": [
+        1,
+        2
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        3
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        4
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        5
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        6
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        1,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        3
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        4
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        5
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        6
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        2,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        3,
+        4
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        3,
+        5
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        3,
+        6
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        3,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        3,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        4,
+        5
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        4,
+        6
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        4,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        4,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        5,
+        6
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        5,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        5,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        6,
+        7
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        6,
+        8
+      ],
+      "identical": false
+    },
+    {
+      "frames": [
+        7,
+        8
+      ],
+      "identical": false
+    }
+  ],
+  "faceOnlyMasterPixelsExact": true,
+  "wholeMasterHeadCopied": false,
+  "visiblePaletteUnion": 26,
+  "paletteLimit": 26,
+  "alphaValues": [
+    0,
+    255
+  ],
+  "lastToFirstOverMedian": 0.6908953113896491,
+  "maxTransitionOverMedian": 1.35,
+  "seamLimit": 1.5,
+  "torsoDriftPx": 0.88,
+  "gifDecodedAlphaAndVisibleRgbExact": true,
+  "gifDurationMs": 670,
+  "webpDurationMs": 667,
+  "originalFilesUnchanged": true,
+  "visualReview": "All eight frames inspected for grounded contact, opposite legs, identity, independent hair/bun motion, trailing sash and sheathed sword; light/dark filmstrip inspected.",
+  "finalWarnings": [],
+  "frames": [
+    {
+      "frame": 1,
+      "height": 90,
+      "bbox": [
+        44,
+        20,
+        85,
+        110
+      ],
+      "headTop": 20,
+      "headHeight": 40,
+      "hairOutlineHash": "0ea235748eee0ce94c966a4e788acd41d2d64720d78be3b65f944fc8a78632f5",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 103,
+          "soleRow": 108,
+          "clearance": 1,
+          "near": false,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 108,
+          "measuredClearance": 1
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 103,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        }
+      ],
+      "legSplitX": 68,
+      "torsoRegistrationDx": 1,
+      "torsoX": 63.596,
+      "torsoMethod": "trunk",
+      "paletteColors": 25
+    },
+    {
+      "frame": 2,
+      "height": 89,
+      "bbox": [
+        48,
+        21,
+        82,
+        110
+      ],
+      "headTop": 21,
+      "headHeight": 40,
+      "hairOutlineHash": "d68ae27d1a81b8ea1cddc90fd4a1993b1a4b1689d17ae14ce490d0e32099420d",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 91,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 98,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": false,
+          "kneeFixedRow": 91,
+          "measuredSoleRow": 104,
+          "measuredClearance": 5
+        }
+      ],
+      "legSplitX": 70,
+      "torsoRegistrationDx": 0,
+      "torsoX": 63.903,
+      "torsoMethod": "trunk",
+      "paletteColors": 25
+    },
+    {
+      "frame": 3,
+      "height": 92,
+      "bbox": [
+        43,
+        18,
+        83,
+        110
+      ],
+      "headTop": 18,
+      "headHeight": 40,
+      "hairOutlineHash": "42f0086ef7042b098bf3a379505312642efdb62451fbef2e959c5c017985b593",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 88,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 94,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": false,
+          "kneeFixedRow": 88,
+          "measuredSoleRow": 104,
+          "measuredClearance": 5
+        }
+      ],
+      "legSplitX": 67,
+      "torsoRegistrationDx": 0,
+      "torsoX": 64.142,
+      "torsoMethod": "trunk",
+      "paletteColors": 26
+    },
+    {
+      "frame": 4,
+      "height": 90,
+      "bbox": [
+        40,
+        20,
+        86,
+        110
+      ],
+      "headTop": 20,
+      "headHeight": 40,
+      "hairOutlineHash": "74e1dadaf2f3ea40e3fb17da7f2826064b85a092d4299d9915b522e22fa9c0e2",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": true,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 100,
+          "soleRow": 106,
+          "clearance": 3,
+          "near": false,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 106,
+          "measuredClearance": 3
+        }
+      ],
+      "legSplitX": 68,
+      "torsoRegistrationDx": 1,
+      "torsoX": 64.41,
+      "torsoMethod": "trunk",
+      "paletteColors": 26
+    },
+    {
+      "frame": 5,
+      "height": 90,
+      "bbox": [
+        44,
+        20,
+        83,
+        110
+      ],
+      "headTop": 20,
+      "headHeight": 40,
+      "hairOutlineHash": "3565e92cdcbaeed53494946e90485bc69797b59e5d001998c32b56ba7a483522",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 105,
+          "soleRow": 108,
+          "clearance": 1,
+          "near": true,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 108,
+          "measuredClearance": 1
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 105,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        }
+      ],
+      "legSplitX": 72,
+      "torsoRegistrationDx": 5,
+      "torsoX": 63.532,
+      "torsoMethod": "trunk",
+      "paletteColors": 26
+    },
+    {
+      "frame": 6,
+      "height": 89,
+      "bbox": [
+        39,
+        21,
+        84,
+        110
+      ],
+      "headTop": 21,
+      "headHeight": 40,
+      "hairOutlineHash": "9910280b479ad2151efe5f3c7b3786e4725d3677ff470f82fbc85e6881fdefcf",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 106,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 91,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": true,
+          "kneeFixedRow": 91,
+          "measuredSoleRow": 104,
+          "measuredClearance": 5
+        }
+      ],
+      "legSplitX": 64,
+      "torsoRegistrationDx": -5,
+      "torsoX": 64.007,
+      "torsoMethod": "trunk",
+      "paletteColors": 25
+    },
+    {
+      "frame": 7,
+      "height": 92,
+      "bbox": [
+        42,
+        18,
+        83,
+        110
+      ],
+      "headTop": 18,
+      "headHeight": 40,
+      "hairOutlineHash": "3ccd312793c986a94c47de9c409e3ca9287fdd9ef186a8dd4c635d473d80794a",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 104,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 88,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 96,
+          "soleRow": 104,
+          "clearance": 5,
+          "near": true,
+          "kneeFixedRow": 88,
+          "measuredSoleRow": 104,
+          "measuredClearance": 5
+        }
+      ],
+      "legSplitX": 72,
+      "torsoRegistrationDx": 5,
+      "torsoX": 64.15,
+      "torsoMethod": "trunk",
+      "paletteColors": 26
+    },
+    {
+      "frame": 8,
+      "height": 90,
+      "bbox": [
+        44,
+        20,
+        85,
+        110
+      ],
+      "headTop": 20,
+      "headHeight": 40,
+      "hairOutlineHash": "00fa5745c1aa8cc0a57ac601d7b7ea8ed77061202d1c15248d38a282513fdb93",
+      "faceMasterPixelsExact": true,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "legs": [
+        {
+          "side": "left",
+          "sourceSoleRowAfterBodyRegistration": 101,
+          "soleRow": 109,
+          "clearance": 0,
+          "near": false,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 109,
+          "measuredClearance": 0
+        },
+        {
+          "side": "right",
+          "sourceSoleRowAfterBodyRegistration": 102,
+          "soleRow": 106,
+          "clearance": 3,
+          "near": true,
+          "kneeFixedRow": 90,
+          "measuredSoleRow": 106,
+          "measuredClearance": 3
+        }
+      ],
+      "legSplitX": 69,
+      "torsoRegistrationDx": 2,
+      "torsoX": 63.629,
+      "torsoMethod": "trunk",
+      "paletteColors": 25
+    }
+  ]
+}

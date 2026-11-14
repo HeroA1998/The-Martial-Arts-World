@@ -1,0 +1,182 @@
+{
+  "name": "hero_run_v3",
+  "action": "run_right",
+  "motionStyle": "grounded_jog",
+  "finish": "pixel",
+  "artSource": "host_image",
+  "facing": "right",
+  "frameCount": 8,
+  "frameSize": [
+    128,
+    128
+  ],
+  "displayScale": 4,
+  "displayFrameSize": [
+    512,
+    512
+  ],
+  "fps": 12,
+  "fpsRational": "12/1",
+  "frameDurationSeconds": 0.08333333333333333,
+  "tickRate": 60,
+  "ticksPerFrame": 5,
+  "durationsMs": [
+    83,
+    84,
+    83,
+    83,
+    84,
+    83,
+    83,
+    84
+  ],
+  "loop": true,
+  "loopPolicy": "cycle",
+  "anchor": [
+    64,
+    109
+  ],
+  "groundRow": 109,
+  "anchorConvention": "0-based last occupied foot pixel row; lower edge y=110",
+  "frames": [
+    {
+      "file": "clips/frames/frame-00.png",
+      "durationMs": 83,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "airborne": false,
+      "footRows": [
+        108,
+        109
+      ],
+      "legSplitX": 68
+    },
+    {
+      "file": "clips/frames/frame-01.png",
+      "durationMs": 84,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        104
+      ],
+      "legSplitX": 70
+    },
+    {
+      "file": "clips/frames/frame-02.png",
+      "durationMs": 83,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        104
+      ],
+      "legSplitX": 67
+    },
+    {
+      "file": "clips/frames/frame-03.png",
+      "durationMs": 83,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        106
+      ],
+      "legSplitX": 68
+    },
+    {
+      "file": "clips/frames/frame-04.png",
+      "durationMs": 84,
+      "bodyBobPx": 0,
+      "headForwardPx": 1,
+      "airborne": false,
+      "footRows": [
+        108,
+        109
+      ],
+      "legSplitX": 72
+    },
+    {
+      "file": "clips/frames/frame-05.png",
+      "durationMs": 83,
+      "bodyBobPx": 1,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        104
+      ],
+      "legSplitX": 64
+    },
+    {
+      "file": "clips/frames/frame-06.png",
+      "durationMs": 83,
+      "bodyBobPx": -2,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        104
+      ],
+      "legSplitX": 72
+    },
+    {
+      "file": "clips/frames/frame-07.png",
+      "durationMs": 84,
+      "bodyBobPx": 0,
+      "headForwardPx": 0,
+      "airborne": false,
+      "footRows": [
+        109,
+        106
+      ],
+      "legSplitX": 69
+    }
+  ],
+  "strip": {
+    "file": "run-strip.png",
+    "columns": 8,
+    "rows": 1,
+    "width": 1024,
+    "height": 128
+  },
+  "displayStrip": {
+    "file": "run-strip-4x.png",
+    "columns": 8,
+    "rows": 1,
+    "width": 4096,
+    "height": 512
+  },
+  "sampling": "nearest",
+  "palette": "palette.hex",
+  "paletteMaxColors": 26,
+  "referenceProportions": {
+    "neutralStandingHeight": 90,
+    "headHeight": 40,
+    "neutralLegSectionHeight": 32
+  },
+  "seam": {
+    "lastToFirstOverMedian": 0.6908953113896491,
+    "maxTransitionOverMedian": 1.35,
+    "limit": 1.5
+  },
+  "previews": {
+    "gif": "run.gif",
+    "webp": "run.webp",
+    "gifDurationsMs": [
+      80,
+      90,
+      80,
+      80,
+      90,
+      80,
+      80,
+      90
+    ]
+  },
+  "qa": "qa/verification.json",
+  "provenance": "provenance.json"
+}

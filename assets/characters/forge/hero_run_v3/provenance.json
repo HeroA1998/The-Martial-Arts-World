@@ -1,0 +1,187 @@
+{
+  "sourceArt": "image_gen individual key poses; no video generation",
+  "artSource": "host_image",
+  "baseRepositoryCommit": "23604627db32d9e0c321e88ffd95174cd6a2a53f",
+  "master": "assets/characters/hero_side.png",
+  "approvedAnatomyReference": "assets/characters/forge/hero_run_v2/",
+  "protectedExistingFiles": {
+    "assets/characters/hero_side.png": "85da6eee546c3742fb73e7d0c73cf8e7f5ec882d9e4faea1fc1996b85d259a23",
+    "assets/characters/forge/hero_run_v2/README.md": "9e2c43f565598310a840d04b63b50425870223670a1b8966551e784e22f9753e",
+    "assets/characters/forge/hero_run_v2/animation.json": "64001cda36febb1890525b00e86b33406d150331078ea82d47ed001b14cee2db",
+    "assets/characters/forge/hero_run_v2/clips/animation-clips.json": "82006ea3b17a6f64f13fe7cac63aaeaa605cddecbf65430db39f3a3a5d796f7c",
+    "assets/characters/forge/hero_run_v2/clips/clips/clip-00.webp": "66d4013b5d11564721bb7b83f451d0e3832cbc99d87677033ab0f86f13a6113a",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-00.png": "cb0581d710ba5afcd211a2ee75bbc3a498598ae2b2f3ec0be1f04b3edded1585",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-01.png": "2d95379377755f66903301ed5aa3a162b8b56ff54a746f303fbf6289c4c89635",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-02.png": "cde6ce936e7a28f18d3d55a9bdfb90e2e9f5628cc974cf1c5a88bc709ddc2576",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-03.png": "b4934daaa92a4e76793c706f5807d0247eae6cab92db6ac0ec2f3af36ffa23ab",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-04.png": "9b9a397ab792f2fc4f35ffa41867075140e4dbadb1e3afe639b60745fc2105bc",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-05.png": "9c47cb50fca703432c8bda35f1317cdb758458f2e7cf5502fdbc67faf64f4131",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-06.png": "5ddf0ee121d804018ee3a3408901da19792ae138de6aac4359693ba1e4c60dd1",
+    "assets/characters/forge/hero_run_v2/clips/frames/frame-07.png": "8f16425c7ae560d5e6ced29747e210d3c87d3a8db28b644e50a955040685f1e1",
+    "assets/characters/forge/hero_run_v2/palette.hex": "6435f463760e55ea8495e79f851d54d507fb692a44d825c85aaf13c54793e1ed",
+    "assets/characters/forge/hero_run_v2/provenance.json": "cb924102632d39e4e998bf21c6901214b8ab67846aee216c63e91606e5f84978",
+    "assets/characters/forge/hero_run_v2/qa/contact-sheet.png": "acb1aa3ce3a198521d65e17745f57021381deca6daa599fa0f4055fb470a30d7",
+    "assets/characters/forge/hero_run_v2/qa/history-warnings.json": "a85a6d1865a7cf548fabc704bea8dc553665ae28620971dc116d76aff33e08c7",
+    "assets/characters/forge/hero_run_v2/qa/master-normalized.png": "bc9c05f5df27aebd8b3053f6d5285f82f03878caf0118c6e698c0569a92e74c2",
+    "assets/characters/forge/hero_run_v2/qa/motion.json": "1733cb2e0119413ff80358b432e543752fe3df01d5b746c75814625fffc7c5b0",
+    "assets/characters/forge/hero_run_v2/qa/pixel-finish.json": "3acf37cfd11fe225dd164d92752a4a0f95d927552af5f00f11550066bb977c66",
+    "assets/characters/forge/hero_run_v2/qa/verification.json": "f7fc62d3679aaff16600130385bcf3985c6d62bd4455ec08fc2a39668250d971",
+    "assets/characters/forge/hero_run_v2/run-strip-4x.png": "547cd7549ee9af937fa0420734a037884122a41a6c98485260e657433a5bacf1",
+    "assets/characters/forge/hero_run_v2/run-strip.png": "e40f3613f9410a77afb14537bfa67d5ed927f63dcb8d9b44b13cbd6befdad723",
+    "assets/characters/forge/hero_run_v2/run.gif": "d65aa9b5910d17a96e64af946efe02325b5b8d066371d4fc753360684cdce925",
+    "assets/characters/forge/hero_run_v2/run.webp": "66d4013b5d11564721bb7b83f451d0e3832cbc99d87677033ab0f86f13a6113a",
+    "assets/characters/forge/hero_run_v2/source-prompts.txt": "e2e228fed1dbc13a27ec95f7f5683fb03269ffd120255393f1df3b3899c30b70"
+  },
+  "existingFilesUnchanged": true,
+  "sources": [
+    {
+      "frame": 1,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-02122548-fe10-47a8-bf5a-3bde1f4ba426.png",
+      "sha256": "386076677c8f39929152c10ecfc3735e545cf1e2609bb94552ba8fd006771d49"
+    },
+    {
+      "frame": 1,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-d01ae540-11dd-4fb1-94ff-8b2afc349972.png",
+      "sha256": "2a3340125f34fa642feda4eb4bcb36a1cbc8921a49f5899edf436c90d02d38ec"
+    },
+    {
+      "frame": 2,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-533c7e0b-d42e-4f1c-b26c-039d144ab3d8.png",
+      "sha256": "ca9ecbcbeb65eaa86f7f52906fcc9b5fe9ca1e1030e9b2757b6cca05474f4843"
+    },
+    {
+      "frame": 2,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-f9f34e60-7086-4608-833e-3cbaf43b996c.png",
+      "sha256": "b8245f9cded8ac97fbf6791a966808bb3c324b3f10327806e98982bbc00699f2"
+    },
+    {
+      "frame": 3,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-f1fed635-c233-42cd-8e7f-a79f709336e8.png",
+      "sha256": "3b9646a99576fde0b7872fd3b167b1b4895ff150f8b75163ac32675dc6091962"
+    },
+    {
+      "frame": 3,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-dec72add-65ee-4d1a-b2c0-de9385e326bf.png",
+      "sha256": "0cad8f2dddc60c26607011e06a518ca51110173319bf7dfd810425e7a5de099f"
+    },
+    {
+      "frame": 3,
+      "stage": "hair_height_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-ad35abfb-76ea-4bd2-9735-3d5c903f2355.png",
+      "sha256": "9cfeccf464daa6a6acbb3aa559d2e2efe29c226b2a8fa460c6d52334acfe24d9"
+    },
+    {
+      "frame": 4,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-ab0b0284-e437-44ca-ab54-6fec56f538c2.png",
+      "sha256": "f914577722f977e6514547381abbeb07e050316d6ea9d16be87a070758ed92f6"
+    },
+    {
+      "frame": 4,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-67d826ed-ac42-4e9d-8dcc-bdd4c9714daa.png",
+      "sha256": "95ff97e9956cbc0edaef27911890528b07b327e3c2ce7516626ced0c8b1cf6ff"
+    },
+    {
+      "frame": 5,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-a34d78ba-736f-4026-9b6d-5156c259ef70.png",
+      "sha256": "eaef5a71047e6d0c88f88a213c2c3d37ce62cc07ae435fec663bdb88d9a181d1"
+    },
+    {
+      "frame": 5,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-6b1b1a8e-8195-45c5-b391-c6855d158223.png",
+      "sha256": "8f8429e7ff245c3a40396369ee0c4c7dbf50a6d9eda32d2a1516f6fc683f7283"
+    },
+    {
+      "frame": 6,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-9916bc8c-87e8-4124-8426-10bc55a6fa94.png",
+      "sha256": "8da9890a903193a8f37555190f0a3453d2149ea740317afbeca0eae60cdaa32b"
+    },
+    {
+      "frame": 6,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-d32075d8-bf6c-4d31-ab67-40c8bea80330.png",
+      "sha256": "effc3a1a2dfbb5bc85da52fd87bea9fb8d6b41ac7ec5caf63e7abf682057475d"
+    },
+    {
+      "frame": 7,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-049ad555-873f-4415-817d-7f82dd90dec5.png",
+      "sha256": "3b2041445c3f4cb838209f1b4ef955c14b8a57b70bce57fcc9232e58dfe372e2"
+    },
+    {
+      "frame": 7,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-9176230a-1663-4609-995d-7abc64000cb7.png",
+      "sha256": "225b3f1d6150d48b8364add1a460b07315ecc1c80df3b9f51de96948fa5cbace"
+    },
+    {
+      "frame": 7,
+      "stage": "hair_height_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-d545e2d1-caf6-4495-9ff2-bf7a38625e92.png",
+      "sha256": "2b3d028698dd4755a8c7153ae09014f8c6ea07caf3ba1f441e089f989ab8f1bf"
+    },
+    {
+      "frame": 8,
+      "stage": "key_pose",
+      "route": "host-image_gen",
+      "sourceFile": "exec-2580910b-507e-4cc3-9809-e389b03dcf53.png",
+      "sha256": "0b232d4dc9a2e01652c7e94d718f1cb74650329bc2780bd9577c6beb7a1ade8e"
+    },
+    {
+      "frame": 8,
+      "stage": "lower_leg_repair",
+      "route": "host-image_gen",
+      "sourceFile": "exec-74e27cce-67f5-4dce-a945-643c803f5f04.png",
+      "sha256": "e41aea35450e4ad185425df6db3410c030a4adc3951d3144750f27c4ab1cdcc6"
+    }
+  ],
+  "model": null,
+  "estimateUsd": null,
+  "forge": {
+    "repository": "https://github.com/0x0funky/agent-sprite-forge",
+    "commit": "25203d03900b46b444bdd72a75768c33d1895ad6"
+  },
+  "processing": [
+    "read_lattice: whole 128x128 fixed canvas",
+    "clean_edge: magenta removal",
+    "lock_palette: same 26-color repository master palette",
+    "joint landmark registration: fixed 18px torso, neutral leg section32; calf/boot contact correction only below fixed knees",
+    "eight separately generated hair outlines: one shared x-grid factor0.9 and upper-hair-only row repairs -1..2, face rows excluded",
+    "face-only identity restoration from the approved v2 normalization of hero_side, rectangle [64,45,82,60]; no full-head master replacement",
+    "finish_frames.py pixel: scale .25 from a separate neutral calibration still, 128x128 canvas, no added outline or contrast/saturation lift",
+    "after pixel cleanup, preserve each frame own generated hair and master facial patch, never a shared head",
+    "torso registration on chest band [0.46,0.62]",
+    "sheet_qc.py --cycle walk --strict for explicitly grounded run",
+    "gait_loop.py: same eight drawings repeated three times for minimum-length analysis; selected [0,8)",
+    "build_animation_clips.py --strict, ticks5 at60Hz"
+  ],
+  "anatomyNote": "Neutral anatomy90/head40/leg32 from approved v2. Bbox height changes to89 on load and92 on push because the body bobs while a support sole remains109. No full-frame per-frame bbox scaling.",
+  "anchorNote": "Runtime anchor(64,109) refers to last occupied ground row. The row lower edge is110; finish tool uses edge anchor(64,110).",
+  "qaReportSourcePaths": "Raw Forge stage reports retain original work-directory input names. Runtime frame references in animation.json are relative and portable."
+}

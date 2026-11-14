@@ -1,0 +1,298 @@
+[
+  {
+    "frame": 1,
+    "source": "/workspace/generated_images/exec-d01ae540-11dd-4fb1-94ff-8b2afc349972.png",
+    "sha256": "2a3340125f34fa642feda4eb4bcb36a1cbc8921a49f5899edf436c90d02d38ec",
+    "headTop": 20,
+    "faceSkinBounds": [
+      61,
+      30,
+      79,
+      62
+    ],
+    "footRows": [
+      104,
+      104
+    ],
+    "headAlphaTo60": 1023,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 39
+      },
+      "keyTinted": 31,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 10,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 4
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 2075,
+      "moved": 657,
+      "worst": 0.0671
+    }
+  },
+  {
+    "frame": 2,
+    "source": "/workspace/generated_images/exec-f9f34e60-7086-4608-833e-3cbaf43b996c.png",
+    "sha256": "b8245f9cded8ac97fbf6791a966808bb3c324b3f10327806e98982bbc00699f2",
+    "headTop": 22,
+    "faceSkinBounds": [
+      61,
+      31,
+      77,
+      61
+    ],
+    "footRows": [
+      104,
+      98
+    ],
+    "headAlphaTo60": 882,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 26
+      },
+      "keyTinted": 9,
+      "keyNear": 0,
+      "keyHoles": 1,
+      "keyInked": 5,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 1
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 1759,
+      "moved": 698,
+      "worst": 0.0912
+    }
+  },
+  {
+    "frame": 3,
+    "source": "/workspace/generated_images/exec-ad35abfb-76ea-4bd2-9735-3d5c903f2355.png",
+    "sha256": "9cfeccf464daa6a6acbb3aa559d2e2efe29c226b2a8fa460c6d52334acfe24d9",
+    "headTop": 19,
+    "faceSkinBounds": [
+      64,
+      45,
+      81,
+      64
+    ],
+    "footRows": [
+      104,
+      94
+    ],
+    "headAlphaTo60": 1073,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 29
+      },
+      "keyTinted": 10,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 20,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 16
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 1960,
+      "moved": 878,
+      "worst": 0.0858
+    }
+  },
+  {
+    "frame": 4,
+    "source": "/workspace/generated_images/exec-67d826ed-ac42-4e9d-8dcc-bdd4c9714daa.png",
+    "sha256": "95ff97e9956cbc0edaef27911890528b07b327e3c2ce7516626ced0c8b1cf6ff",
+    "headTop": 21,
+    "faceSkinBounds": [
+      63,
+      46,
+      76,
+      61
+    ],
+    "footRows": [
+      101,
+      99
+    ],
+    "headAlphaTo60": 1057,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 20
+      },
+      "keyTinted": 10,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 5,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 3
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 2021,
+      "moved": 663,
+      "worst": 0.1119
+    }
+  },
+  {
+    "frame": 5,
+    "source": "/workspace/generated_images/exec-6b1b1a8e-8195-45c5-b391-c6855d158223.png",
+    "sha256": "8f8429e7ff245c3a40396369ee0c4c7dbf50a6d9eda32d2a1516f6fc683f7283",
+    "headTop": 20,
+    "faceSkinBounds": [
+      62,
+      30,
+      78,
+      61
+    ],
+    "footRows": [
+      105,
+      105
+    ],
+    "headAlphaTo60": 963,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 31
+      },
+      "keyTinted": 17,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 6,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 5
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 2035,
+      "moved": 571,
+      "worst": 0.1236
+    }
+  },
+  {
+    "frame": 6,
+    "source": "/workspace/generated_images/exec-d32075d8-bf6c-4d31-ab67-40c8bea80330.png",
+    "sha256": "effc3a1a2dfbb5bc85da52fd87bea9fb8d6b41ac7ec5caf63e7abf682057475d",
+    "headTop": 20,
+    "faceSkinBounds": [
+      61,
+      30,
+      77,
+      63
+    ],
+    "footRows": [
+      105,
+      101
+    ],
+    "headAlphaTo60": 967,
+    "edge": {
+      "keyMixed": {
+        "removed": 1,
+        "darkened": 31
+      },
+      "keyTinted": 15,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 12,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 3
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 1950,
+      "moved": 555,
+      "worst": 0.0875
+    }
+  },
+  {
+    "frame": 7,
+    "source": "/workspace/generated_images/exec-d545e2d1-caf6-4495-9ff2-bf7a38625e92.png",
+    "sha256": "2b3d028698dd4755a8c7153ae09014f8c6ea07caf3ba1f441e089f989ab8f1bf",
+    "headTop": 20,
+    "faceSkinBounds": [
+      64,
+      46,
+      79,
+      64
+    ],
+    "footRows": [
+      104,
+      96
+    ],
+    "headAlphaTo60": 1007,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 54
+      },
+      "keyTinted": 8,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 24,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 5
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 1990,
+      "moved": 905,
+      "worst": 0.1662
+    }
+  },
+  {
+    "frame": 8,
+    "source": "/workspace/generated_images/exec-74e27cce-67f5-4dce-a945-643c803f5f04.png",
+    "sha256": "e41aea35450e4ad185425df6db3410c030a4adc3951d3144750f27c4ab1cdcc6",
+    "headTop": 21,
+    "faceSkinBounds": [
+      61,
+      29,
+      77,
+      59
+    ],
+    "footRows": [
+      100,
+      101
+    ],
+    "headAlphaTo60": 968,
+    "edge": {
+      "keyMixed": {
+        "removed": 0,
+        "darkened": 35
+      },
+      "keyTinted": 14,
+      "keyNear": 0,
+      "keyHoles": 0,
+      "keyInked": 9,
+      "keySpill": {
+        "removed": 0,
+        "recoloured": 1
+      },
+      "islandCells": 0
+    },
+    "paletteLock": {
+      "cells": 1879,
+      "moved": 583,
+      "worst": 0.1313
+    }
+  }
+]
