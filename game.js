@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.18.0';   // 每次更新請加一
+const VERSION = 'v0.18.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -236,6 +236,7 @@ const NPC_MEN = ['farmer', 'porter', 'fisher', 'smith', 'vendor', 'scholar', 'hu
 const NPC_WOMEN = ['farmwife', 'vegseller', 'washerwoman', 'innkeeper', 'maiden', 'villager_girl', 'maid'];
 const NPC_OLD = ['elder_man', 'elder_woman', 'old_fisher', 'old_sage'];
 const NPC_KIDS = ['child_boy', 'child_girl', 'child_beggar', 'child_shepherd'];   // 孩童在遊戲裡縮到 0.7 倍
+const NPC_FILE = { maiden: 'maiden_px' };   // 路人 id → 圖檔名（assets/characters/npc_<檔名>_walk_<方向>.png）；沒列的就用 id 本身
 const ALL_NPC_IDS = [...NPC_MEN, ...NPC_WOMEN, ...NPC_OLD, ...NPC_KIDS];   // 要載入的單一角色（assets/characters/npc_<id>_walk_<方向>.png）
 // 在大街上走動的路人：固定 NPC 用掉的（elder_man、vendor、hunter）不再重複出現
 const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee', 'farmer', ...NPC_WOMEN, 'elder_woman', 'old_fisher', 'old_sage', ...NPC_KIDS];
@@ -531,7 +532,7 @@ class VillageScene extends Phaser.Scene {
     this.load.image('hero_walk_side', A + 'characters/hero_walk_side.png');
     this.load.image('hero_walk_front', A + 'characters/hero_walk_front.png');
     this.load.image('hero_walk_back', A + 'characters/hero_walk_back.png');
-    for (const id of ALL_NPC_IDS) for (const d of PED_DIRS) this.load.image('npcsrc_' + id + '_' + d, A + 'characters/npc_' + id + '_walk_' + d + '.png');
+    for (const id of ALL_NPC_IDS) for (const d of PED_DIRS) this.load.image('npcsrc_' + id + '_' + d, A + 'characters/npc_' + (NPC_FILE[id] || id) + '_walk_' + d + '.png');
     if (PED_COUNT > 0) for (const nm of ['base', ...Object.values(PED_PARTS).flat()])
       for (const d of PED_DIRS) this.load.image('npc_' + nm + '_' + d, A + 'characters/npc_' + nm + '_walk_' + d + '.png');
     this.load.image('hero_attack_side', A + 'characters/hero_attack_side.png');
