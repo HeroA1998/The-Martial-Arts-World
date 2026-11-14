@@ -3,11 +3,14 @@
 這份檔案是美術工作佇列。Codex 請直接照這裡的指令生成圖片，不用再等人轉貼。
 
 ## Codex 工作流程
-1. 從上往下，找狀態是「待生成」的項目。
-2. 依「共通規則」和該項目的指令生成圖片，存到指定路徑與檔名。
-3. 生成後**自己 commit 並 push 到 GitHub 的 main 分支**，不要只給預覽。
-4. 把該項目的狀態改成「已推送（日期）」，跟圖片一起 push。
-5. 不要改 `game.js`。圖推上去後，由 Claude 接進遊戲（遊戲目前用暫代圖）。
+1. 從上往下，找狀態是「待生成」或「待重新生成」的項目。
+2. **「待生成」**：先檢查該項列出的檔案是否都已在 main 分支。都已存在就不要重做，把狀態改成「已存在（日期），略過」。
+3. **「待重新生成」**：檔案已存在也要重做，**直接覆蓋同名檔案**。
+4. 依「共通規則」和該項目的指令生成圖片，存到指定路徑與檔名。
+5. 生成後**自己 commit 並 push 到 GitHub 的 main 分支**，不要只給預覽。
+6. 把該項目的狀態改成「已推送（日期）」，跟圖片一起 push。
+7. 不要改 `game.js`。圖推上去後，由 Claude 接進遊戲（遊戲目前用暫代圖）。
+8. 全部做完，用中文回覆一份清單：每項的編號、狀態、檔名；沒做的寫明原因。
 
 ## 共通規則（每一項都適用）
 - 先看參考圖：`assets/characters/hero_front.png`、`assets/characters/hero_walk_front.png`（主角）、`assets/reference/town_style_ref.png`（鎮內色調與像素顆粒）。
@@ -16,22 +19,36 @@
 - 背景一律純洋紅 `#FF00FF`（遊戲會把洋紅去掉）。
 - **不要縮小或降低圖片解析度**，按指定尺寸直接輸出。
 - 角色站姿不要僵硬；走路格要沿用 `assets/templates/` 的姿勢模版，同一高度、同一地面線、同一水平位置。
+- **站立圖（stand）不能雙腿並排站直**（用戶 2026-11-14 規定，所有人物都適用）：不要兩腳平行、左右對稱的立正姿勢。要自然站姿：重心放在一隻腳，另一隻腳稍微往前或往外踏開，膝蓋微彎；肩膀、手臂、武器左右不對稱。正面、側面、背面三張都要遵守，且三張是同一個姿勢的不同角度。
+- 站立圖規格：每張 1024×1024，人物置中、腳底貼近下緣，身高比例與同一角色的走路圖一致。
 - 圖中不要出現文字。
 
 ---
 
 ## 1. 劉備 走路圖　狀態：已推送（2026-11-14）
+### 1b. 劉備 站立圖　狀態：待生成
+- 檔名：`assets/characters/npc_liubei_stand_front.png`、`npc_liubei_stand_side.png`、`npc_liubei_stand_back.png`（側面朝右）
+- 造型與第 1 項的走路圖完全相同（參考 `npc_liubei_walk_*.png`），照共通規則的站立圖規定。神情溫和，一手自然垂下或輕扶腰帶。
+
 - 檔名：`assets/characters/npc_liubei_walk_front.png`、`npc_liubei_walk_side.png`、`npc_liubei_walk_back.png`
 - 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。
 - 底稿：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例與主角相同。
 - 造型：東漢末年的落魄宗室青年。現代審美、俊朗溫和；長耳垂；淺色布袍加深色外披，腰繫布帶，背後斜背一把雙股劍；頭髮束髻戴布冠。色系米白、淡綠、深棕。
 
 ## 2. 關羽 走路圖　狀態：已推送（2026-11-14）
+### 2b. 關羽 站立圖　狀態：待生成
+- 檔名：前綴 `npc_guanyu_stand_`，front、side、back 三張。
+- 造型與第 2 項走路圖完全相同（參考 `npc_guanyu_walk_*.png`）。一手撫鬚或垂下，青龍偃月刀立在身側（刀不要超出圖）。
+
 - 檔名：`assets/characters/npc_guanyu_walk_front.png`、`_side.png`、`_back.png`（前綴 `npc_guanyu_walk_`）
 - 尺寸與底稿同第 1 項。
 - 造型：高大威嚴，比主角高約一成；紅臉、丹鳳眼、長鬚垂到胸口；綠色戰袍，裡面露出深色護甲，綠色頭巾；手持青龍偃月刀（刀身不要超出格子）。現代審美。
 
 ## 3. 張飛 走路圖　狀態：已推送（2026-11-14）
+### 3b. 張飛 站立圖　狀態：待生成
+- 檔名：前綴 `npc_zhangfei_stand_`，front、side、back 三張。
+- 造型與第 3 項走路圖完全相同（參考 `npc_zhangfei_walk_*.png`）。雙腳張開但一前一後，蛇矛扛在肩上或斜握，神情豪爽。
+
 - 檔名：前綴 `npc_zhangfei_walk_`，三個方向同上。
 - 尺寸與底稿同第 1 項。
 - 造型：魁梧粗壯，比主角寬；黑臉、豹頭環眼、短硬的落腮鬍；深色短打皮甲、粗布腰帶；手持丈八蛇矛（矛身不要超出格子）。神情豪爽。現代審美。
@@ -57,7 +74,24 @@
 - 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。底稿與主角相同：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例、地面線與主角一致。
 - 造型：普通黃巾兵，頭戴黃色頭巾，身穿粗布短褐，腰繫布帶，手持鐵刀或木棍（武器不要超出格子）。神情兇悍但不誇張，體格精瘦，比武將小。現代審美，粗深色輪廓。
 - 注意：這是普通小兵，不要做成黃巾渠帥（武將）那種盔甲或披風。
-- 另外：若程式需要站立圖，也一併覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`（每張 1024×1024，人物置中、貼近下緣，姿勢不要僵硬）。
+- 站立圖（遊戲有用到，必做）：覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`，照共通規則的站立圖規定（不能雙腿並排站直）。
+
+## 8. 現有敵人站立圖 重做（雙腿並排站直，不合新規定）　狀態：待重新生成
+- 覆蓋以下檔案，**造型、服裝、顏色、武器完全照舊**，只改站姿（照共通規則的站立圖規定）。每張 1024×1024。
+- 官軍精兵：`assets/characters/hansoldier_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `hansoldier_walk_*.png`）
+- 官軍武將：`assets/characters/hangeneral_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `hangeneral_walk_*.png`）
+- 黃巾渠帥：`assets/characters/ytgeneral_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `ytgeneral_walk_*.png`）
+- 武將（官軍武將、黃巾渠帥）比主角高約兩成，畫面比例照舊圖。
+
+## 9. 主角站立圖 重做　狀態：暫緩（等用戶確認，先不要做）
+- `assets/characters/hero_front.png`、`hero_side.png`、`hero_back.png` 目前也是雙腿並排站直。主角是所有圖的風格基準，要不要重做由用戶決定。
+
+---
+
+## 每次交給 Codex 的指令（整段複製）
+```
+請讀取 GitHub 專案 HeroA1998/The-Martial-Arts-World 的 main 分支根目錄 ART_QUEUE.md，照檔案開頭的「Codex 工作流程」和「共通規則」執行：只做狀態為「待生成」或「待重新生成」的項目；「待生成」的檔案已存在就略過，「待重新生成」要覆蓋；狀態寫「暫緩」的不要做。每項做完自己 commit 並 push 到 main，並把狀態改成「已推送（今天日期）」。不要修改 game.js。全部完成後用中文回覆每項的編號、狀態和檔名。
+```
 
 ---
 
