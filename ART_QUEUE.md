@@ -85,7 +85,7 @@
 
 ---
 
-## 10. 劉備 試做版（用 Agent Sprite Forge）　狀態：待生成
+## 10. 劉備 試做版（用 Agent Sprite Forge）　狀態：已推送（2026-11-14）
 - 目的：現有劉關張比主角和路人更鮮豔、對比更強、細節更多，站在一起不協調（用戶 2026-11-14）。先用 Agent Sprite Forge（github.com/0x0funky/agent-sprite-forge）試做劉備一個人，看效果再決定要不要三人都重做。**不要覆蓋現有劉備圖**，兩個版本並存方便比較。
 - 做法：先定一張「定稿圖」，再用 Agent Sprite Forge 的 **Pixel 模式**（顏色少、硬邊、不抗鋸齒）長出動作。
 - **定稿圖的風格以主角為準**：參考 `assets/characters/hero_front.png`、`hero_walk_front.png`。粗像素顆粒、粗深色輪廓、低飽和、細節少。**不要比主角更鮮豔、更精細、對比更強**，金邊、花紋、高光都要減少。

@@ -1,0 +1,40 @@
+{
+  "art_source": "host_image",
+  "route": "Codex image_gen",
+  "api": false,
+  "video": false,
+  "code_drawn": false,
+  "forge_commit": "25203d03900b46b444bdd72a75768c33d1895ad6",
+  "master": "master.png",
+  "pixel_finish": "finish_frames.py pixel; scale1.0; master palette24; contrast1; saturation1; outline none; no downscale",
+  "base_commit": "55df3af",
+  "sources": [
+    "exec-54aa6eb5-df0c-4e51-8f54-06dba04cbfa8.png",
+    "exec-05f84270-5b5b-48b5-8b50-3bc510a877cb.png",
+    "exec-f041c840-4d01-4a9f-a895-d53aebe27ffc.png",
+    "exec-2daf115f-ff8f-46a8-8340-d39fbf574e9d.png",
+    "exec-191f53db-8014-4414-8b78-80e1ff7e0892.png"
+  ],
+  "outputs": [
+    "assets/characters/npc_liubei_forge_stand_front.png",
+    "assets/characters/npc_liubei_forge_walk_front.png",
+    "assets/characters/npc_liubei_forge_stand_side.png",
+    "assets/characters/npc_liubei_forge_walk_side.png",
+    "assets/characters/npc_liubei_forge_stand_back.png",
+    "assets/characters/npc_liubei_forge_walk_back.png"
+  ],
+  "warnings": [
+    {
+      "id": "pixel-reduction",
+      "value": 1.0,
+      "threshold": 4.0,
+      "files": [
+        "qa/master/finish.json",
+        "qa/stand/finish.json",
+        "qa/front/finish.json",
+        "qa/side/finish.json",
+        "qa/back/finish.json"
+      ]
+    }
+  ]
+}

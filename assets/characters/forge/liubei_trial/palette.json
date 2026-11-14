@@ -1,0 +1,80 @@
+{
+  "schema": "generate2dsprite.palette.v1",
+  "colors": [
+    {
+      "hex": "#0b0c0a"
+    },
+    {
+      "hex": "#161412"
+    },
+    {
+      "hex": "#1c1c16"
+    },
+    {
+      "hex": "#341033"
+    },
+    {
+      "hex": "#23211b"
+    },
+    {
+      "hex": "#2e281f"
+    },
+    {
+      "hex": "#3f3326"
+    },
+    {
+      "hex": "#5a1459"
+    },
+    {
+      "hex": "#4c3c2c"
+    },
+    {
+      "hex": "#5c4533"
+    },
+    {
+      "hex": "#821780"
+    },
+    {
+      "hex": "#654c37"
+    },
+    {
+      "hex": "#585d3e"
+    },
+    {
+      "hex": "#7f6143"
+    },
+    {
+      "hex": "#a717a6"
+    },
+    {
+      "hex": "#68704b"
+    },
+    {
+      "hex": "#7a8358"
+    },
+    {
+      "hex": "#967953"
+    },
+    {
+      "hex": "#8c9666"
+    },
+    {
+      "hex": "#c2885a"
+    },
+    {
+      "hex": "#b4976a"
+    },
+    {
+      "hex": "#ceac7c"
+    },
+    {
+      "hex": "#f2c591"
+    },
+    {
+      "hex": "#e4cb9d"
+    }
+  ],
+  "transparent_index": 255,
+  "locked": false,
+  "source": "finish_frames pixel: OKLab k-means++ of 1 finished frame(s), 24 colours, seed 0"
+}
