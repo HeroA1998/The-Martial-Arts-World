@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.19.0';   // 每次更新請加一
+const VERSION = 'v0.19.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -1998,7 +1998,7 @@ class VillageScene extends Phaser.Scene {
   // ---------- 能力型成長 ----------
   loadGrowth() {
     this.xp = 0; this.pending = 0; this.wz = 0;
-    this.inv = { flask: FLASK_MAX, jc: 0, xq: 0, cloth: 0 }; this.quick = 'flask';
+    this.inv = { flask: 0, jc: 0, xq: 0, cloth: 0 }; this.quick = 'flask';   // 藥壺要第一次參拜才拿到
     this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -2009,6 +2009,7 @@ class VillageScene extends Phaser.Scene {
       if (d) this.wz = Math.max(0, d.wz | 0);
       if (!SAVE_META_READY) {            // 第一次讀檔：取出存檔點與世界進度
         SAVE_META_READY = true; SAVED = null; PROG = { enc: [] }; STORY = (d && d.story && typeof d.story === 'object') ? Object.assign({}, d.story) : {};
+        if (d && (!d.story || (d.inv && d.inv.flask > 0))) STORY.flask = true;   // 舊存檔或已經有藥壺：視為已拿到
         if (d && d.area && d.prog && Array.isArray(d.prog.enc)) {
           SAVED = { area: d.area === 'shrine' ? 'shrine' : 'town', prog: { enc: d.prog.enc.map(Boolean) }, at: d.at | 0 };
           PROG = { enc: SAVED.prog.enc.slice() };
@@ -2834,7 +2835,7 @@ class VillageScene extends Phaser.Scene {
     if (this.invOpen) {
       const P = this.inv_;
       for (const r of P.rows) {
-        if (!(r.id === 'flask' || this.invCount(r.id) > 0)) continue;
+        if (!((r.id === 'flask' && STORY.flask) || this.invCount(r.id) > 0)) continue;
         const u = r.use;
         if (Math.abs(p.x - u.x) <= u.w / 2 && Math.abs(p.y - u.y) <= u.h / 2) {
           if (this.itemUseful(r.id)) this.applyItem(r.id);
@@ -2859,8 +2860,9 @@ class VillageScene extends Phaser.Scene {
     // 藥鍵
     const pp = this.potPos(), id = [this.quick, 'flask', 'jc', 'xq'].find(q => this.itemUseful(q)), shown = id || this.quick;
     const flash = false;   // 藥鍵不閃爍
-    if (this.invOpen) this.potText.setVisible(false); else this.potText.setVisible(true);
-    if (!this.invOpen) {
+    const potOn = !!STORY.flask;   // 拿到藥壺之後才顯示「藥」鍵
+    if (this.invOpen || !potOn) this.potText.setVisible(false); else this.potText.setVisible(true);
+    if (!this.invOpen && potOn) {
     g.fillStyle(0x16201a, this.drink ? 0.75 : 0.45); g.fillCircle(pp.x, pp.y, 28);
     g.lineStyle(3, flash ? 0xc0503a : (this.drink ? 0x9ad98a : 0xe6f0dc), this.drink ? 0.95 : 0.55); g.strokeCircle(pp.x, pp.y, 28);
     if (this.drink) { g.lineStyle(4, 0x9ad98a, 0.9); g.beginPath(); g.arc(pp.x, pp.y, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, (t - this.drink.start) / DRINK_MS), false); g.strokePath(); }
@@ -2874,7 +2876,7 @@ class VillageScene extends Phaser.Scene {
     this.invTitle.setText('背包　氣血 ' + Math.ceil(this.php) + '/' + this.maxHp());
     for (const row of P.rows) {
       const rr = this.invRows.find(o => o.id === row.id), T = ITEMS[row.id], n = this.invCount(row.id);
-      const have = row.id === 'flask' || n > 0;
+      const have = (row.id === 'flask' && !!STORY.flask) || n > 0;
       rr.name.setVisible(have).setText((this.quick === row.id ? '★ ' : '') + T.name + (row.id === 'flask' ? '　' + n + ' / ' + FLASK_MAX : '　× ' + n));
       rr.desc.setVisible(have).setText(T.desc);
       const ok = this.itemUseful(row.id);
@@ -2941,7 +2943,9 @@ class VillageScene extends Phaser.Scene {
     const r = this.prayRect(); this.pnBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
   }
 
-  openPanel() { this.inv.flask = FLASK_MAX; this.saveGrowth(); this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.pnNote.setText('加點後無法退回，請慎重分配').setColor('#a8b8a0'); this.layoutPanel(); this.setPanelVisible(true); }
+  openPanel() {
+    if (!STORY.flask) { STORY.flask = true; this.inv.flask = FLASK_MAX; this.banner('獲得藥壺\n受傷時點右側「藥」鍵回復氣血', 3200); }
+    this.inv.flask = FLASK_MAX; this.saveGrowth(); this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.pnNote.setText('加點後無法退回，請慎重分配').setColor('#a8b8a0'); this.layoutPanel(); this.setPanelVisible(true); }
   closePanel() { this.panelOpen = false; this.setPanelVisible(false); this.saveGrowth(); }
 
   // 回傳 true 表示這次點擊被面板／參拜鈕吃掉
