@@ -118,10 +118,10 @@ const FIELD_SPAWNS = [-170, -150, -130, -110, -90, -70, -50, -30, -10, 10, 30, 1
 // 戰場生成器：同時活躍的敵人有上限（手機效能保證），其餘在待命隊列，有人倒下或時間到才補入
 const FIELD_BATTLE = {
   name: '大興山 · 討黃巾',
-  cap: 4,             // 同時在場上的敵人上限（v0.21：貴精不貴多，從 12 降到 4）
-  startActive: 2,     // 開戰時先上幾個
-  rampMs: 9000,       // 之後每隔這麼久，場上人數上限 +1，直到 cap
-  gapMs: 900,         // 兩個敵人現身至少隔這麼久
+  cap: 6,             // 同時在場上的敵人上限（v0.21.2：4 太空曠，改 6）
+  startActive: 4,     // 開戰時先上幾個
+  rampMs: 6000,       // 之後每隔這麼久，場上人數上限 +1，直到 cap
+  gapMs: 500,         // 兩個敵人現身至少隔這麼久
   roster: ['turban', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytcaptain'],   // 出場順序（共 10，最後是黃巾頭目）
 };
 const SPEED = 115;      // 世界單位 / 秒
@@ -135,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.21.1';   // 每次更新請加一
+const VERSION = 'v0.21.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -623,13 +623,13 @@ ENEMY_TYPES.robber = Object.assign({}, ENEMY_TYPES.turban, { name: '搶劫的黃
 // 黃巾力士：路上守路的精銳（取代成群的小兵——貴精不貴多）。用黃巾小兵的圖，血多、傷害高、會防禦閃避，被打中不僵直也不擊退
 ENEMY_TYPES.ytelite = Object.assign({}, ENEMY_TYPES.turban, {
   name: '黃巾力士', showName: true,
-  hp: 32, speed: 58, aggro: 80, lose: 160, stalkDist: 70, orbitR: 90,
-  dmgSlash: 14, slashWindup: 720, slashWindupFast: 520, slashRecover: 850, rest: 1000, pCombo: 0.35,
-  reactRange: 90, pGuard: 0.15, pDodge: 0.10, reactCdMs: 2500, dodgeCdMs: 3000,
+  hp: 55, speed: 72, aggro: 80, lose: 160, stalkDist: 70, orbitR: 90,   // v0.21.2：精英太弱，血 32→55、速度 58→72
+  dmgSlash: 17, slashWindup: 720, slashWindupFast: 520, slashRecover: 850, rest: 850, pCombo: 0.4,
+  reactRange: 90, pGuard: 0.25, pDodge: 0.15, reactCdMs: 2500, dodgeCdMs: 3000,
   preempt: true, preemptDist: 60, pPreempt: 0.45, preemptCdMs: 2400,
   // v0.18.0：招式多樣化（揮砍、連刺、重劈、衝刺、假動作），重劈擋不住
   varied: true,
-  dmgThrust: 11, dmgLunge: 14, dmgHeavy: 22, heavyWindup: 820, heavyWindupFast: 520, pFeint: 0.2,
+  dmgThrust: 13, dmgLunge: 17, dmgHeavy: 26, heavyWindup: 820, heavyWindupFast: 520, pFeint: 0.2,
   pSlashClose: 0.34, pThrustClose: 0.20, pHeavyClose: 0.20, pLungeClose: 0.04, pFeintClose: 0.22,
   pLungeMid: 0.30, pThrustMid: 0.25, pHeavyMid: 0.20, pSlashMid: 0.25,
 });
@@ -651,10 +651,10 @@ ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
 // 官軍武將：沿用武將的完整招式（揮砍、衝刺、重劈、連刺、假動作、防禦、閃避），血量比黃巾渠帥少一點，是路線中段的小頭目
 ENEMY_TYPES.hangeneral = Object.assign({}, ENEMY_TYPES.bandit, {
   tex: 'hangeneral', walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',
-  name: '官軍武將', showName: true, hp: 38,
+  name: '官軍武將', showName: true, hp: 62,
 });
 // 大興山的黃巾頭目：數值與黃巾渠帥相同，只換名字（程遠志、鄧茂由關羽、張飛斬殺，主角只是見證）
-ENEMY_TYPES.ytcaptain = Object.assign({}, ENEMY_TYPES.bandit, { name: '黃巾頭目' });
+ENEMY_TYPES.ytcaptain = Object.assign({}, ENEMY_TYPES.bandit, { name: '黃巾頭目', hp: 65 });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
 const DODGE_DUR = 240, DODGE_DIST = 46;   // 敵人後閃：距離拉長一點，才看得出來
@@ -1046,7 +1046,7 @@ class VillageScene extends Phaser.Scene {
     for (const h of spawns) {
       // 伏擊戰、戰場：被觸發後一路追到底（不會因距離放棄），倒下不重生
       const T = Object.assign({}, ENEMY_TYPES[h.type], this.area === 'field'
-        ? { aggro: 2000, lose: 3000, respawnMs: Infinity }
+        ? { aggro: 2000, lose: 3000, respawnMs: Infinity, speed: h.type === 'turban' ? 80 : ENEMY_TYPES[h.type].speed }   // 大興山的小兵跑快一點（54→80）
         : h.mode === 'notice' ? { aggro: 120, lose: 200, respawnMs: Infinity }   // 守路小兵：靠近才發現，跑遠就放棄、回原位
         : { aggro: 600, lose: 1200, respawnMs: Infinity });
       const shadow = this.add.ellipse(h.x, h.y, 42, 12, T.shadowColor, 0.28).setDepth(-10);
@@ -3387,8 +3387,9 @@ class VillageScene extends Phaser.Scene {
   // 挑一個離主角夠遠的出兵點（盡量在畫面外），找不到就用最遠的幾個
   pickFieldSpawn() {
     const px = this.playerBody.x, py = this.playerBody.y, d = s => Math.hypot(s.x - px, s.y - py);
-    const far = FIELD_SPAWNS.filter(s => d(s) > 200);
-    const pool = far.length ? far : FIELD_SPAWNS.slice().sort((a, b) => d(b) - d(a)).slice(0, 3);
+    const near = FIELD_SPAWNS.filter(s => d(s) > 110 && d(s) < 230);   // 從不太遠的邊緣冒出來，幾秒內就到身邊
+    const far = FIELD_SPAWNS.filter(s => d(s) > 110);
+    const pool = near.length ? near : far.length ? far : FIELD_SPAWNS.slice().sort((a, b) => d(b) - d(a)).slice(0, 3);
     return pool[Math.floor(Math.random() * pool.length)];
   }
   updateBattle(time) {
