@@ -1,0 +1,242 @@
+{
+  "schema": "video2dsprite.finish.v1",
+  "tool": {
+    "name": "finish_frames",
+    "version": "0.6.0"
+  },
+  "mode": "pixel",
+  "clip": "master-pixel",
+  "character": "guanyu",
+  "role": null,
+  "source": {
+    "frames": "../master-input",
+    "count": 1,
+    "size": [
+      551,
+      1060
+    ],
+    "pattern": "*.png",
+    "registration": null
+  },
+  "rest": {
+    "frame": 0,
+    "topPx": 0,
+    "feetPx": 1060,
+    "heightPx": 1060,
+    "areaPx": 359472,
+    "stanceX": 250.5,
+    "centroid": [
+      259.7727027417991,
+      573.5729124938799
+    ],
+    "minRun": 6
+  },
+  "anchorMode": "feet",
+  "anchorSource": [
+    250.5,
+    1060.0
+  ],
+  "scale": 1.0,
+  "scaleSource": "target-height",
+  "targetHeight": 1060.0,
+  "scaleRef": null,
+  "size": [
+    553,
+    1062
+  ],
+  "anchor": [
+    252,
+    1061
+  ],
+  "canvas": null,
+  "engine": {
+    "sourceSize": [
+      553,
+      1062
+    ],
+    "sourceAnchor": [
+      252,
+      1061
+    ],
+    "sampling": "nearest",
+    "pixelArt": true,
+    "note": "engine_export.py package --clean-dir <out>/frames --source-size W,H --source-anchor X,Y (no --registration; add --pixel-art --sampling nearest for pixel and hibit)"
+  },
+  "resampler": "box",
+  "restOutput": {
+    "heightPx": 1060.0,
+    "areaPx": 359472.0,
+    "bodyHeightPx": 1060.0,
+    "outlinePx": 0,
+    "measuredHeightPx": 1060,
+    "measuredAreaPx": 359454
+  },
+  "displaySizes": [
+    {
+      "label": "1x",
+      "dir": "frames",
+      "scale": 1.0,
+      "size": [
+        553,
+        1062
+      ],
+      "anchor": [
+        252,
+        1061
+      ],
+      "targetHeight": 1060.0,
+      "flicker": null,
+      "alphaBinary": true
+    }
+  ],
+  "palette": {
+    "path": "palette.json",
+    "sha256": "a42ad3c309a6eb0f0fc11ab327bd302a426a0c244af1a67427a296123048dff3",
+    "bytes": 1358,
+    "colors": 32,
+    "built": true,
+    "reserved": 0,
+    "transparentIndex": 255
+  },
+  "pixel": {
+    "alphaThreshold": 0.5,
+    "dither": false,
+    "loopPolicy": "oneshot",
+    "margin": 0.0004,
+    "alphaBand": [
+      0.4,
+      0.6
+    ],
+    "orphans": 1,
+    "despeckle": true,
+    "downscale": "box",
+    "supersample": 1,
+    "lift": {
+      "contrast": 1.0,
+      "saturation": 1.0,
+      "pivotL": 0.43455
+    },
+    "outline": "none",
+    "outlinePx": 0,
+    "featureDeltaL": null,
+    "shadeGap": null,
+    "shadeMerged": 0,
+    "coloursPerFrameMax": 32,
+    "noiseFlipReduction": null,
+    "perFrameNearest": null,
+    "heldIndexPx": 0,
+    "heldAlphaPx": 0,
+    "lonePixelsFixed": 12681
+  },
+  "hibit": null,
+  "colourLock": null,
+  "indexedSheet": null,
+  "loopPolicy": "oneshot",
+  "frames": [
+    {
+      "file": "frames/master.png",
+      "sha256": "e9f6f9214569f864fe24402f193dca2ce5c816354883596751723d18c33846b7",
+      "sourceFile": "master.png",
+      "sourceSha256": "d6b2131c4eda421b6196cb30a9751d9ff0299fb97640f0f3adde7ea2d36e5ac3",
+      "opaquePx": 359454
+    }
+  ],
+  "flicker": null,
+  "specksRemoved": 18,
+  "alphaBinary": true,
+  "review": {
+    "path": "review-contact.png",
+    "frames": [
+      0
+    ]
+  },
+  "qa": {
+    "status": "warn",
+    "method": "finish_frames pixel v1 (port of game-opus55 pixelate.py): the hd registration and box downscale, then one OKLab palette (given, or forge_palette.build_palette k-means++ on the finished frames), forge_palette.quantize_sequence with temporal hysteresis (index kept within the margin, opacity kept inside alpha 0.4-0.6), cleanup_orphans (1 pass) and cleanup_alpha per frame, binary alpha at 0.5, no dither; flicker counted per frame pair against per-frame nearest quantizing",
+    "notProven": [
+      "identity, pose and readability at the finished size (look at review-contact.png and the frames)",
+      "that the target height suits the game camera and the rest of the cast (run lineup)",
+      "loop seams and timing (gait_loop, retime); finished frames keep the source names",
+      "hysteresis follows file order: the seam pair of a loop window chosen later is not held",
+      "the palette's fit to other clips of the cast (build one shared palette with palette build)"
+    ],
+    "checks": [
+      {
+        "id": "no-upscale",
+        "status": "pass",
+        "value": 1.0,
+        "threshold": 1.0
+      },
+      {
+        "id": "rest-height",
+        "status": "pass",
+        "value": 0.0,
+        "threshold": 1.5,
+        "note": "|measured - nominal| rest-pose body height at 1x (outline included), output px"
+      },
+      {
+        "id": "empty-frames",
+        "status": "pass",
+        "value": [],
+        "threshold": 0
+      },
+      {
+        "id": "flicker",
+        "status": "skipped",
+        "value": null,
+        "threshold": null
+      },
+      {
+        "id": "pixel-reduction",
+        "status": "warn",
+        "value": 1.0,
+        "threshold": 4.0,
+        "note": "source px per output px; pixel art comes from about 8-12x"
+      },
+      {
+        "id": "alpha-binary",
+        "status": "pass",
+        "value": true,
+        "threshold": true
+      },
+      {
+        "id": "palette-fit",
+        "status": "pass",
+        "value": {
+          "colorsUsed": 32,
+          "paletteColors": 32,
+          "offPaletteColors": 0,
+          "coloursPerFrameMax": 32
+        },
+        "threshold": 0
+      }
+    ],
+    "inputs": [
+      {
+        "path": "../master-input/master.png",
+        "sha256": "d6b2131c4eda421b6196cb30a9751d9ff0299fb97640f0f3adde7ea2d36e5ac3"
+      }
+    ],
+    "outputs": [
+      {
+        "path": "frames/master.png",
+        "sha256": "e9f6f9214569f864fe24402f193dca2ce5c816354883596751723d18c33846b7",
+        "bytes": 166374
+      },
+      {
+        "path": "review-contact.png",
+        "sha256": "0a5bbe126263ee440df64c112a862aa3b010aa3fe39b0c48ac58ec204df1d022",
+        "bytes": 412104
+      },
+      {
+        "path": "palette.json",
+        "sha256": "a42ad3c309a6eb0f0fc11ab327bd302a426a0c244af1a67427a296123048dff3",
+        "bytes": 1358
+      }
+    ],
+    "tool": {
+      "name": "finish_frames",
+      "version": "0.6.0"
+    }
+  }
+}

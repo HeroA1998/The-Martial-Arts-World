@@ -1,0 +1,73 @@
+{
+  "art_source": "host_image",
+  "route": "Codex image_gen",
+  "api": false,
+  "video": false,
+  "code_drawn": false,
+  "forge_commit": "25203d03900b46b444bdd72a75768c33d1895ad6",
+  "sources": {
+    "name": "guanyu",
+    "master": "exec-e0afbaf3-2a37-48ef-90a8-5e80d8ab6e37.png",
+    "stand": "exec-165d740d-a9f2-4c78-b1ca-149489b3560b.png",
+    "stand_bounds": [
+      0,
+      440,
+      810,
+      1254
+    ],
+    "front": "exec-fadf6553-781a-41b1-a3a6-0597603175ee.png",
+    "side": "exec-11a31263-4342-4b42-bda9-ea42301f2f45.png",
+    "back": "exec-422715cf-b84c-4e6e-93d6-4181f7d062ce.png"
+  },
+  "outputs": [
+    "assets/characters/npc_guanyu_forge_stand_front.png",
+    "assets/characters/npc_guanyu_forge_walk_front.png",
+    "assets/characters/npc_guanyu_forge_stand_side.png",
+    "assets/characters/npc_guanyu_forge_walk_side.png",
+    "assets/characters/npc_guanyu_forge_stand_back.png",
+    "assets/characters/npc_guanyu_forge_walk_back.png"
+  ],
+  "finish": "pixel; scale1; shared32color master palette; contrast1 saturation1 outline none",
+  "warnings": [
+    {
+      "file": "qa/master/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/stand/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/front/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/side/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    },
+    {
+      "file": "qa/back/finish.json",
+      "id": "pixel-reduction",
+      "status": "warn",
+      "value": 1.0,
+      "threshold": 4.0,
+      "note": "source px per output px; pixel art comes from about 8-12x"
+    }
+  ]
+}

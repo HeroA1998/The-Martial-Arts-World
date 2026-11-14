@@ -99,7 +99,7 @@
 - 先只做 walk 和 stand，不做其他動作。
 - 完成後的回報要說明：實際用了哪種生成方式（Codex 圖片生成或 API）。如果工具退回成「程式畫的圖」，要明說。
 
-## 11. 關羽 重做（Agent Sprite Forge）　狀態：待生成
+## 11. 關羽 重做（Agent Sprite Forge）　狀態：已推送（2026-11-14）
 - 照共通規則的 Agent Sprite Forge 做法與人物風格基準。**不要覆蓋**現有關羽圖。
 - 造型沿用現有關羽（參考 `npc_guanyu_stand_front.png`）：比主角高約一成；紅臉、丹鳳眼、長鬚垂到胸口；綠色戰袍、裡面露出深色護甲、綠色頭巾；手持青龍偃月刀（刀不要超出格子）。把現有圖的金邊、龍紋、高光大幅簡化。
 - 檔名（新檔）：走路 `assets/characters/npc_guanyu_forge_walk_front.png`、`_side.png`、`_back.png`（2048×512，4 格，側面朝右）；站立 `npc_guanyu_forge_stand_front.png`、`_side.png`、`_back.png`（1024×1024，兩腳分開）。
