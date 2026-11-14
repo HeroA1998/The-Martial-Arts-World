@@ -135,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.22.0';   // 每次更新請加一
+const VERSION = 'v0.22.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -285,11 +285,11 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
   // 鎮內：關羽在城門口看見主角，邀他當結義見證人（走近自動開始）
   { id: 'guanyu_t', name: '關羽', x: 250, y: 292, stand: 'guanyu', ph: 56.7, face: 'left', showName: true, scene: 'guan', auto: true, lines: [], when: () => STORY.robber && !STORY.guan },
   // 桃園：劉關張站在香案前，走近按「對話」開始結義
-  { id: 'liubei_p', area: 'peach', name: '劉備', x: 230, y: 240, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
+  { id: 'liubei_p', area: 'peach', name: '劉備', x: 230, y: 240, stand: 'liubei_forge', ph: 50, face: 'right', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
   { id: 'guanyu_p', area: 'peach', name: '關羽', x: 190, y: 232, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
   { id: 'zhangfei_p', area: 'peach', name: '張飛', x: 270, y: 232, stand: 'zhangfei', ph: 60.8, face: 'left', showName: true, scene: 'oath', lines: [], when: () => !STORY.oath },
   // 鎮內：打倒渠帥回來，三兄弟在鎮門口等主角
-  { id: 'liubei', name: '劉備', x: 1210, y: 300, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  { id: 'liubei', name: '劉備', x: 1210, y: 300, stand: 'liubei_forge', ph: 50, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'guanyu', name: '關羽', x: 1172, y: 278, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'zhangfei', name: '張飛', x: 1172, y: 324, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   // ---- 第 2 章：校尉鄒靖（暫用官軍武將圖）、劉關張在鎮東大街；出兵前（zou）與論功（merit）用同一組站位 ----
@@ -301,10 +301,10 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
     lines: ['奉鄒校尉之命，來涿縣招兵。'], chat: ['校尉治軍嚴，不許擾民。', '你是劉玄德帶來的人？看起來有兩下子。'],
     story: { xing: { lines: ['大興山一戰，劉玄德的鄉勇打得比我們還凶。'], chat: ['降卒都送去屯田了，校尉說不能濫殺。', '安喜縣尉……劉玄德這下出頭了。'] } },
     when: () => STORY.met },
-  { id: 'liubei2', name: '劉備', x: 1090, y: 314, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'zou', lines: [], after: '程遠志兵多，我們更要小心。', when: () => STORY.met && !STORY.xing },
+  { id: 'liubei2', name: '劉備', x: 1090, y: 314, stand: 'liubei_forge', ph: 50, face: 'right', showName: true, scene: 'zou', lines: [], after: '程遠志兵多，我們更要小心。', when: () => STORY.met && !STORY.xing },
   { id: 'guanyu2', name: '關羽', x: 1064, y: 300, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'zou', lines: [], after: '刀已磨好，隨時可以出發。', when: () => STORY.met && !STORY.xing },
   { id: 'zhangfei2', name: '張飛', x: 1064, y: 326, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'zou', lines: [], after: '俺的蛇矛等不及了！', when: () => STORY.met && !STORY.xing },
-  { id: 'liubei3', name: '劉備', x: 1090, y: 314, stand: 'liubei', ph: 53.5, face: 'right', showName: true, scene: 'merit', lines: [], after: '收拾好行李，我們一同往安喜。', when: () => STORY.xing },
+  { id: 'liubei3', name: '劉備', x: 1090, y: 314, stand: 'liubei_forge', ph: 50, face: 'right', showName: true, scene: 'merit', lines: [], after: '收拾好行李，我們一同往安喜。', when: () => STORY.xing },
   { id: 'guanyu3', name: '關羽', x: 1064, y: 300, stand: 'guanyu', ph: 56.7, face: 'right', showName: true, scene: 'merit', lines: [], after: '縣尉雖小，也是百姓的父母官。', when: () => STORY.xing },
   { id: 'zhangfei3', name: '張飛', x: 1064, y: 326, stand: 'zhangfei', ph: 60.8, face: 'right', showName: true, scene: 'merit', lines: [], after: '縣尉就縣尉！總有一天，大哥做大官！', when: () => STORY.xing },
 ];
@@ -473,7 +473,7 @@ const NPC_WOMEN = ['farmwife', 'vegseller', 'washerwoman', 'innkeeper', 'maiden'
 const NPC_OLD = ['elder_man', 'elder_woman', 'old_fisher', 'old_sage'];
 const NPC_KIDS = ['child_boy', 'child_girl', 'child_beggar', 'child_shepherd'];   // 孩童在遊戲裡縮到 0.7 倍
 const NPC_FILE = { maiden: 'maiden_px' };   // 路人 id → 圖檔名（assets/characters/npc_<檔名>_walk_<方向>.png）；沒列的就用 id 本身
-const STAND_NPC_IDS = ['liubei', 'guanyu', 'zhangfei'];   // 有正式站立圖的劇情人物（assets/characters/npc_<id>_stand_<方向>.png）
+const STAND_NPC_IDS = ['liubei_forge', 'guanyu', 'zhangfei'];   // 劉備用 Agent Sprite Forge 版（v0.22.1）   // 有正式站立圖的劇情人物（assets/characters/npc_<id>_stand_<方向>.png）
 const ALL_NPC_IDS = [...NPC_MEN, ...NPC_WOMEN, ...NPC_OLD, ...NPC_KIDS];   // 要載入的單一角色（assets/characters/npc_<id>_walk_<方向>.png）
 // 在大街上走動的路人：固定 NPC 用掉的（elder_man、vendor、hunter）不再重複出現
 const WALKER_IDS = ['porter', 'fisher', 'smith', 'scholar', 'refugee', 'farmer', ...NPC_WOMEN, 'elder_woman', 'old_fisher', 'old_sage', ...NPC_KIDS];
