@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.17.0';   // 每次更新請加一
+const VERSION = 'v0.17.1';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -163,7 +163,7 @@ const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
 const MAX_LV = 1 + STAT_KEYS.length * STAT_CAP;
 const xpNeed = lv => 50 * lv;
 // 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%。整場戰鬥結束才結算
-const KILL_XP = { turban: 8, hansoldier: 25, hangeneral: 60, bandit: 120 };
+const KILL_XP = { turban: 8, ytelite: 22, hansoldier: 25, hangeneral: 60, bandit: 120 };
 const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
 const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
 const statMaxHp = p => 100 + 3 * p;
@@ -244,7 +244,7 @@ const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
 // 五銖掉落：[機率, 最少, 最多]，數量在範圍內隨機
-const WZ_DROP = { turban: [0.4, 1, 1], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
+const WZ_DROP = { turban: [0.4, 1, 1], ytelite: [0.55, 2, 3], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -261,6 +261,7 @@ const ITEMS = {
 const DROPS = {
   // 全部為機率制，沒有保證掉落
   turban: [['jc', 0.08], ['xq', 0.03]],
+  ytelite: [['jc', 0.22], ['xq', 0.08]],
   hansoldier: [['jc', 0.15], ['xq', 0.05]],
   hangeneral: [['jc', 0.45], ['xq', 0.15]],
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
@@ -285,12 +286,11 @@ const DG_R = 34;                // 閃避鍵半徑（螢幕像素）
 // 新增遭遇只要在這裡加一筆；enemies 的 x, y：現身（站立）位置；delay：觸發後幾毫秒才現身；ex, ey：衝進空地的落點
 const FOREST_ENCOUNTERS = [
   { id: 'guard1', mode: 'notice', enemies: [
-    { type: 'turban', x: 200, y: 905 }, { type: 'turban', x: 240, y: 888 } ] },
+    { type: 'ytelite', x: 214, y: 900 } ] },
   { id: 'guard2', mode: 'notice', enemies: [
-    { type: 'turban', x: 184, y: 802 }, { type: 'turban', x: 244, y: 792 }, { type: 'turban', x: 214, y: 766 } ] },
+    { type: 'ytelite', x: 190, y: 790 }, { type: 'ytelite', x: 242, y: 776 } ] },
   { id: 'ambush1', mode: 'ambush', triggerY: 675, enemies: [
-    { type: 'hangeneral', x: 92,  y: 572, delay: 700,  ex: 160, ey: 580 },
-    { type: 'turban',     x: 368, y: 556, delay: 1500, ex: 300, ey: 552 } ] },
+    { type: 'hangeneral', x: 92, y: 572, delay: 700, ex: 160, ey: 580 } ] },
   { id: 'boss', mode: 'ambush', triggerY: 365, boss: true, enemies: [
     { type: 'bandit', x: 92, y: 240, delay: 900, ex: 172, ey: 248 } ] },
 ];
@@ -339,7 +339,7 @@ const ENEMY_TYPES = {
     reactRange: 100, reactCdMs: 1300, pGuard: 0.35, pDodge: 0.35, dodgeCdMs: 2200,
     guardDur: 700, guardDmgMul: 0.15, guardBreakHits: 3, guardBreakStun: 900, dodgeCounterWindup: 480,
     // 架勢與受擊
-    poise: 48, stun: 600, knock: 120,
+    poise: 48, stun: 600, knock: 0,   // 破勢只僵直，不推開（擊退等於送玩家空檔、拿掉敵人反擊）
     // 反制「打了就退」：被打中後有機率立刻轉向反擊（蓄力縮短，仍有預備動作）
     counterOnHit: 1, counterWindup: 320, counterRange: 70,
     recoverCounter: 0.6,   // 破綻期被打中：有這個機率打斷破綻、立刻反擊（玩家每刀都要承擔風險）
@@ -360,9 +360,17 @@ ENEMY_TYPES.turban = Object.assign({}, ENEMY_TYPES.bandit, {
   fleeOnHit: false,          // 不退縮：被打中後照樣回來
   pSlashClose: 0.85, pLungeClose: 0, pLungeMid: 0, pCombo: 0.3,
   pGuard: 0.03, pDodge: 0, reactCdMs: 4000,
-  poise: 1, stun: 560, knock: 190, respawnMs: 20000,   // poise 1：每刀都會被打得僵直、往後退
+  poise: 999, stun: 0, knock: 0, respawnMs: 20000,   // 被打中不僵直、不擊退，照常出刀
   counterOnHit: 0, recoverCounter: 0,
   preempt: true, preemptDist: 60, pPreempt: 0.4, preemptCdMs: 2600, preemptCloseSpd: 70,   // 你揮刀或衝近的當下，小兵有機率搶先出刀（前搖不縮短，仍看得出來）
+});
+// 黃巾力士：路上守路的精銳（取代成群的小兵——貴精不貴多）。用黃巾小兵的圖，血多、傷害高、會防禦閃避，被打中不僵直也不擊退
+ENEMY_TYPES.ytelite = Object.assign({}, ENEMY_TYPES.turban, {
+  name: '黃巾力士', showName: true,
+  hp: 32, speed: 58, aggro: 80, lose: 160, stalkDist: 70, orbitR: 90,
+  dmgSlash: 14, slashWindup: 720, slashWindupFast: 520, slashRecover: 850, rest: 1000, pCombo: 0.35,
+  reactRange: 90, pGuard: 0.15, pDodge: 0.10, reactCdMs: 2500, dodgeCdMs: 3000,
+  preempt: true, preemptDist: 60, pPreempt: 0.45, preemptCdMs: 2400,
 });
 // 精兵（官軍）：血量中等，會用衝刺，偶爾防禦或閃避
 ENEMY_TYPES.hansoldier = Object.assign({}, ENEMY_TYPES.bandit, {
@@ -1784,7 +1792,7 @@ class VillageScene extends Phaser.Scene {
     this.pk = { vx: -dx * 120, vy: -dy * 120, until: time + 110 };
     if (b.guardHits >= b.t.guardBreakHits) {
       b.state = 'hurt'; b.until = time + b.t.guardBreakStun; b.hurtT0 = time; b.hurtDur = b.t.guardBreakStun;
-      b.kx = dx * 25; b.ky = dy * 25;
+      b.kx = 0; b.ky = 0;   // 破防只僵直，不推開
       this.hitstop(130);
       this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '破防', '#9fd8ff');
     }
