@@ -116,7 +116,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.18.1';   // 每次更新請加一
+const VERSION = 'v0.18.2';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -267,7 +267,12 @@ const DROPS = {
   hangeneral: [['jc', 0.45], ['xq', 0.15]],
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
-const SAVE_KEY = 'dajianghu_save_v1';
+const SAVE_KEY = 'dajianghu_save_v1';   // 沿用舊 key，舊存檔直接能讀
+const SAVE_VER = 2;                    // 存檔格式版本（日後改格式才能遷移）
+let SAVED = null;                      // 最後一次在祠堂存的檔：{ area, prog:{enc:[]}, at }
+let PROG = { enc: [] };                // 目前的世界進度（切換區域時保留）：森林各遭遇是否已打倒
+let SAVE_META_READY = false, MENU_DONE = false;
+function readSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
 const ROLL_COST = 26;
 const ROLL_DUR = 520;           // 翻滾總長度（含收招）
@@ -934,6 +939,7 @@ class VillageScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-F', () => this.talkKey());
     this.input.keyboard.on('keydown-ENTER', () => this.talkKey());
     this.input.on('pointerdown', p => {
+      if (this.menuPointer(p)) return;
       if (this.invPointer(p)) return;
       if (this.panelPointer(p)) return;
       if (this.shopPointer(p)) return;
@@ -996,6 +1002,55 @@ class VillageScene extends Phaser.Scene {
     if (!this.boot) this.hintText.setVisible(false); else this.hintText.setVisible(true);
     if (!this.boot) this.time.delayedCall(60, () => this.banner(areaInfo(this.area).name, 1400));
     if (this.area === 'town') this.loadInteriorsInBackground();
+    if (this.boot && !MENU_DONE && readSave()) this.openMenu();
+  }
+
+  // ---------- 開始畫面：繼續／新遊戲 ----------
+  openMenu() {
+    const mk = (o) => { o.setDepth(3000); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color, stroke = 3, bold = false) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke, fontStyle: bold ? 'bold' : 'normal' });
+    this.menu = { confirm: false };
+    this.menuGfx = mk(this.add.graphics());
+    this.menuTitle = mk(this.add.text(0, 0, '大江湖', tx(34, '#f0e6c8', 5, true)).setOrigin(0.5));
+    this.menuSub = mk(this.add.text(0, 0, '', tx(13, '#b8ad8a')).setOrigin(0.5));
+    this.menuBtn1 = mk(this.add.text(0, 0, '繼續', tx(20, '#16201a', 0, true)).setOrigin(0.5).setDepth(3001));
+    this.menuBtn2 = mk(this.add.text(0, 0, '新遊戲', tx(18, '#16201a', 0, true)).setOrigin(0.5).setDepth(3001));
+    this.hintText.setVisible(false);
+  }
+  menuRects() {
+    const W = this.scale.width, H = this.scale.height, w = Math.min(230, W - 60), h = 50;
+    return { c: { x: W / 2, y: H * 0.5, w, h }, n: { x: W / 2, y: H * 0.5 + 68, w, h } };
+  }
+  drawMenu() {
+    const W = this.scale.width, H = this.scale.height, R = this.menuRects(), g = this.menuGfx;
+    g.clear();
+    g.fillStyle(0x0c120e, 0.92); g.fillRect(0, 0, W, H);
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(R.c.x - R.c.w / 2, R.c.y - R.c.h / 2, R.c.w, R.c.h, 10);
+    g.fillStyle(this.menu.confirm ? 0xc0503a : 0x9a9684, 1); g.fillRoundedRect(R.n.x - R.n.w / 2, R.n.y - R.n.h / 2, R.n.w, R.n.h, 10);
+    this.menuTitle.setPosition(W / 2, H * 0.3);
+    this.menuSub.setPosition(W / 2, R.c.y - 44).setText(SAVED ? '上次存檔：祠堂　Lv ' + this.lv : '上次進度：Lv ' + this.lv);
+    this.menuBtn1.setPosition(R.c.x, R.c.y);
+    this.menuBtn2.setPosition(R.n.x, R.n.y).setText(this.menu.confirm ? '再按一次：清除存檔' : '新遊戲');
+  }
+  menuPointer(p) {
+    if (!this.menu) return false;
+    const R = this.menuRects(), hit = r => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.y - r.y) <= r.h / 2;
+    if (hit(R.c)) {
+      this.closeMenu();
+      if (SAVED) this.gotoArea('shrine', interiorEntry('shrine'), 'up');   // 回到存檔點
+    } else if (hit(R.n)) {
+      if (!this.menu.confirm) { this.menu.confirm = true; return true; }
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      SAVED = null; PROG = { enc: [] }; MENU_DONE = true;
+      this.menu = null;
+      this.scene.restart({});
+    } else this.menu.confirm = false;
+    return true;
+  }
+  closeMenu() {
+    MENU_DONE = true; this.menu = null;
+    for (const o of [this.menuGfx, this.menuTitle, this.menuSub, this.menuBtn1, this.menuBtn2]) o.destroy();
+    this.menuGfx = null;
   }
 
   // 把去背後的素材存成新的貼圖
@@ -1895,6 +1950,13 @@ class VillageScene extends Phaser.Scene {
         for (const k of STAT_KEYS) this.stats[k] = Math.min(STAT_CAP, Math.max(0, d.stats[k] | 0));
       }
       if (d) this.wz = Math.max(0, d.wz | 0);
+      if (!SAVE_META_READY) {            // 第一次讀檔：取出存檔點與世界進度
+        SAVE_META_READY = true; SAVED = null; PROG = { enc: [] };
+        if (d && d.area && d.prog && Array.isArray(d.prog.enc)) {
+          SAVED = { area: d.area === 'shrine' ? 'shrine' : 'town', prog: { enc: d.prog.enc.map(Boolean) }, at: d.at | 0 };
+          PROG = { enc: SAVED.prog.enc.slice() };
+        }
+      }
       if (d && d.inv) { for (const k of ITEM_ORDER) this.inv[k] = Math.max(0, d.inv[k] | 0); this.inv.flask = Math.min(FLASK_MAX, this.inv.flask); if (ITEMS[d.quick]) this.quick = d.quick; }
     } catch (e) {}
     this.calcLv();
@@ -1903,7 +1965,20 @@ class VillageScene extends Phaser.Scene {
   calcLv() { this.lv = 1 + STAT_KEYS.reduce((a, k) => a + this.stats[k], 0); }
 
   saveGrowth() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz })); } catch (e) {}
+    try {
+      const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz };
+      if (SAVED) { o.area = SAVED.area; o.prog = SAVED.prog; o.at = SAVED.at; }
+      localStorage.setItem(SAVE_KEY, JSON.stringify(o));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // 在祠堂存檔：記下存檔點與世界進度（經驗、配點、背包本來就會自動存）
+  commitSave() {
+    const old = SAVED;
+    SAVED = { area: 'shrine', prog: { enc: PROG.enc.slice() }, at: Date.now() };
+    if (!this.saveGrowth()) { SAVED = old; return false; }
+    return true;
   }
 
   maxHp() { return statMaxHp(this.stats.hp); }
@@ -2313,7 +2388,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   // ---------- 鎮內 NPC 與對話 ----------
-  modal() { return !!(this.panelOpen || this.invOpen || this.dlg || this.shop); }
+  modal() { return !!(this.panelOpen || this.invOpen || this.dlg || this.shop || this.menu); }
 
   buildNpcs() {
     for (const d of NPCS) {
@@ -2729,7 +2804,8 @@ class VillageScene extends Phaser.Scene {
       val: mk(this.add.text(0, 0, '', tx(13, '#c8d8c0'))),
       plus: mk(this.add.text(0, 0, '＋', tx(26, '#16201a', 0)).setOrigin(0.5)),
     }));
-    this.pnClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5));
+    this.pnClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.pnSave = mk(this.add.text(0, 0, '存檔', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
     this.pnNote = mk(this.add.text(0, 0, '加點後無法退回，請慎重分配', tx(12, '#a8b8a0')).setOrigin(0.5, 0));
     this.panelOpen = false;
     this.layoutPanel();
@@ -2737,7 +2813,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   setPanelVisible(v) {
-    this.pnGfx.setVisible(true); this.pnTitle.setVisible(v); this.pnClose.setVisible(v); this.pnNote.setVisible(v);
+    this.pnGfx.setVisible(true); this.pnTitle.setVisible(v); this.pnClose.setVisible(v); this.pnSave.setVisible(v); this.pnNote.setVisible(v);
     for (const r of this.pnRows) { r.name.setVisible(v); r.val.setVisible(v); r.plus.setVisible(v); }
   }
 
@@ -2754,21 +2830,27 @@ class VillageScene extends Phaser.Scene {
       r.name.setPosition(px + 16, y); r.val.setPosition(px + 16, y + 24); r.plus.setPosition(bx, y + 20);
     });
     const by = py + 62 + rowH * 4 + 10;
-    this.pn.close = { x: W / 2, y: by + 18, w: 120, h: 36 };
-    this.pnClose.setPosition(W / 2, by + 18);
+    this.pn.close = { x: W / 2 + 62, y: by + 18, w: 112, h: 36 };
+    this.pn.save = { x: W / 2 - 62, y: by + 18, w: 112, h: 36 };
+    this.pnClose.setPosition(W / 2 + 62, by + 18);
+    this.pnSave.setPosition(W / 2 - 62, by + 18);
     this.pnNote.setPosition(W / 2, by + 46);
     const r = this.prayRect(); this.pnBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
   }
 
-  openPanel() { this.inv.flask = FLASK_MAX; this.saveGrowth(); this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.layoutPanel(); this.setPanelVisible(true); }
+  openPanel() { this.inv.flask = FLASK_MAX; this.saveGrowth(); this.panelOpen = true; this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false; this.pnNote.setText('加點後無法退回，請慎重分配').setColor('#a8b8a0'); this.layoutPanel(); this.setPanelVisible(true); }
   closePanel() { this.panelOpen = false; this.setPanelVisible(false); this.saveGrowth(); }
 
   // 回傳 true 表示這次點擊被面板／參拜鈕吃掉
   panelPointer(p) {
     if (this.panelOpen) {
       for (const r of this.pn.rows) if (Math.hypot(p.x - r.plus.x, p.y - r.plus.y) <= r.plus.r) this.buyStat(r.k);
-      const c = this.pn.close;
+      const c = this.pn.close, sv = this.pn.save;
       if (Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.y - c.y) <= c.h / 2) this.closePanel();
+      else if (Math.abs(p.x - sv.x) <= sv.w / 2 && Math.abs(p.y - sv.y) <= sv.h / 2) {
+        const ok = this.commitSave();
+        this.pnNote.setText(ok ? '已存檔：之後選「繼續」會從這裡開始' : '存檔失敗（瀏覽器不允許儲存）').setColor(ok ? '#b8e0a0' : '#e0907a');
+      }
       return true;
     }
     const r = this.prayRect();
@@ -2801,7 +2883,8 @@ class VillageScene extends Phaser.Scene {
       const ok = p < STAT_CAP && this.lv < MAX_LV && this.xp >= need;
       g.fillStyle(ok ? 0xd9b45a : 0x555044, 1); g.fillCircle(row.plus.x, row.plus.y, row.plus.r);
     }
-    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 60, P.close.y - 18, 120, 36, 8);
+    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - P.close.w / 2, P.close.y - 18, P.close.w, 36, 8);
+    g.fillStyle(0x9ec88a, 1); g.fillRoundedRect(P.save.x - P.save.w / 2, P.save.y - 18, P.save.w, 36, 8);
   }
 
   // ---------- 玩家受傷與倒下 ----------
@@ -2873,9 +2956,10 @@ class VillageScene extends Phaser.Scene {
     const sp0 = this.area === 'field' ? FIELD_START : START;
     this.playerBody.body.reset(sp0.x, sp0.y);
     // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
+    PROG = { enc: SAVED ? SAVED.prog.enc.slice() : [] };   // 世界進度退回上次存檔
     if (this.area === 'forest') this.resetForest(); else for (const b of this.bandits) this.hideBandit(b);
     if (this.area === 'field') this.resetBattle();
-    this.stage = { phase: 'walk', t0: 0, amb: 0 };
+    if (this.area !== 'forest') this.stage = { phase: 'walk', t0: 0, amb: 0 };
     this.bannerText.setVisible(false);
     this.cine = false; this.heroAlert.setVisible(false);
   }
@@ -2929,10 +3013,12 @@ class VillageScene extends Phaser.Scene {
   // 倒下重來／剛進場：守路小兵站回原位，伏擊的敵人藏回樹林
   resetForest() {
     for (const b of this.bandits) { if (b.mode === 'notice') this.idleBandit(b); else this.hideBandit(b); }
-    this.encDone = FOREST_ENCOUNTERS.map(() => false);
+    this.encDone = FOREST_ENCOUNTERS.map((e, i) => !!PROG.enc[i]);   // 已打倒的遭遇不再出現
     this.ambushes = [];
-    FOREST_ENCOUNTERS.forEach((e, i) => { if (e.mode === 'ambush') this.ambushes.push(i); });
-    this.stage = { phase: 'walk', t0: 0, amb: 0 };
+    FOREST_ENCOUNTERS.forEach((e, i) => { if (e.mode === 'ambush' && !this.encDone[i]) this.ambushes.push(i); });
+    for (const b of this.bandits) if (this.encDone[b.enc]) this.hideBandit(b);
+    const bossDone = FOREST_ENCOUNTERS.some((e, i) => e.boss && this.encDone[i]);
+    this.stage = { phase: bossDone ? 'cleared' : 'walk', t0: 0, amb: 0 };
   }
 
   updateForest(time) {
@@ -2941,7 +3027,7 @@ class VillageScene extends Phaser.Scene {
     FOREST_ENCOUNTERS.forEach((e, i) => {
       if (e.mode !== 'notice' || this.encDone[i] || this.down) return;
       if (this.bandits.filter(b => b.enc === i).every(b => b.dead)) {
-        this.encDone[i] = true;
+        this.encDone[i] = true; PROG.enc[i] = true;
         const got = this.settleXp();
         this.banner('擊退守兵\n獲得 ' + got + ' 經驗', 2200);
       }
@@ -2959,6 +3045,7 @@ class VillageScene extends Phaser.Scene {
       for (const b of grp) if (b.hidden && time - st.t0 >= b.spawn.delay) this.revealBandit(b, time);
       if (st.phase === 'intro' && time - st.t0 >= CINE_MS) { st.phase = 'fight'; this.cine = false; }
       if (st.phase === 'fight' && grp.every(b => !b.hidden && b.dead)) {
+        this.encDone[ai] = true; PROG.enc[ai] = true;
         const got = this.settleXp();
         if (E.boss) { st.phase = 'cleared'; this.banner('擊敗黃巾渠帥\n獲得 ' + got + ' 經驗\n往北前進', 3500); }
         else { st.phase = 'walk'; st.amb++; this.banner('擊退伏兵\n獲得 ' + got + ' 經驗', 2600); }
@@ -3315,6 +3402,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   drawUI() {
+    if (this.menu && this.menuGfx) this.drawMenu();
     // 玩家血條（左上角）
     const hg = this.hpGfx, hw = 110;
     hg.clear();
