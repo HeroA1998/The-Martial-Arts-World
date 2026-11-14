@@ -19,7 +19,7 @@
 - 背景一律純洋紅 `#FF00FF`（遊戲會把洋紅去掉）。
 - **不要縮小或降低圖片解析度**，按指定尺寸直接輸出。
 - 角色站姿不要僵硬；走路格要沿用 `assets/templates/` 的姿勢模版，同一高度、同一地面線、同一水平位置。
-- **站立圖（stand）不能雙腿並排站直**（用戶 2026-11-14 規定，所有人物都適用）：不要兩腳平行、左右對稱的立正姿勢。要自然站姿：重心放在一隻腳，另一隻腳稍微往前或往外踏開，膝蓋微彎；肩膀、手臂、武器左右不對稱。正面、側面、背面三張都要遵守，且三張是同一個姿勢的不同角度。
+- **站立圖（stand）雙腿不能靠攏並在一起**（用戶 2026-11-14 規定，所有人物都適用）：以主角 `hero_front.png`、`hero_side.png`、`hero_back.png` 為標準。正面與背面：兩腳分開約與肩同寬，中間看得到空隙。側面：兩腳一前一後分開，看得出是兩隻腳，不要疊成一隻。
 - 站立圖規格：每張 1024×1024，人物置中、腳底貼近下緣，身高比例與同一角色的走路圖一致。
 - 圖中不要出現文字。
 
@@ -76,15 +76,12 @@
 - 注意：這是普通小兵，不要做成黃巾渠帥（武將）那種盔甲或披風。
 - 站立圖（遊戲有用到，必做）：覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`，照共通規則的站立圖規定（不能雙腿並排站直）。
 
-## 8. 現有敵人站立圖 重做（雙腿並排站直，不合新規定）　狀態：待重新生成
-- 覆蓋以下檔案，**造型、服裝、顏色、武器完全照舊**，只改站姿（照共通規則的站立圖規定）。每張 1024×1024。
-- 官軍精兵：`assets/characters/hansoldier_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `hansoldier_walk_*.png`）
-- 官軍武將：`assets/characters/hangeneral_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `hangeneral_walk_*.png`）
-- 黃巾渠帥：`assets/characters/ytgeneral_stand_front.png`、`_side.png`、`_back.png`（參考同名舊圖與 `ytgeneral_walk_*.png`）
+## 8. 現有敵人「側面」站立圖 重做（側面雙腿疊在一起）　狀態：待重新生成
+- 正面、背面兩腳已分開，不用改。只覆蓋以下**側面**檔案，**造型、服裝、顏色、武器完全照舊**，只把兩腳改成一前一後分開（參考 `hero_side.png`）。每張 1024×1024。
+- 官軍精兵：`assets/characters/hansoldier_stand_side.png`（參考同名舊圖）
+- 官軍武將：`assets/characters/hangeneral_stand_side.png`（參考同名舊圖）
+- 黃巾渠帥：`assets/characters/ytgeneral_stand_side.png`（參考同名舊圖）
 - 武將（官軍武將、黃巾渠帥）比主角高約兩成，畫面比例照舊圖。
-
-## 9. 主角站立圖 重做　狀態：暫緩（等用戶確認，先不要做）
-- `assets/characters/hero_front.png`、`hero_side.png`、`hero_back.png` 目前也是雙腿並排站直。主角是所有圖的風格基準，要不要重做由用戶決定。
 
 ---
 
