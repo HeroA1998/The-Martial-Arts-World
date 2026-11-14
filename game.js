@@ -135,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.21.2';   // 每次更新請加一
+const VERSION = 'v0.22.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -506,7 +506,27 @@ const DROPS = {
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
   ytcaptain: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
-const SAVE_KEY = 'dajianghu_save_v1';   // 沿用舊 key，舊存檔直接能讀
+// 存檔欄位：共 3 格。第 1 格沿用舊 key（舊存檔直接在第 1 格），第 2、3 格加後綴；最後用的是哪一格記在 dajianghu_slot
+const SLOT_COUNT = 3;
+const slotKey = k => k === 1 ? 'dajianghu_save_v1' : 'dajianghu_save_v1_s' + k;
+function readSlot(k) { try { return JSON.parse(localStorage.getItem(slotKey(k)) || 'null'); } catch (e) { return null; } }
+let SLOT = 1; try { SLOT = Math.min(SLOT_COUNT, Math.max(1, parseInt(localStorage.getItem('dajianghu_slot'), 10) || 1)); } catch (e) {}
+let SAVE_KEY = slotKey(SLOT);
+let PICK_SHRINE = false;               // 開始畫面選了有祠堂存檔的欄位：重開場景後直接進祠堂
+function useSlot(k) { SLOT = k; SAVE_KEY = slotKey(k); try { localStorage.setItem('dajianghu_slot', String(k)); } catch (e) {} }
+// 欄位摘要：劇情進度（看旗標到哪一步）
+function slotProgress(st) {
+  st = st || {};
+  if (st.merit) return '第二章 完';
+  if (st.xing) return '第二章・大興山之後';
+  if (st.zou) return '第二章・出征大興山';
+  if (st.met) return '第一章 完';
+  if (st.boss) return '第一章・賊首已除';
+  if (st.oath) return '第一章・桃園結義後';
+  if (st.guan) return '第一章・往桃園';
+  if (st.robber) return '第一章・進城';
+  return '第一章・開頭';
+}
 const SAVE_VER = 2;                    // 存檔格式版本（日後改格式才能遷移）
 let SAVED = null;                      // 最後一次在祠堂存的檔：{ area, prog:{enc:[]}, at }
 let PROG = { enc: [] };                // 目前的世界進度（切換區域時保留）：森林各遭遇是否已打倒
@@ -754,7 +774,8 @@ class VillageScene extends Phaser.Scene {
   init(data) {
     this.boot = !data || !data.area;
     let bootArea = 'town';
-    if (this.boot) { const d = readSave(); if (!d || (d.story && !d.story.robber)) bootArea = 'outskirts'; }   // 新遊戲從城外開始
+    if (this.boot) { const d = readSave(); if (!d || (d.story && !d.story.robber)) bootArea = 'outskirts'; else if (PICK_SHRINE && d.area === 'shrine') bootArea = 'shrine'; }   // 新遊戲從城外開始；選了有祠堂存檔的欄位就從祠堂開始
+    PICK_SHRINE = false;
     this.area = (data && data.area) || bootArea;
     this.loadGrowth();   // 先讀存檔（劇情旗標決定 NPC 與出口）
     this.spawnAt = (data && data.spawn) || null;
@@ -1264,56 +1285,95 @@ class VillageScene extends Phaser.Scene {
     if (!this.boot) this.hintText.setVisible(false); else this.hintText.setVisible(true);
     if (!this.boot) this.time.delayedCall(60, () => this.banner(areaInfo(this.area).name, 1400));
     if (this.area === 'town') this.loadInteriorsInBackground();
-    if (this.boot && !MENU_DONE && readSave()) this.openMenu();
+    if (this.boot && !MENU_DONE && [1, 2, 3].some(k => readSlot(k))) this.openMenu();
     this.maybeIntro();
   }
 
-  // ---------- 開始畫面：繼續／新遊戲 ----------
+  // ---------- 開始畫面：三個存檔欄位（讀取／複製／清除） ----------
   openMenu() {
     const mk = (o) => { o.setDepth(3000); this.ui.push(o); this.cameras.main.ignore(o); return o; };
-    const tx = (size, color, stroke = 3, bold = false) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke, fontStyle: bold ? 'bold' : 'normal' });
-    this.menu = { confirm: false };
+    const tx = (size, color, stroke = 3, bold = false) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke, fontStyle: bold ? 'bold' : 'normal', align: 'left' });
+    this.menu = { confirm: 0, msg: '' };
     this.menuGfx = mk(this.add.graphics());
     this.menuTitle = mk(this.add.text(0, 0, '大江湖', tx(34, '#f0e6c8', 5, true)).setOrigin(0.5));
-    this.menuSub = mk(this.add.text(0, 0, '', tx(13, '#b8ad8a')).setOrigin(0.5));
-    this.menuBtn1 = mk(this.add.text(0, 0, '繼續', tx(20, '#16201a', 0, true)).setOrigin(0.5).setDepth(3001));
-    this.menuBtn2 = mk(this.add.text(0, 0, '新遊戲', tx(18, '#16201a', 0, true)).setOrigin(0.5).setDepth(3001));
+    this.menuSub = mk(this.add.text(0, 0, '選擇存檔欄位', tx(13, '#b8ad8a')).setOrigin(0.5));
+    this.menuRows = [1, 2, 3].map(() => ({
+      main: mk(this.add.text(0, 0, '', tx(15, '#16201a', 0, true)).setOrigin(0, 0.5).setDepth(3001)),
+      copy: mk(this.add.text(0, 0, '複製', tx(13, '#e6f0dc', 0)).setOrigin(0.5).setDepth(3001)),
+      del: mk(this.add.text(0, 0, '清除', tx(13, '#e6f0dc', 0)).setOrigin(0.5).setDepth(3001)),
+    }));
+    this.menuNote = mk(this.add.text(0, 0, '', tx(12, '#d8c890')).setOrigin(0.5));
     this.hintText.setVisible(false);
   }
   menuRects() {
-    const W = this.scale.width, H = this.scale.height, w = Math.min(230, W - 60), h = 50;
-    return { c: { x: W / 2, y: H * 0.5, w, h }, n: { x: W / 2, y: H * 0.5 + 68, w, h } };
+    const W = this.scale.width, H = this.scale.height, w = Math.min(340, W - 30), h = 62, gap = 12, sw = 54;
+    const y0 = H * 0.36, x0 = (W - w) / 2;
+    return [1, 2, 3].map((k, i) => {
+      const y = y0 + i * (h + gap);
+      return { k, main: { x: x0, y, w: w - sw * 2 - 12, h }, copy: { x: x0 + w - sw * 2 - 6, y, w: sw, h }, del: { x: x0 + w - sw, y, w: sw, h } };
+    });
   }
   drawMenu() {
-    const W = this.scale.width, H = this.scale.height, R = this.menuRects(), g = this.menuGfx;
+    const W = this.scale.width, H = this.scale.height, g = this.menuGfx, R = this.menuRects();
     g.clear();
-    g.fillStyle(0x0c120e, 0.92); g.fillRect(0, 0, W, H);
-    g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(R.c.x - R.c.w / 2, R.c.y - R.c.h / 2, R.c.w, R.c.h, 10);
-    g.fillStyle(this.menu.confirm ? 0xc0503a : 0x9a9684, 1); g.fillRoundedRect(R.n.x - R.n.w / 2, R.n.y - R.n.h / 2, R.n.w, R.n.h, 10);
-    this.menuTitle.setPosition(W / 2, H * 0.3);
-    this.menuSub.setPosition(W / 2, R.c.y - 44).setText(SAVED ? '上次存檔：祠堂　Lv ' + this.lv : '上次進度：Lv ' + this.lv);
-    this.menuBtn1.setPosition(R.c.x, R.c.y);
-    this.menuBtn2.setPosition(R.n.x, R.n.y).setText(this.menu.confirm ? '再按一次：清除存檔' : '新遊戲');
+    g.fillStyle(0x0c120e, 0.94); g.fillRect(0, 0, W, H);
+    this.menuTitle.setPosition(W / 2, H * 0.2);
+    this.menuSub.setPosition(W / 2, H * 0.2 + 34);
+    R.forEach((r, i) => {
+      const d = readSlot(r.k), row = this.menuRows[i], cur = r.k === SLOT;
+      g.fillStyle(d ? 0xd9b45a : 0x9a9684, 1); g.fillRoundedRect(r.main.x, r.main.y, r.main.w, r.main.h, 10);
+      if (cur && d) { g.lineStyle(3, 0xf0e6c8, 1); g.strokeRoundedRect(r.main.x - 2, r.main.y - 2, r.main.w + 4, r.main.h + 4, 11); }
+      let label = '欄位 ' + r.k + '　（空）\n點一下開始新遊戲';
+      if (d) {
+        const lv = 1 + STAT_KEYS.reduce((a, k) => a + Math.max(0, (d.stats && d.stats[k]) | 0), 0);
+        const t = d.ts || d.at, ts = t ? new Date(t) : null;
+        const when = ts ? (ts.getMonth() + 1) + '/' + ts.getDate() + ' ' + String(ts.getHours()).padStart(2, '0') + ':' + String(ts.getMinutes()).padStart(2, '0') : '';
+        label = '欄位 ' + r.k + '　Lv ' + lv + '　' + when + '\n' + slotProgress(d.story) + (d.area === 'shrine' ? '・祠堂' : '');
+      }
+      row.main.setText(label).setPosition(r.main.x + 12, r.main.y + r.main.h / 2);
+      g.fillStyle(0x3a4a3c, d ? 1 : 0.4); g.fillRoundedRect(r.copy.x, r.copy.y, r.copy.w, r.copy.h, 8);
+      const conf = this.menu.confirm === r.k;
+      g.fillStyle(conf ? 0xc0503a : 0x5a3a32, d ? 1 : 0.4); g.fillRoundedRect(r.del.x, r.del.y, r.del.w, r.del.h, 8);
+      row.copy.setPosition(r.copy.x + r.copy.w / 2, r.copy.y + r.copy.h / 2).setAlpha(d ? 1 : 0.4);
+      row.del.setText(conf ? '確定？' : '清除').setPosition(r.del.x + r.del.w / 2, r.del.y + r.del.h / 2).setAlpha(d ? 1 : 0.4);
+    });
+    const last = R[R.length - 1];
+    this.menuNote.setText(this.menu.msg || '「複製」會把這格複製到第一個空欄位').setPosition(W / 2, last.main.y + last.main.h + 26);
   }
   menuPointer(p) {
     if (!this.menu) return false;
-    const R = this.menuRects(), hit = r => Math.abs(p.x - r.x) <= r.w / 2 && Math.abs(p.y - r.y) <= r.h / 2;
-    if (hit(R.c)) {
-      STORY.intro = true;   // 繼續遊戲就不再播開場
-      this.closeMenu();
-      if (SAVED) this.gotoArea('shrine', interiorEntry('shrine'), 'up');   // 回到存檔點
-    } else if (hit(R.n)) {
-      if (!this.menu.confirm) { this.menu.confirm = true; return true; }
-      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-      SAVED = null; PROG = { enc: [] }; STORY = {}; MENU_DONE = true;
-      this.menu = null;
-      this.scene.restart({});
-    } else this.menu.confirm = false;
+    const hit = r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+    for (const r of this.menuRects()) {
+      const d = readSlot(r.k);
+      if (hit(r.main)) {   // 讀取（有資料）或在這格開新遊戲（空）
+        useSlot(r.k);
+        SAVE_META_READY = false; SAVED = null; PROG = { enc: [] }; STORY = {}; MENU_DONE = true;
+        for (const k of Object.keys(TALKED)) delete TALKED[k];
+        PICK_SHRINE = !!(d && d.area === 'shrine');
+        this.menu = null;
+        this.scene.restart({});
+        return true;
+      }
+      if (hit(r.copy) && d) {
+        const to = [1, 2, 3].find(k => !readSlot(k));
+        if (!to) this.menu.msg = '沒有空欄位，先清除一格';
+        else { try { localStorage.setItem(slotKey(to), JSON.stringify(d)); this.menu.msg = '欄位 ' + r.k + ' 已複製到欄位 ' + to; } catch (e) { this.menu.msg = '複製失敗'; } }
+        this.menu.confirm = 0; return true;
+      }
+      if (hit(r.del) && d) {
+        if (this.menu.confirm !== r.k) { this.menu.confirm = r.k; this.menu.msg = '再按一次「確定？」清除欄位 ' + r.k; return true; }
+        try { localStorage.removeItem(slotKey(r.k)); } catch (e) {}
+        this.menu.confirm = 0; this.menu.msg = '欄位 ' + r.k + ' 已清除';
+        return true;
+      }
+    }
+    this.menu.confirm = 0;
     return true;
   }
   closeMenu() {
     MENU_DONE = true; this.menu = null;
-    for (const o of [this.menuGfx, this.menuTitle, this.menuSub, this.menuBtn1, this.menuBtn2]) o.destroy();
+    for (const o of [this.menuGfx, this.menuTitle, this.menuSub, this.menuNote]) o.destroy();
+    for (const r of this.menuRows) { r.main.destroy(); r.copy.destroy(); r.del.destroy(); }
     this.menuGfx = null;
   }
 
@@ -2232,7 +2292,7 @@ class VillageScene extends Phaser.Scene {
 
   saveGrowth() {
     try {
-      const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz };
+      const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz, ts: Date.now() };
       o.story = STORY;
       if (SAVED) { o.area = SAVED.area; o.prog = SAVED.prog; o.at = SAVED.at; }
       localStorage.setItem(SAVE_KEY, JSON.stringify(o));
