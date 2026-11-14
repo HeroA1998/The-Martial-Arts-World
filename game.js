@@ -5,7 +5,7 @@ let MAP_W = 460, MAP_H = 1120;   // 目前區域的大小（切換區域時改�
 const AREAS = {
   forest: { w: 460, h: 1120, bg: '#16201a', name: '森林小道' },
   town:   { w: 1400, h: 420,  bg: '#1c1a16', name: '鎮內' },
-  field:  { w: 760, h: 1000, bg: '#16201a', name: '幽州 · 討黃巾' },
+  field:  { w: 760, h: 1000, bg: '#16201a', name: '大興山' },   // 第 2 章：隨鄒靖討程遠志
   outskirts: { w: 460, h: 760, bg: '#16201a', name: '涿縣城外' },   // 第 1 章開場：新手戰
   peach:  { w: 460, h: 560, bg: '#16201a', name: '桃園' },          // 第 1 章：桃園結義
 };
@@ -117,12 +117,12 @@ const FIELD_SPAWNS = [-170, -150, -130, -110, -90, -70, -50, -30, -10, 10, 30, 1
 });
 // 戰場生成器：同時活躍的敵人有上限（手機效能保證），其餘在待命隊列，有人倒下或時間到才補入
 const FIELD_BATTLE = {
-  name: '幽州 · 討黃巾',
-  cap: 12,            // 同時在場上的敵人上限
-  startActive: 6,     // 開戰時先上幾個
-  rampMs: 5000,       // 之後每隔這麼久，場上人數上限 +1，直到 cap
-  gapMs: 700,         // 兩個敵人現身至少隔這麼久
-  roster: [].concat(Array(8).fill('turban'), ['bandit'], Array(12).fill('turban'), ['bandit']),   // 出場順序（共 22）
+  name: '大興山 · 討黃巾',
+  cap: 4,             // 同時在場上的敵人上限（v0.21：貴精不貴多，從 12 降到 4）
+  startActive: 2,     // 開戰時先上幾個
+  rampMs: 9000,       // 之後每隔這麼久，場上人數上限 +1，直到 cap
+  gapMs: 900,         // 兩個敵人現身至少隔這麼久
+  roster: ['turban', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytcaptain'],   // 出場順序（共 10，最後是黃巾頭目）
 };
 const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
@@ -135,7 +135,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.20.0';   // 每次更新請加一
+const VERSION = 'v0.21.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -182,7 +182,7 @@ const STAT_KEYS = ['hp', 'sta', 'atk', 'def'];
 const MAX_LV = 1 + STAT_KEYS.length * STAT_CAP;
 const xpNeed = lv => 50 * lv;
 // 擊殺經驗：基礎值 × 敵人等級；玩家等級 ≥ 敵人等級 + 10 時，只剩 25%。整場戰鬥結束才結算
-const KILL_XP = { robber: 10, turban: 8, ytelite: 22, hansoldier: 25, hangeneral: 60, bandit: 120 };
+const KILL_XP = { ytcaptain: 120, robber: 10, turban: 8, ytelite: 22, hansoldier: 25, hangeneral: 60, bandit: 120 };
 const CHAPTER_XP = [13860, 13860, 13860, 13860, 13860, 13860, 13860];   // 章節固定經驗（劇情結算時才發，尚未接上）
 const STAT_NAMES = { hp: '生命力', sta: '氣力', atk: '攻擊力', def: '防禦力' };
 const statMaxHp = p => 100 + 3 * p;
@@ -211,6 +211,14 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
             '前幾天有個貨郎說，林子裡的賊人不只一夥，還有個領頭的，使一手好刀。',
             '要出去的話，先到祠堂拜一拜，補足精神再走。'],
     story: {
+      shared: { lines: ['鄒校尉派人把賞錢分給鄉親，我家也領了幾枚。', '小兄弟，這份情，鎮上的人都記得。'],
+                chat: ['拿那幾枚錢買了半斗米，孩子總算吃了頓飽的。', '你要跟劉縣尉去安喜？路上保重。'] },
+      merit: { lines: ['劉玄德做了安喜縣尉？咱們涿縣也出了個官。', '你也跟著去？好，男兒就該往外走。'],
+               chat: ['大興山那一仗，鎮上傳得神乎其神。', '安喜在中山國，路不近，多備些藥。'] },
+      xing: { lines: ['大興山打贏了？五萬黃巾，就這麼散了……', '快去見鄒校尉吧，他就在大街上等著論功。'],
+              chat: ['聽說關二爺一刀就斬了賊將。', '這仗打完，林子裡總算清靜了。'] },
+      zou: { lines: ['鄒校尉的兵馬進鎮了。聽說要去打大興山的程遠志。', '準備好了，就出東門。'],
+             chat: ['五萬黃巾……我守門五年，沒見過這麼多人。', '出門前到祠堂拜一拜。'] },
       gen: { lines: ['你從林子裡回來了？聽說那個穿官軍衣甲的，被你打倒了。',
                      '他是個逃兵，仗著官軍的名頭在路上搶掠，比黃巾還可惡。',
                      '前面還有賊首，千萬小心。'],
@@ -231,6 +239,16 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
             '祠堂在大街正中。進去參拜，能把身子骨練得更結實。',
             '藥壺用完也別慌，拜過祠堂就會補滿。'],
     story: {
+      shared: { lines: ['年輕人，賞錢你一枚都沒留？', '……好孩子。這世道，肯把錢分出去的人不多了。'],
+                chat: ['我拿那幾枚錢，給祠堂添了一炷香，替你祈個平安。', '去安喜的路上，別忘了自己也要吃飯。'] },
+      merit: { lines: ['劉玄德當了縣尉？那個賣草鞋的年輕人……真有出息。', '你跟著他，好好幹。'],
+               chat: ['做了官，就別忘了百姓。替我這樣跟他說。', '年輕人，路上小心。'] },
+      freed: { lines: ['聽說你在大興山放走了一個黃巾少年？', '黃巾多半也是窮苦人，你做得對。'],
+               chat: ['但願那孩子回得了家。', '刀放下了，人就還能活。'] },
+      xing: { lines: ['大興山的黃巾散了？謝天謝地。', '那些被裹挾去的人，不知道還有幾個能回家。'],
+              chat: ['仗打完了，地總要有人種。', '鄒校尉在大街上等你們論功。'] },
+      zou: { lines: ['官軍進鎮了……年輕人，你也要去打仗？', '刀槍無眼，自己當心。'],
+             chat: ['上了戰場，看清楚誰是真要你的命。', '活著回來就好。'] },
       gen: { lines: ['聽說你在林子裡打倒了一個逃兵？', '官差收我們的糧，逃兵搶我們的路……這世道，誰來管管。'],
              chat: ['你去過林子，應該明白，百姓要的不過是一口飯吃。', '年輕人，別被刀劍迷了眼。'] },
       boss: { lines: ['你替鄉親們除了一大害。', '鎮門口那三位英雄在等你。年輕人，跟著他們，是條正路。'],
@@ -245,6 +263,10 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
     lines: ['客官，要買點傷藥還是丹藥？',
             '金創藥止血療傷，行氣丹提振氣力，都是我親手配的。'],
     story: {
+      merit: { lines: ['客官要跟劉縣尉去安喜？那可得多備點藥。', '遠行的貨，我都給你挑好的。'],
+               chat: ['安喜那邊的藥材貴，在這裡買划算。', '客官一路順風。'] },
+      xing: { lines: ['大興山打贏了！客官，這下商路真的通了。'], chat: ['仗打贏了，生意也好做了。', '傷藥要不要補一些？'] },
+      zou: { lines: ['要去大興山？那邊五萬黃巾，傷藥多帶幾帖。'], chat: ['打仗最缺的就是藥。', '行氣丹也帶上，打久了喘不過氣。'] },
       gen: { lines: ['客官從林子回來了？連官軍裝束的逃兵都被你打倒，真不得了。', '要補貨就說一聲。'],
              chat: ['聽說客官在林子裡立了大功，我這小店也沾光。', '傷藥備足再走，前頭凶險。'] },
       boss: { lines: ['黃巾的渠帥倒了？客官，這回我的貨路可以通了。', '今天的藥照舊價錢，算是我的心意。'],
@@ -270,6 +292,21 @@ const NPCS = [   // look＝外觀（assets/characters/npc_<look>_walk_*.png）�
   { id: 'liubei', name: '劉備', x: 1210, y: 300, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'guanyu', name: '關羽', x: 1172, y: 278, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
   { id: 'zhangfei', name: '張飛', x: 1172, y: 324, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'meet', lines: [], when: () => STORY.boss && !STORY.met },
+  // ---- 第 2 章：校尉鄒靖（暫用官軍武將圖）、劉關張在鎮東大街；出兵前（zou）與論功（merit）用同一組站位 ----
+  { id: 'zoujing', name: '校尉 鄒靖', x: 1120, y: 282, walkTex: 'hangeneral', h: Math.round(HERO_H * 1.1), face: 'left', showName: true, scene: 'zou', lines: [],
+    after: '明日出兵，出鎮東門往大興山。', when: () => STORY.met && !STORY.xing },
+  { id: 'zoujing2', name: '校尉 鄒靖', x: 1120, y: 282, walkTex: 'hangeneral', h: Math.round(HERO_H * 1.1), face: 'left', showName: true, scene: 'merit', auto: true, lines: [],
+    after: '玄德公赴任之後，涿郡這邊有我。', when: () => STORY.xing },
+  { id: 'zj_soldier', name: '官軍', x: 1150, y: 280, walkTex: 'hansoldier', h: HERO_H, face: 'left', showName: true,
+    lines: ['奉鄒校尉之命，來涿縣招兵。'], chat: ['校尉治軍嚴，不許擾民。', '你是劉玄德帶來的人？看起來有兩下子。'],
+    story: { xing: { lines: ['大興山一戰，劉玄德的鄉勇打得比我們還凶。'], chat: ['降卒都送去屯田了，校尉說不能濫殺。', '安喜縣尉……劉玄德這下出頭了。'] } },
+    when: () => STORY.met },
+  { id: 'liubei2', name: '劉備', x: 1090, y: 314, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'zou', lines: [], after: '程遠志兵多，我們更要小心。', when: () => STORY.met && !STORY.xing },
+  { id: 'guanyu2', name: '關羽', x: 1064, y: 300, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'zou', lines: [], after: '刀已磨好，隨時可以出發。', when: () => STORY.met && !STORY.xing },
+  { id: 'zhangfei2', name: '張飛', x: 1064, y: 326, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'zou', lines: [], after: '俺的蛇矛等不及了！', when: () => STORY.met && !STORY.xing },
+  { id: 'liubei3', name: '劉備', x: 1090, y: 314, look: 'scholar', face: 'right', tint: 0xdff0d8, showName: true, scene: 'merit', lines: [], after: '收拾好行李，我們一同往安喜。', when: () => STORY.xing },
+  { id: 'guanyu3', name: '關羽', x: 1064, y: 300, look: 'smith', face: 'right', tint: 0xcfe8c8, showName: true, scene: 'merit', lines: [], after: '縣尉雖小，也是百姓的父母官。', when: () => STORY.xing },
+  { id: 'zhangfei3', name: '張飛', x: 1064, y: 326, look: 'porter', face: 'right', tint: 0x9c9aa8, showName: true, scene: 'merit', lines: [], after: '縣尉就縣尉！總有一天，大哥做大官！', when: () => STORY.xing },
 ];
 // ---------- 第 1 章劇情（涿縣，中平元年） ----------
 // 每句：[說話者, 內容]。主角是無名少年，說話者寫「你」
@@ -328,11 +365,91 @@ const STORY_MEET = [
   ['你', '願意。'],
   ['劉備', '好！那便一同啟程。'],
 ];
+// ---------- 第 2 章劇情（隨校尉鄒靖討黃巾）----------
+// 抉擇：{ who, ask, key, opts: [{ id, t, set, give, rows }] }。選了寫進 STORY[key]＝id（加上 set 裡的旗標），give：拿到道具或五銖，rows：接著播的對話
+// 條件段落：{ when: () => 條件, rows: [...] }，開場時就決定要不要播
+const STORY_ZOU = [
+  ['鄒靖', '你就是那位單人除掉林中賊首的小兄弟？我是校尉鄒靖。'],
+  ['劉備', '校尉，這位小兄弟是桃園結義的見證人，也是我們兄弟的朋友。'],
+  ['鄒靖', '好。賊將程遠志領兵五萬，屯在大興山，離涿縣不遠。我們連同玄德公的鄉勇，不到五千。'],
+  ['張飛', '怕什麼！趁他們還沒站穩，殺過去就是！'],
+  ['關羽', '賊眾我寡，不如先探清虛實，再找他的破綻。'],
+  { who: '劉備', ask: '小兄弟，你看呢？', key: 'c2plan', opts: [
+    { id: 'atk', t: '三將軍說得對，先發制人', give: { xq: 2 }, rows: [
+      ['張飛', '哈！這小子懂俺！這兩顆行氣丹給你，打起來別喘不過氣！'],
+      ['關羽', '……也罷。兵貴神速。'] ] },
+    { id: 'scout', t: '二將軍說得對，先探虛實', give: { jc: 2 }, rows: [
+      ['關羽', '小兄弟沉得住氣。'],
+      ['鄒靖', '我派斥候隨你們去。這兩帖金創藥，你拿著。'],
+      ['張飛', '哼，探就探，反正最後還是要打！'] ] },
+  ] },
+  ['鄒靖', '明日出兵。出鎮東門，往大興山。'],
+];
+const STORY_XING = [
+  { when: () => STORY.c2plan === 'scout', rows: [['你', '（斥候探明了賊營的空隙。我們從側面殺進去，黃巾陣腳大亂。）']] },
+  { when: () => STORY.c2plan === 'atk', rows: [['張飛', '痛快！趁他們還沒站穩，一口氣殺穿了！']] },
+  ['你', '（山坡上，賊將程遠志拍馬而出。二將軍舞刀迎上，一刀便將他斬於馬下。）'],
+  ['你', '（副將鄧茂挺槍來救，被三將軍一矛刺穿。黃巾兵見主將已死，四散奔逃。）'],
+  ['黃巾少年', '別、別殺我……我是被他們抓來的，家裡還有老娘……'],
+  { who: '你', ask: '（他手裡的刀已經扔在地上。）', key: 'c2mercy', opts: [
+    { id: 'free', t: '放他走', set: { freed: true }, rows: [
+      ['你', '走吧，回家去，別再拿刀了。'],
+      ['黃巾少年', '……多謝、多謝！'] ] },
+    { id: 'hold', t: '押回營中', rows: [
+      ['你', '跟我回營。鄒校尉不殺降卒，你會有口飯吃。'],
+      ['黃巾少年', '……是。'] ] },
+  ] },
+  ['劉備', '賊勢已破。回涿縣，向鄒校尉覆命。'],
+];
+const STORY_MERIT = [
+  ['鄒靖', '大興山一戰，斬賊將程遠志、鄧茂，賊眾潰散。玄德公兄弟，功勞第一。'],
+  ['鄒靖', '我已上表朝廷。玄德公，你除安喜縣尉。'],
+  ['劉備', '謝校尉提拔。'],
+  ['張飛', '才一個縣尉……'],
+  ['關羽', '三弟，慎言。'],
+  ['你', '（一個在涿縣賣草鞋的人，從今天起做了官。我在一旁看著，心裡明白：這只是開始。）'],
+  { when: () => STORY.c2mercy === 'hold', rows: [['鄒靖', '你押回來的那個少年，我讓他去屯田了。降卒能活，百姓才肯歸心。']] },
+  { when: () => STORY.c2mercy === 'free', rows: [['劉備', '聽說你在山上放走了一個黃巾少年。……仁者之心，我記下了。']] },
+  ['鄒靖', '小兄弟也立了功。這三十枚五銖，是你的賞錢。'],
+  { who: '你', ask: '（三十枚五銖。）', key: 'c2reward', opts: [
+    { id: 'take', t: '收下', give: { wz: 30 }, rows: [['你', '多謝校尉。']] },
+    { id: 'share', t: '分給鎮上鄉親', set: { shared: true }, rows: [
+      ['你', '鎮上的糧，今年被收走了一半。這錢，請分給鄉親吧。'],
+      ['鄒靖', '……好。我派人去辦。'] ] },
+  ] },
+  ['劉備', '安喜縣在中山國。小兄弟，隨我們一同赴任吧。'],
+  ['你', '好。'],
+];
+// 見聞錄：依劇情旗標與抉擇，記下主角親眼所見（存檔裡只有旗標，見聞每次重新組出來）
+function journalEntries() {
+  const S = STORY, E = [];
+  const add = (ch, ok, t) => { if (ok) E.push([ch, t]); };
+  add(1, S.intro, '中平元年，黃巾起事。家裡的田被搶，我往涿縣投軍。');
+  add(1, S.robber, '城外救下一個被黃巾兵搶劫的老農。');
+  add(1, S.guan, '城中遇見關羽，字雲長。他邀我為結義作見證。');
+  add(1, S.oath, '桃園裡，劉備、關羽、張飛焚香結為兄弟。我是見證人。');
+  add(1, S.gen, '林道上打倒一個冒充官軍的逃兵。亂世裡，一身衣甲說明不了什麼。');
+  add(1, S.boss, '黃巾渠帥倒下前說，他們也是活不下去。');
+  add(1, S.met, '劉備募得五百鄉勇，要投校尉鄒靖。我決定同去。');
+  add(2, S.zou, '見到校尉鄒靖。賊將程遠志領兵五萬，屯在大興山。');
+  add(2, S.c2plan === 'atk', '我主張趁賊未穩先攻，三將軍大笑。');
+  add(2, S.c2plan === 'scout', '我主張先探虛實，二將軍點頭。');
+  add(2, S.xing, '大興山一戰。關羽斬程遠志，張飛刺鄧茂，黃巾大潰。');
+  add(2, S.c2mercy === 'free', '我放走了一個被裹挾的黃巾少年。');
+  add(2, S.c2mercy === 'hold', '我把一個黃巾少年押回營中，交給鄒校尉。');
+  add(2, S.merit, '劉備因功除安喜縣尉。');
+  add(2, S.c2reward === 'take', '鄒校尉的三十枚五銖，我收下了。');
+  add(2, S.c2reward === 'share', '鄒校尉的賞錢，我請他分給了鎮上的鄉親。');
+  return E;
+}
+const CH_NAMES = { 1: '第一章　涿縣', 2: '第二章　大興山' };
 // 劇情場景：NPC 的 scene 欄位對應這裡。flag＝看完後設的旗標；after＝看過之後再對話說的話；banner＝看完跳出的提示
 const STORY_SCENES = {
   guan: { flag: 'guan', script: STORY_GUAN, after: '出城東門便是桃園，我們在那裡等你。', banner: '出鎮東門，前往桃園' },
   oath: { flag: 'oath', script: STORY_OATH, after: '林道的賊首，就拜託你了。', banner: '桃園結義\n出鎮東門，往林道討賊' },
   meet: { flag: 'met', script: STORY_MEET, after: '走吧，路上慢慢說。', banner: '第一章　完\n隨劉備三兄弟，投校尉鄒靖' },
+  zou: { flag: 'zou', script: STORY_ZOU, after: '明日出兵，出鎮東門往大興山。', banner: '第二章　大興山\n出鎮東門，前往大興山' },
+  merit: { flag: 'merit', script: STORY_MERIT, after: '收拾好行李，我們一同往安喜。', banner: '第二章　完\n劉備除安喜縣尉' },
 };
 const TALKED = {};   // 本次遊戲已經跟哪些 NPC 說過話（第一次說完整對話，之後隨機閒話）
 // ---------- 分層路人：基礎人偶＋零件（淺灰單色），執行時染色、疊合 ----------
@@ -364,7 +481,7 @@ const PED_DIRS = ['front', 'back', 'side'];
 const PED_KEYED = {};   // 去洋紅後的零件圖快取（跨場景重啟共用）
 // 貨幣「五銖」：平常不顯示，只在商店裡顯示；敵人倒下固定掉落一小袋
 // 五銖掉落：[機率, 最少, 最多]，數量在範圍內隨機
-const WZ_DROP = { robber: [0.8, 2, 3], turban: [0.4, 1, 1], ytelite: [0.55, 2, 3], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
+const WZ_DROP = { ytcaptain: [0.8, 8, 12], robber: [0.8, 2, 3], turban: [0.4, 1, 1], ytelite: [0.55, 2, 3], hansoldier: [0.6, 2, 4], hangeneral: [0.7, 4, 7], bandit: [0.8, 8, 12] };
 const SHRINE_POS = { x: 700, y: 268 };        // 祠堂底邊中心（台階前緣），在大街北側正中
 // ---------- 背包與道具 ----------
 const FLASK_MAX = 3;                    // 藥壺容量與初始數量，參拜祠堂補滿
@@ -386,12 +503,13 @@ const DROPS = {
   hansoldier: [['jc', 0.15], ['xq', 0.05]],
   hangeneral: [['jc', 0.45], ['xq', 0.15]],
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
+  ytcaptain: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
 const SAVE_KEY = 'dajianghu_save_v1';   // 沿用舊 key，舊存檔直接能讀
 const SAVE_VER = 2;                    // 存檔格式版本（日後改格式才能遷移）
 let SAVED = null;                      // 最後一次在祠堂存的檔：{ area, prog:{enc:[]}, at }
 let PROG = { enc: [] };                // 目前的世界進度（切換區域時保留）：森林各遭遇是否已打倒
-let STORY = {};                        // 劇情旗標（只增不減，自動存）：intro 開場看過、gen 官軍武將倒下、boss 渠帥倒下、met 遇見劉關張
+let STORY = {};                        // 劇情旗標（只增不減，自動存）：intro 開場看過、gen 官軍武將倒下、boss 渠帥倒下、met 遇見劉關張；第 2 章 zou 見鄒靖、xing 大興山勝、merit 論功；抉擇存成字串（c2plan、c2mercy、c2reward）
 let SAVE_META_READY = false, MENU_DONE = false;
 function readSave() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
 // 黑魂式翻滾：固定短距離、方向鎖定、先快後慢、前段無敵、後段收招有破綻
@@ -534,6 +652,8 @@ ENEMY_TYPES.hangeneral = Object.assign({}, ENEMY_TYPES.bandit, {
   tex: 'hangeneral', walkTex: 'hangeneral', standTex: 'hangeneral', animTex: 'hangeneral',
   name: '官軍武將', showName: true, hp: 38,
 });
+// 大興山的黃巾頭目：數值與黃巾渠帥相同，只換名字（程遠志、鄧茂由關羽、張飛斬殺，主角只是見證）
+ENEMY_TYPES.ytcaptain = Object.assign({}, ENEMY_TYPES.bandit, { name: '黃巾頭目' });
 const REACT_DELAY = 100;      // 防禦/閃避生效前的小動作（提示）
 const GUARD_FRONT = 0.3;      // 攻擊來自防禦方向的內積門檻，側面與背後擋不到
 const DODGE_DUR = 240, DODGE_DIST = 46;   // 敵人後閃：距離拉長一點，才看得出來
@@ -1075,6 +1195,7 @@ class VillageScene extends Phaser.Scene {
     this.input.keyboard.on('keyup-Q', () => { this.keyGuard = false; });
     this.input.keyboard.on('keydown-F', () => this.talkKey());
     this.input.keyboard.on('keydown-ENTER', () => this.talkKey());
+    ['ONE', 'TWO', 'THREE'].forEach((n, k) => this.input.keyboard.on('keydown-' + n, () => this.pickChoice(k)));
     this.input.on('pointerdown', p => {
       if (this.menuPointer(p)) return;
       if (this.invPointer(p)) return;
@@ -2178,7 +2299,7 @@ class VillageScene extends Phaser.Scene {
         if (!this.exitMsgAt || this.nowT - this.exitMsgAt > 3000) { this.exitMsgAt = this.nowT; this.banner(e.msg || '還不能離開', 1600); }
         continue;
       }
-      if (px >= e.x0 && px <= e.x1 && py >= e.y0 && py <= e.y1) { this.gotoArea(e.to, e.spawn, e.facing); return; }
+      if (px >= e.x0 && px <= e.x1 && py >= e.y0 && py <= e.y1) { const R = e.route ? e.route() : e; this.gotoArea(R.to, R.spawn, e.facing); return; }
     }
   }
 
@@ -2288,7 +2409,9 @@ class VillageScene extends Phaser.Scene {
     gt.fillStyle(0x6a4a30, 1); gt.fillRect(W - 26, gy0 - 8, 22, 12); gt.fillRect(W - 26, gy1 - 4, 22, 12);
     gt.fillStyle(0x3c4042, 1); gt.fillRect(W - 30, gy0 - 14, 30, 8); gt.fillRect(W - 30, gy1 + 6, 30, 8);
     this.block(W - 26, gy0 - 8, W, gy0 + 4); this.block(W - 26, gy1 - 4, W, gy1 + 8);
-    this.exits.push({ x0: W - 34, x1: W + 6, y0: gy0 + 2, y1: gy1 - 2, to: STORY.oath ? 'forest' : 'peach', spawn: STORY.oath ? { x: START.x, y: START.y } : { x: PEACH_START.x, y: PEACH_START.y }, facing: 'up' });   // 結義之前東門通往桃園，之後通往林道
+    // 東門通往哪裡，走到門口那一刻才決定（劇情在鎮內推進後不用重進）：結義前→桃園；見過鄒靖、還沒打大興山→大興山；其餘→林道
+    const gateTo = () => !STORY.oath ? 'peach' : (STORY.zou && !STORY.xing) ? 'field' : 'forest';
+    this.exits.push({ x0: W - 34, x1: W + 6, y0: gy0 + 2, y1: gy1 - 2, route: () => { const to = gateTo(), sp = { peach: PEACH_START, field: FIELD_START, forest: START }[to]; return { to, spawn: { x: sp.x, y: sp.y } }; }, facing: 'up' });
     // 大街上下兩側整片擋住，只有大街可走（祠堂門口除外）
     this.block(14, 22, W - 14, top - 2); this.block(14, bot + 2, W - 14, BOT);
 
@@ -2540,21 +2663,42 @@ class VillageScene extends Phaser.Scene {
     for (const d of NPCS) {
       if ((d.area || 'town') !== this.area) continue;
       if (d.when && !d.when()) continue;   // 劇情角色：到了該出現的時候才站在鎮上
-      const key = 'npcw_' + d.look + '_side_1';   // 站姿：取側面走路圖的中立那一格，依 face 決定朝向
+      const key = this.npcKey(d, 'side');   // 站姿：取側面走路圖的中立那一格，依 face 決定朝向
       const sprite = this.add.image(d.x, d.y, key).setOrigin(0.5, 1).setDepth(d.y).setFlipX(d.face === 'left');
       const sh = this.add.ellipse(d.x, d.y - 1, 22, 8, 0x000000, 0.35).setDepth(d.y - 1);
       this.world.push(sprite); this.world.push(sh);
-      this.block(d.x - 8, d.y - 6, d.x + 8, d.y + 2);
-      const tex = this.textures.get(key).getSourceImage(), k = HERO_H / this.textures.get('hero_walk_side_0').getSourceImage().height;
-      sprite.setDisplaySize(tex.width * k, tex.height * k);
+      const zone = this.add.zone(d.x, d.y - 2, 16, 8); this.physics.add.existing(zone, true); this.obstacles.add(zone);
+      this.sizeNpc(sprite, d, 'side');
       if (d.tint) sprite.setTint(d.tint);
       let tag = null;
       if (d.showName) {   // 頭上顯示名字
-        tag = this.add.text(d.x, d.y - HERO_H - 4, d.name, { fontFamily: 'system-ui, sans-serif', fontSize: '6px', color: '#f0d890', stroke: '#000000', strokeThickness: 2, resolution: 4 }).setOrigin(0.5, 1).setDepth(d.y + 1);
+        tag = this.add.text(d.x, d.y - (d.h || HERO_H) - 4, d.name, { fontFamily: 'system-ui, sans-serif', fontSize: '6px', color: '#f0d890', stroke: '#000000', strokeThickness: 2, resolution: 4 }).setOrigin(0.5, 1).setDepth(d.y + 1);
         this.world.push(tag);
       }
-      this.npcs.push(Object.assign({ sprite, tag }, d));
+      this.npcs.push(Object.assign({ sprite, tag, sh, zone }, d));
     }
+  }
+  // NPC 圖：一般路人用 npcw_<look>；借用敵人走路圖的（例如鄒靖用官軍武將圖）用 <walkTex>_walk
+  npcKey(d, dir) { return d.walkTex ? d.walkTex + '_walk_' + dir + '_1' : 'npcw_' + d.look + '_' + dir + '_1'; }
+  sizeNpc(sprite, d, dir) {
+    const key = this.npcKey(d, dir), nt = this.textures.get(key).getSourceImage();
+    if (sprite.texture.key !== key) sprite.setTexture(key);
+    if (d.walkTex) { sprite.setDisplaySize((d.h || HERO_H) * nt.width / nt.height, d.h || HERO_H); return; }
+    const ks = HERO_H / this.textures.get('hero_walk_' + dir + '_0').getSourceImage().height;
+    sprite.setDisplaySize(nt.width * ks, nt.height * ks);
+  }
+  // 劇情推進後，當場換一批 NPC（短暫黑幕，不用重進區域）
+  refreshNpcs() {
+    const cam = this.cameras.main;
+    cam.fadeOut(220, 0, 0, 0);
+    this.time.delayedCall(240, () => {
+      for (const n of this.npcs) { n.sprite.destroy(); n.sh.destroy(); if (n.tag) n.tag.destroy(); n.zone.destroy(); }
+      this.npcs = [];
+      const before = this.world.length;
+      this.buildNpcs();
+      this.uiCam.ignore(this.world.slice(before));
+      cam.fadeIn(260, 0, 0, 0);
+    });
   }
 
   // ---------- 分層路人 ----------
@@ -2688,6 +2832,7 @@ class VillageScene extends Phaser.Scene {
     this.dlgName = mk(this.add.text(0, 0, '', tx(15, '#f0d890')).setDepth(1301).setVisible(false));
     this.dlgBody = mk(this.add.text(0, 0, '', tx(15, '#e6f0dc', 2)).setDepth(1301).setVisible(false));
     this.dlgHint = mk(this.add.text(0, 0, '點一下繼續', tx(11, '#a8b8a0', 2)).setOrigin(1, 1).setDepth(1301).setVisible(false));
+    this.choiceTexts = [0, 1, 2].map(() => mk(this.add.text(0, 0, '', tx(15, '#f0e6c8', 2)).setOrigin(0.5).setDepth(1301).setVisible(false)));
   }
 
   // 劇情節點：第一次達成時播一段（旗標只增不減，重打不會重播）
@@ -2709,7 +2854,8 @@ class VillageScene extends Phaser.Scene {
   // 播一段劇情（每句 [說話者, 內容]），播完呼叫 onDone
   openScene(script, onDone) {
     if (this.dlg || this.transitioning || this.down) return false;
-    this.dlg = { npc: { name: '' }, i: 0, lines: script.map(r => r[1]), names: script.map(r => r[0]), onDone };
+    const flat = rs => [].concat(...rs.map(r => (r && r.rows && !r.opts) ? (r.when() ? flat(r.rows) : []) : [r]));   // 條件段落在開場時展開
+    this.dlg = { npc: { name: '' }, i: 0, rows: flat(script), onDone };
     this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
     return true;
   }
@@ -2717,15 +2863,15 @@ class VillageScene extends Phaser.Scene {
   // 劇情推進到哪一步，NPC 就換哪一組對話
   npcVersion(npc) {
     const st = npc.story;
-    if (st) for (const k of ['met', 'boss', 'gen', 'oath', 'guan', 'robber']) if (STORY[k] && st[k]) return { key: k, v: st[k] };
+    if (st) for (const k of ['shared', 'merit', 'freed', 'xing', 'zou', 'met', 'boss', 'gen', 'oath', 'guan', 'robber']) if (STORY[k] && st[k]) return { key: k, v: st[k] };
     return { key: '', v: npc };
   }
 
   openDialog(npc) {
     const SC = STORY_SCENES[npc.scene];
     if (SC) {
-      if (STORY[SC.flag]) { this.openScene([[npc.name, SC.after]]); return; }
-      this.openScene(SC.script, () => { STORY[SC.flag] = true; this.saveGrowth(); if (SC.banner) this.banner(SC.banner, 4200); });
+      if (STORY[SC.flag]) { this.openScene([[npc.name, npc.after || SC.after]]); return; }
+      this.openScene(SC.script, () => { STORY[SC.flag] = true; this.saveGrowth(); if (SC.banner) this.banner(SC.banner, 4200); if (this.area === 'town') this.refreshNpcs(); });
       return;
     }
     const ver = this.npcVersion(npc), tk = npc.id + ':' + ver.key;
@@ -2740,10 +2886,48 @@ class VillageScene extends Phaser.Scene {
     this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
   }
 
+  dlgLen(d) { return d.rows ? d.rows.length : d.lines.length; }
+  dlgRow(d) {
+    if (!d.rows) return { name: d.npc.name, text: d.lines[d.i] };
+    const r = d.rows[d.i];
+    return r.opts ? { name: r.who, text: r.ask, choice: r } : { name: r[0], text: r[1] };
+  }
+  // 抉擇按鈕的位置（對話框上方，由上往下排）
+  choiceRects(n) {
+    const W = this.scale.width, H = this.scale.height, bw = Math.min(W - 40, 320), bh = 42, gap = 10, by = H - 118 - 16;
+    return Array.from({ length: n }, (_, i) => ({ x: (W - bw) / 2, y: by - (n - i) * (bh + gap), w: bw, h: bh }));
+  }
+  pickChoice(k) {
+    const d = this.dlg, row = d && this.dlgRow(d), C = row && row.choice;
+    if (!C || !C.opts[k]) return;
+    const o = C.opts[k];
+    STORY[C.key] = o.id; if (o.set) Object.assign(STORY, o.set);
+    const got = [];
+    if (o.give) for (const id of Object.keys(o.give)) {
+      if (id === 'wz') { this.wz += o.give.wz; got.push(o.give.wz + ' 五銖'); }
+      else { this.inv[id] = (this.inv[id] || 0) + o.give[id]; got.push(ITEMS[id].name + ' ×' + o.give[id]); }
+    }
+    this.saveGrowth();
+    if (got.length) this.banner('獲得 ' + got.join('、'), 2200);
+    d.rows.splice(d.i + 1, 0, ...(o.rows || []));
+    this.advanceDialog();
+  }
+
+  // 見聞錄：每頁兩則，用對話框一頁一頁翻
+  openJournal() {
+    const E = journalEntries(), pages = [];
+    if (!E.length) pages.push(['見聞錄', '還沒有什麼見聞。']);
+    for (const ch of [...new Set(E.map(e => e[0]))]) {
+      const L = E.filter(e => e[0] === ch).map(e => '・' + e[1]);
+      for (let i = 0; i < L.length; i += 2) pages.push(['見聞錄　' + (CH_NAMES[ch] || ('第' + ch + '章')), L.slice(i, i + 2).join('\n')]);
+    }
+    this.openScene(pages);
+  }
+
   advanceDialog() {
     if (!this.dlg) return;
     this.dlg.i++;
-    if (this.dlg.i >= this.dlg.lines.length) {
+    if (this.dlg.i >= this.dlgLen(this.dlg)) {
       const n = this.dlg.npc, done = this.dlg.onDone; this.dlg = null;
       if (done) done();
       else if (n.shop) this.openShop(n);
@@ -2751,13 +2935,20 @@ class VillageScene extends Phaser.Scene {
   }
 
   talkKey() {
-    if (this.dlg) { this.advanceDialog(); return; }
+    if (this.dlg) { if (!this.dlgRow(this.dlg).choice) this.advanceDialog(); return; }
     if (this.canTalk()) this.openDialog(this.nearNpc());
   }
 
   // 回傳 true 表示這次點擊被對話吃掉
   dlgPointer(p) {
-    if (this.dlg) { this.advanceDialog(); return true; }
+    if (this.dlg) {
+      const row = this.dlgRow(this.dlg);
+      if (row.choice) {   // 抉擇：只有點到選項才算，點別處不會跳過
+        this.choiceRects(row.choice.opts.length).forEach((r, k) => { if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) this.pickChoice(k); });
+        return true;
+      }
+      this.advanceDialog(); return true;
+    }
     const r = this.talkRect();
     if (this.canTalk() && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openDialog(this.nearNpc()); return true; }
     return false;
@@ -2778,10 +2969,7 @@ class VillageScene extends Phaser.Scene {
         if (Math.abs(dx) > Math.abs(dy) * 1.25) { dir = 'side'; flip = dx < 0; }
         else dir = dy < 0 ? 'back' : 'front';
       } else if (n.face) { dir = 'side'; }
-      const nk = 'npcw_' + n.look + '_' + dir + '_1', nt = this.textures.get(nk).getSourceImage();
-      const ks = HERO_H / this.textures.get('hero_walk_' + dir + '_0').getSourceImage().height;
-      if (n.sprite.texture.key !== nk) n.sprite.setTexture(nk);
-      n.sprite.setDisplaySize(nt.width * ks, nt.height * ks);
+      this.sizeNpc(n.sprite, n, dir);
       n.sprite.setFlipX(dir === 'side' && flip);
     }
     // 劇情角色走近自動開口（例如鎮內的關羽）
@@ -2796,14 +2984,26 @@ class VillageScene extends Phaser.Scene {
     // 對話框
     const d = this.dlg;
     this.dlgName.setVisible(!!d); this.dlgBody.setVisible(!!d); this.dlgHint.setVisible(!!d);
-    if (!d) return;
+    if (!d) { for (const t of this.choiceTexts) t.setVisible(false); return; }
     const bw = Math.min(W - 20, 380), bh = 118, bx = (W - bw) / 2, by = H - bh - 16;
     g.fillStyle(0x000000, 0.35); g.fillRect(0, 0, W, H);
     g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(bx, by, bw, bh, 10);
     g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(bx, by, bw, bh, 10);
-    this.dlgName.setText(d.names ? d.names[d.i] : d.npc.name).setPosition(bx + 14, by + 10);
-    this.dlgBody.setText(d.lines[d.i]).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28, true);   // true＝中文也能自動換行
-    this.dlgHint.setText(d.i >= d.lines.length - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
+    const row = this.dlgRow(d);
+    this.dlgName.setText(row.name).setPosition(bx + 14, by + 10);
+    this.dlgBody.setText(row.text).setPosition(bx + 14, by + 36).setWordWrapWidth(bw - 28, true);   // true＝中文也能自動換行
+    this.dlgHint.setText(row.choice ? '請選擇' : d.i >= this.dlgLen(d) - 1 ? '點一下結束' : '點一下繼續').setPosition(bx + bw - 12, by + bh - 8);
+    // 抉擇按鈕
+    const opts = row.choice ? row.choice.opts : [];
+    if (opts.length) this.choiceRects(opts.length).forEach(r => {
+      g.fillStyle(0x2a3a2c, 0.97); g.fillRoundedRect(r.x, r.y, r.w, r.h, 8);
+      g.lineStyle(2, 0xd9b45a, 0.95); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 8);
+    });
+    this.choiceTexts.forEach((t, k) => {
+      if (k >= opts.length) { t.setVisible(false); return; }
+      const r = this.choiceRects(opts.length)[k];
+      t.setVisible(true).setText(opts[k].t).setPosition(r.x + r.w / 2, r.y + r.h / 2);
+    });
   }
 
   // ---------- 商店（五銖）----------
@@ -2894,6 +3094,7 @@ class VillageScene extends Phaser.Scene {
       use: mk(this.add.text(0, 0, '使用', tx(14, '#16201a', 0)).setOrigin(0.5)),
     }));
     this.invClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5));
+    this.invLog = mk(this.add.text(0, 0, '見聞', tx(16, '#16201a', 0)).setOrigin(0.5));
     this.invNote = mk(this.add.text(0, 0, '點道具名稱＝設為「藥」鍵快捷；戰鬥中只能用「藥」鍵', tx(11, '#a8b8a0')).setOrigin(0.5, 0));
     this.drops = [];
     this.dropGfx = this.add.graphics().setDepth(4000); this.world.push(this.dropGfx); this.uiCam.ignore(this.dropGfx);
@@ -2903,7 +3104,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   setInvVisible(v) {
-    this.invTitle.setVisible(v); this.invClose.setVisible(v); this.invNote.setVisible(v);
+    this.invTitle.setVisible(v); this.invClose.setVisible(v); this.invNote.setVisible(v); this.invLog.setVisible(v);
     for (const r of this.invRows) { r.name.setVisible(v); r.desc.setVisible(v); r.use.setVisible(v); }
   }
 
@@ -2919,8 +3120,10 @@ class VillageScene extends Phaser.Scene {
       r.name.setPosition(px + 16, y); r.desc.setPosition(px + 16, y + 24); r.use.setPosition(px + pw - 44, y + 22);
     });
     const by = py + 50 + rowH * 4 + 6;
-    this.inv_.close = { x: W / 2, y: by + 18, w: 120, h: 36 };
-    this.invClose.setPosition(W / 2, by + 18);
+    this.inv_.close = { x: W / 2 + 66, y: by + 18, w: 120, h: 36 };
+    this.inv_.log = { x: W / 2 - 66, y: by + 18, w: 120, h: 36 };
+    this.invClose.setPosition(W / 2 + 66, by + 18);
+    this.invLog.setPosition(W / 2 - 66, by + 18);
     this.invNote.setPosition(W / 2, by + 46);
     const r = this.invBtnRect(); this.invBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
   }
@@ -2938,8 +3141,9 @@ class VillageScene extends Phaser.Scene {
           if (this.itemUseful(r.id)) this.applyItem(r.id);
         } else if (p.x >= r.pick.x0 && p.x <= r.pick.x1 && p.y >= r.pick.y0 && p.y <= r.pick.y1 && ITEMS[r.id].kind !== 'misc') this.quick = r.id;
       }
-      const c = P.close;
+      const c = P.close, lg = P.log;
       if (Math.abs(p.x - c.x) <= c.w / 2 && Math.abs(p.y - c.y) <= c.h / 2) this.closeInv();
+      else if (Math.abs(p.x - lg.x) <= lg.w / 2 && Math.abs(p.y - lg.y) <= lg.h / 2) { this.closeInv(); this.openJournal(); }
       return true;
     }
     const r = this.invBtnRect();
@@ -2983,6 +3187,7 @@ class VillageScene extends Phaser.Scene {
       if (T.kind !== 'misc') { g.fillStyle(ok ? 0xd9b45a : 0x555044, 1); g.fillRoundedRect(row.use.x - row.use.w / 2, row.use.y - row.use.h / 2, row.use.w, row.use.h, 8); }
     }
     g.fillStyle(0xd9b45a, 1); g.fillRoundedRect(P.close.x - 60, P.close.y - 18, 120, 36, 8);
+    g.fillStyle(0xb8a878, 1); g.fillRoundedRect(P.log.x - 60, P.log.y - 18, 120, 36, 8);
   }
 
   // 只在祠堂內、站在祭壇旁才能參拜升級
@@ -3200,9 +3405,15 @@ class VillageScene extends Phaser.Scene {
         st.phase = 'cleared'; st.t0 = time;
         const got = this.settleXp();
         this.banner('擊退黃巾\n獲得 ' + got + ' 經驗', 3000);
+        if (STORY.zou && !STORY.xing) {   // 第 2 章：大興山大捷，看完劇情再回鎮
+          STORY.xing = true; this.saveGrowth(); st.story = true;
+          const go = () => { if (this.down || this.transitioning || this.dlg) { this.time.delayedCall(600, go); return; }
+            this.openScene(STORY_XING, () => { st.phase = 'end'; this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left'); }); };
+          this.time.delayedCall(2600, go);
+        }
       }
     }
-    if (st.phase === 'cleared' && time - st.t0 > 4200) {
+    if (st.phase === 'cleared' && !st.story && time - st.t0 > 4200) {
       st.phase = 'end';
       this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left');   // 戰役結束，回到鎮內
     }
