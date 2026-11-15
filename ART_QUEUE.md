@@ -25,103 +25,13 @@
 - **人物風格基準**：主角 `hero_front.png`、`hero_walk_front.png`，以及試做成功的劉備 `npc_liubei_forge_stand_front.png`、`npc_liubei_forge_walk_front.png`。粗像素顆粒、粗深色輪廓、低飽和、細節少；**不要比這兩個角色更鮮豔、更精細、對比更強**，金邊、花紋、高光都要少。
 - 完成回報要說明實際用了哪種生成方式；如果工具退回成「程式畫的圖」要明說。
 - 圖中不要出現文字。
+- 清理：已推送並接入遊戲的項目，Claude 會定期從這份檔案移除，只留待辦項目。
+
 
 ---
-
-## 1. 劉備 走路圖　狀態：已推送（2026-11-14）
-### 1b. 劉備 站立圖　狀態：已推送（2026-11-14）
-- 檔名：`assets/characters/npc_liubei_stand_front.png`、`npc_liubei_stand_side.png`、`npc_liubei_stand_back.png`（側面朝右）
-- 造型與第 1 項的走路圖完全相同（參考 `npc_liubei_walk_*.png`），照共通規則的站立圖規定。神情溫和，一手自然垂下或輕扶腰帶。
-
-- 檔名：`assets/characters/npc_liubei_walk_front.png`、`npc_liubei_walk_side.png`、`npc_liubei_walk_back.png`
-- 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。
-- 底稿：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例與主角相同。
-- 造型：東漢末年的落魄宗室青年。現代審美、俊朗溫和；長耳垂；淺色布袍加深色外披，腰繫布帶，背後斜背一把雙股劍；頭髮束髻戴布冠。色系米白、淡綠、深棕。
-
-## 2. 關羽 走路圖　狀態：已推送（2026-11-14）
-### 2b. 關羽 站立圖　狀態：已推送（2026-11-14）
-- 檔名：前綴 `npc_guanyu_stand_`，front、side、back 三張。
-- 造型與第 2 項走路圖完全相同（參考 `npc_guanyu_walk_*.png`）。一手撫鬚或垂下，青龍偃月刀立在身側（刀不要超出圖）。
-
-- 檔名：`assets/characters/npc_guanyu_walk_front.png`、`_side.png`、`_back.png`（前綴 `npc_guanyu_walk_`）
-- 尺寸與底稿同第 1 項。
-- 造型：高大威嚴，比主角高約一成；紅臉、丹鳳眼、長鬚垂到胸口；綠色戰袍，裡面露出深色護甲，綠色頭巾；手持青龍偃月刀（刀身不要超出格子）。現代審美。
-
-## 3. 張飛 走路圖　狀態：已推送（2026-11-14）
-### 3b. 張飛 站立圖　狀態：已推送（2026-11-14）
-- 檔名：前綴 `npc_zhangfei_stand_`，front、side、back 三張。
-- 造型與第 3 項走路圖完全相同（參考 `npc_zhangfei_walk_*.png`）。雙腳張開但一前一後，蛇矛扛在肩上或斜握，神情豪爽。
-
-- 檔名：前綴 `npc_zhangfei_walk_`，三個方向同上。
-- 尺寸與底稿同第 1 項。
-- 造型：魁梧粗壯，比主角寬；黑臉、豹頭環眼、短硬的落腮鬍；深色短打皮甲、粗布腰帶；手持丈八蛇矛（矛身不要超出格子）。神情豪爽。現代審美。
-
-> 第 1 到 3 項：若「負責人物」的討論串已經做好劉關張，請跳過，並在狀態寫明已用哪個檔案。
-
-## 4. 桃樹（兩種）　狀態：已推送（2026-11-14）
-- 檔名：`assets/props/peach_tree_01.png`、`assets/props/peach_tree_02.png`
-- 尺寸：每張 1024×1024，樹的底部貼齊圖片下緣附近，置中。
-- 參考：`assets/props/forest_tree_01.png`（同樣大小、視角、像素顆粒）。
-- 內容：盛開的桃樹，樹冠滿是粉紅與淡粉的桃花，夾一些嫩綠葉，深棕彎曲樹幹。01 較圓潤、02 較高瘦。明亮、春天感。
-
-## 5. 香案（結義用）　狀態：已推送（2026-11-14）
-- 檔名：`assets/props/oath_altar.png`
-- 尺寸：1024×512，香案置中、貼近下緣。
-- 內容：長方形木供桌，鋪紅色桌布（下緣有金邊），桌上正中一個銅香爐插三支香（**不要畫煙**，煙由遊戲程式畫），左右擺三個裝酒的白瓷碗。俯視角度同主角。
 
 ## 6. 老農（城外被搶的百姓）　狀態：暫不需要
 - 遊戲目前直接用現有的 `npc_farmer_walk_*`，夠用。
-
-## 7. 黃巾兵 重做（森林與城外的普通小兵）　狀態：已推送（2026-11-14）
-- 檔名（覆蓋現有檔）：`assets/characters/turban_walk_front.png`、`turban_walk_side.png`、`turban_walk_back.png`
-- 尺寸：每張 2048×512，橫排 4 格（每格 512×512），側面朝右。底稿與主角相同：`assets/templates/walk_front_template.png`、`walk_back_template.png`，側面參考 `assets/characters/hero_walk_side.png`。身高、比例、地面線與主角一致。
-- 造型：普通黃巾兵，頭戴黃色頭巾，身穿粗布短褐，腰繫布帶，手持鐵刀或木棍（武器不要超出格子）。神情兇悍但不誇張，體格精瘦，比武將小。現代審美，粗深色輪廓。
-- 注意：這是普通小兵，不要做成黃巾渠帥（武將）那種盔甲或披風。
-- 站立圖（遊戲有用到，必做）：覆蓋 `turban_stand_front.png`、`turban_stand_side.png`、`turban_stand_back.png`，照共通規則的站立圖規定（不能雙腿並排站直）。
-
-## 8. 現有敵人「側面」站立圖 重做（側面雙腿疊在一起）　狀態：已推送（2026-11-14）
-- 正面、背面兩腳已分開，不用改。只覆蓋以下**側面**檔案，**造型、服裝、顏色、武器完全照舊**，只把兩腳改成一前一後分開（參考 `hero_side.png`）。每張 1024×1024。
-- 官軍精兵：`assets/characters/hansoldier_stand_side.png`（參考同名舊圖）
-- 官軍武將：`assets/characters/hangeneral_stand_side.png`（參考同名舊圖）
-- 黃巾渠帥：`assets/characters/ytgeneral_stand_side.png`（參考同名舊圖）
-- 武將（官軍武將、黃巾渠帥）比主角高約兩成，畫面比例照舊圖。
-
----
-
-## 10. 劉備 試做版（用 Agent Sprite Forge）　狀態：已推送（2026-11-14）
-- 目的：現有劉關張比主角和路人更鮮豔、對比更強、細節更多，站在一起不協調（用戶 2026-11-14）。先用 Agent Sprite Forge（github.com/0x0funky/agent-sprite-forge）試做劉備一個人，看效果再決定要不要三人都重做。**不要覆蓋現有劉備圖**，兩個版本並存方便比較。
-- 做法：先定一張「定稿圖」，再用 Agent Sprite Forge 的 **Pixel 模式**（顏色少、硬邊、不抗鋸齒）長出動作。
-- **定稿圖的風格以主角為準**：參考 `assets/characters/hero_front.png`、`hero_walk_front.png`。粗像素顆粒、粗深色輪廓、低飽和、細節少。**不要比主角更鮮豔、更精細、對比更強**，金邊、花紋、高光都要減少。
-- 造型沿用現有劉備（參考 `npc_liubei_stand_front.png`）：米白淡綠長袍、深色外披、腰繫布帶、背後斜背雙股劍、髮髻戴布冠、長耳垂、神情溫和。身高、比例與主角相同。
-- 檔名（新檔，不覆蓋）：
-  - 走路：`assets/characters/npc_liubei_forge_walk_front.png`、`_side.png`、`_back.png`，每張 2048×512，4 格各 512×512，側面朝右，沿用 `assets/templates/` 姿勢模版。
-  - 站立：`assets/characters/npc_liubei_forge_stand_front.png`、`_side.png`、`_back.png`，每張 1024×1024，兩腳分開（照共通規則）。
-- 先只做 walk 和 stand，不做其他動作。
-- 完成後的回報要說明：實際用了哪種生成方式（Codex 圖片生成或 API）。如果工具退回成「程式畫的圖」，要明說。
-
-## 11. 關羽 重做 v2（Agent Sprite Forge）　狀態：待重新生成
-- 上一版（2026-11-14）被退回：畫成寫實的 6～7 頭身、像素太細（鎧甲、鬍鬚、刀上龍紋都是細碎小點），偃月刀比人還高，和主角、劉備站在一起不像同一批人。
-- **直接覆蓋** `npc_guanyu_forge_*` 六個檔案。不要動舊的 `npc_guanyu_stand_*`、`npc_guanyu_walk_*`。
-- **底稿就是劉備 forge 版**：`assets/characters/npc_liubei_forge_stand_front.png`、`npc_liubei_forge_walk_front.png`。頭的大小、身體比例、像素顆粒粗細、輪廓粗細都照劉備，只換造型。
-- **頭身比**：約 2.5 頭身的 Q 版，和主角、劉備一樣。頭大、身短。**不要畫成寫實比例。**
-- **身高**：只比劉備高一點點（約高半個頭以內），肩膀稍寬。用體格表現威嚴，不要把人拉長。
-- **像素**：和劉備一樣粗。一個色塊至少要有劉備衣服皺褶那麼大。鎧甲只用 2～3 條橫線表示，不要畫甲片紋；鬍鬚是一大塊深色加 2～3 道線，不要一根一根畫；刀上不要龍紋。
-- **辨識特徵**（靠這些認出是關羽，不要靠細節）：紅臉、丹鳳眼（細長上挑）、長黑鬚垂到胸口、綠頭巾、綠色戰袍外披、裡面深色護甲。
-- **青龍偃月刀**：刀尖最多高過頭頂半個頭，刀頭簡化成一塊月牙形，不要畫雕花。
-- 站立圖：一手撫鬚或自然垂下，另一手握刀立在身側，兩腳分開（照共通規則）。
-- 檔名：走路 `assets/characters/npc_guanyu_forge_walk_front.png`、`_side.png`、`_back.png`（2048×512，4 格，側面朝右）；站立 `npc_guanyu_forge_stand_front.png`、`_side.png`、`_back.png`（1024×1024）。
-
-## 12. 張飛 重做 v2（Agent Sprite Forge）　狀態：待重新生成
-- 上一版（2026-11-14）被退回：比例偏寫實、皮甲紋路與肩甲細節太細，蛇矛比人還高。
-- **直接覆蓋** `npc_zhangfei_forge_*` 六個檔案。不要動舊的 `npc_zhangfei_stand_*`、`npc_zhangfei_walk_*`。
-- **底稿就是劉備 forge 版**（同第 11 項）。頭的大小、像素顆粒、輪廓粗細都照劉備。
-- **頭身比**：約 2.5 頭身的 Q 版，和主角、劉備一樣。
-- **體型**：身高和劉備差不多，但明顯更寬、更厚，像一個圓桶。用寬度表現魁梧。
-- **像素**：和劉備一樣粗。皮甲只用大色塊加 2～3 條線，不要畫鉚釘和甲片；肩甲是兩塊簡單的圓塊。
-- **辨識特徵**：黑臉（深膚色）、豹頭環眼（大圓眼）、短硬的黑色落腮鬍（一圈鋸齒狀大色塊）、紅色頭巾或額帶、深色短打皮甲、粗布腰帶。
-- **丈八蛇矛**：矛尖最多高過頭頂半個頭，矛頭簡化成彎曲的一條，不要畫細紋。
-- 站立圖：蛇矛扛在肩上或斜握，雙腳張開，神情豪爽（照共通規則）。
-- 檔名：前綴 `npc_zhangfei_forge_walk_`、`npc_zhangfei_forge_stand_`，規格同第 11 項。
 
 ## 每次交給 Codex 的指令（固定不變，整段複製）
 規則有改，Claude 只改這份檔案，這段指令永遠不用改。
@@ -132,6 +42,6 @@
 ---
 
 ## 遊戲目前的接入狀況（Claude 記錄）
-- 劉備：遊戲已換成 Agent Sprite Forge 版站立圖（v0.22.1）。關羽、張飛：遊戲用第 2、3 項的站立圖。第 11、12 項第一版 forge 圖用戶不滿意（2026-11-15），已改為 v2「待重新生成」，做好通過後再換。走路圖已在倉庫，鎮內劇情角色目前都是站著，之後有走動的劇情再用。
+- 劉備：遊戲已換成 Agent Sprite Forge 版站立圖（v0.22.1）。關羽、張飛：遊戲目前用舊版站立圖（npc_guanyu_stand_*、npc_zhangfei_stand_*）。Forge 版關羽、張飛用戶不滿意（2026-11-15），已擱置，未排入佇列。走路圖已在倉庫，鎮內劇情角色目前都是站著，之後有走動的劇情再用。
 - 桃樹、香案：遊戲已換上（v0.21.1），香煙仍由程式畫。
 - 鄒靖：暫用官軍武將圖。老農：用農夫圖。
