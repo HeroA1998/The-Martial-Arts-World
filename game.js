@@ -107,6 +107,7 @@ function fieldWalkable(x, y) {
   const dx = (x - FIELD_C.x) / FIELD_C.rx, dy = (y - FIELD_C.y) / FIELD_C.ry, a = Math.atan2(dy, dx);
   const edge = 1 + 0.07 * Math.sin(a * 5 + 0.6) + 0.04 * Math.sin(a * 9 + 2.1);   // 邊緣起伏，不要正圓
   if (dx * dx + dy * dy < edge * edge) return true;
+  if (x > CAMP.x0 - 46 && x < CAMP.x1 + 46 && y > CAMP.y0 - 46 && y < CAMP.y1 + 76) return true;   // 營地四周留一圈可走的地（木柵外可以繞營）
   return y > FIELD_C.y + FIELD_C.ry * 0.7 && Math.abs(x - (FIELD_C.x + 10 * Math.sin(y / 60))) < 46;   // 下方小路
 }
 // 黃巾從空地邊緣的樹林裡冒出來（下方入口那一側不出兵）；x,y：現身處，ex,ey：衝進空地的落點
@@ -124,6 +125,87 @@ const FIELD_BATTLE = {
   gapMs: 500,         // 兩個敵人現身至少隔這麼久
   roster: ['turban', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytelite', 'turban', 'turban', 'ytcaptain'],   // 出場順序（共 10，最後是黃巾頭目）
 };
+// （上面的出兵生成器保留給之後的野戰；v0.23.0 起大興山改成下面的黃巾營地）
+
+// ---------- 大興山黃巾營地（v0.23.0）：營地用組件拼成，加上潛行與偷襲 ----------
+// 一座營地＝一份版面資料（組件位置＋守衛）。之後要蓋別的營地，只要再寫一份資料、換帥旗顏色。
+// 組件目前是程式畫的暫代圖（campk_*），正式圖見 ART_QUEUE.md。
+const CAMP = {
+  x0: 212, x1: 548, y0: 270, y1: 630,          // 木柵圍起來的範圍（寬度是 16 的倍數，木柵一段 16）
+  gate: { x0: 356, x1: 404 },                   // 南面營門（木柵的開口）
+  breach: { y0: 440, y1: 482 },                 // 西面木柵破了一段，可以鑽進去
+  flagColor: 0xe2b93c,                          // 帥旗顏色：黃巾＝黃；官軍之後用紅或青
+  parts: [
+    { k: 'tent_b', x: 380, y: 352 },            // 主帳
+    { k: 'flag', x: 444, y: 362 },              // 帥旗
+    { k: 'tent_s', x: 268, y: 345 }, { k: 'tent_s', x: 496, y: 350, flip: true }, { k: 'tent_s', x: 482, y: 566 },
+    { k: 'fire', x: 330, y: 486 },
+    { k: 'crates', x: 500, y: 470 },
+    { k: 'tower', x: 524, y: 314 },
+    { k: 'juma', x: 300, y: 696 }, { k: 'juma', x: 460, y: 696, flip: true },
+  ],
+  // 守衛：face＝站崗時面向；patrol＝巡邏路線（照順序走，走完回到第一點）
+  guards: [
+    { type: 'turban', x: 344, y: 664, face: 'down' },                       // 營門兩側
+    { type: 'turban', x: 416, y: 664, face: 'down' },
+    { type: 'turban', x: 586, y: 600, patrol: [[586, 600], [586, 292]] },   // 營外東側來回巡邏
+    { type: 'turban', x: 306, y: 480, face: 'right' },                      // 圍著火堆
+    { type: 'turban', x: 354, y: 492, face: 'left' },
+    { type: 'turban', x: 280, y: 600, face: 'right' },                      // 營門內側
+    { type: 'turban', x: 526, y: 404, face: 'left' },
+    { type: 'ytelite', x: 250, y: 410, patrol: [[250, 410], [250, 572], [420, 572], [420, 420]] },   // 營內巡邏，經過西面缺口
+    { type: 'ytelite', x: 506, y: 502, face: 'down' },
+    { type: 'ytcaptain', x: 380, y: 386, face: 'down' },                    // 主帳前、帥旗旁
+  ],
+};
+function campInside(x, y, L = CAMP) { return x > L.x0 && x < L.x1 && y > L.y0 && y < L.y1; }
+// 組件：w、h＝在世界裡的大小（主角身高 46）；foot＝擋路範圍（相對於底邊中心）；occ＝會擋住視線
+const CAMP_PARTS = {
+  tent_b: { w: 112, h: 84, foot: [-50, -40, 50, -2], occ: true },
+  tent_s: { w: 60, h: 48, foot: [-26, -24, 26, -2], occ: true },
+  tower:  { w: 40, h: 112, foot: [-16, -12, 16, 0], occ: false },
+  fire:   { w: 26, h: 14, foot: [-9, -6, 9, 0], occ: false },
+  crates: { w: 50, h: 38, foot: [-23, -16, 23, -1], occ: true },
+  juma:   { w: 58, h: 26, foot: [-27, -8, 27, 0], occ: false },
+};
+// 潛行與偷襲（數值都可以調）
+const STEALTH = {
+  sneak: 0.62,              // 速度低於全速的這個比例＝潛行（沒有腳步聲，被看見時警戒漲得慢）
+  joyFull: 52,              // 營地裡還沒被發現時，搖桿推到這麼遠才全速（平常 34），輕推就是慢走
+  hear: 80, hearRoll: 100,  // 走路、翻滾的腳步聲範圍
+  hearRate: 0.9,            // 聽到腳步聲，每秒漲多少警戒
+  fillNear: 0.45, fillFar: 2.05,   // 在視野裡，警戒從 0 漲滿要幾秒（貼近 → 視野邊緣）
+  sneakMul: 1.7,            // 潛行或站著不動時被看見，漲滿要的時間乘上這個倍數
+  decay: 0.25, decayDelay: 1500,   // 沒看到也沒聽到之後，等這麼久才開始每秒降多少
+  susp: 0.35,               // 警戒超過這個值：起疑，停下來轉頭看（頭上出現「?」）
+  callR: 200,               // 發現你的人大喊，這個距離內的同伴一起進入戰鬥
+  scan: 30, scanMs: 5200,   // 站崗的人左右張望的角度（度）與週期
+  view: { turban: [130, 45], ytelite: [150, 45], ytcaptain: [160, 50] },   // 視野：[距離, 半角（度）]
+};
+// 單挑：偷襲武將不會即死，扣一半血後進入單挑；時限內沒打倒，附近的敵兵會趕過來
+const DUEL = { ms: 15000, r: 110, firstHit: 0.5, call: 3, callR: 420 };
+const ANG = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+function angFacing(a) {
+  const d = Math.atan2(Math.sin(a), Math.cos(a)), q = Math.PI / 4;
+  return d > -q && d <= q ? 'right' : d > q && d <= 3 * q ? 'down' : d > -3 * q && d <= -q ? 'up' : 'left';
+}
+function turnToward(a, to, step) {
+  const d = Math.atan2(Math.sin(to - a), Math.cos(to - a));
+  return Math.abs(d) <= step ? to : a + Math.sign(d) * step;
+}
+// 線段（x1,y1）→（x2,y2）碰到矩形的位置（0～1），沒碰到回傳 -1
+function segHitsRect(x1, y1, x2, y2, r) {
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1, p = [-dx, dx, -dy, dy], q = [x1 - r.x0, r.x1 - x1, y1 - r.y0, r.y1 - y1];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return -1; continue; }
+    const t = q[i] / p[i];
+    if (p[i] < 0) { if (t > t1) return -1; if (t > t0) t0 = t; }
+    else { if (t < t0) return -1; if (t < t1) t1 = t; }
+  }
+  return t0 <= t1 ? t0 : -1;
+}
+
 const SPEED = 115;      // 世界單位 / 秒
 const HERO_H = 46;      // 主角在世界中的高度
 const ATK_SRC_BODY_H = 360;   // 揮刀圖裡，頭頂到腳底的像素高度（對應 HERO_H）
@@ -135,7 +217,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.22.1';   // 每次更新請加一
+const VERSION = 'v0.23.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -782,6 +864,7 @@ class VillageScene extends Phaser.Scene {
     this.spawnFacing = (data && data.facing) || 'up';
     this.carry = (data && data.carry) || null;
     this.transitioning = false;
+    this.duel = null; this.joyFull = 0; this.sneaking = false; this.quiet = false; this.noiseR = 0; this.bTick = undefined;   // 營地潛行狀態（場景重啟時歸零）
     MAP_W = areaInfo(this.area).w; MAP_H = areaInfo(this.area).h;
   }
 
@@ -1062,7 +1145,7 @@ class VillageScene extends Phaser.Scene {
     const f0 = FIELD_SPAWNS[0];
     const spawns = this.area === 'forest' ? FOREST_SPAWNS
       : this.area === 'outskirts' ? OUT_SPAWNS
-      : this.area === 'field' ? FIELD_BATTLE.roster.map(type => ({ type, x: f0.x, y: f0.y, ex: f0.ex, ey: f0.ey, delay: 0 }))
+      : this.area === 'field' ? CAMP.guards.map(g => ({ type: g.type, x: g.x, y: g.y, ex: g.x, ey: g.y, delay: 0, guard: g }))   // v0.23.0：營地守衛
       : [];
     for (const h of spawns) {
       // 伏擊戰、戰場：被觸發後一路追到底（不會因距離放棄），倒下不重生
@@ -1080,14 +1163,19 @@ class VillageScene extends Phaser.Scene {
         fontFamily: 'system-ui, sans-serif', fontSize: '11px', fontStyle: 'bold',
         color: '#f0e6c8', stroke: '#000000', strokeThickness: 3, resolution: 3,
       }).setOrigin(0.5, 1).setDepth(8000).setVisible(!!T.showName);
+      const mark = this.add.text(h.x, h.y - T.h - 12, '', {   // 營地守衛頭上的「?」「!」
+        fontFamily: 'system-ui, sans-serif', fontSize: '15px', fontStyle: 'bold',
+        color: '#ffd84a', stroke: '#000000', strokeThickness: 3, resolution: 3,
+      }).setOrigin(0.5, 1).setDepth(8001).setVisible(false);
       const body = this.add.zone(h.x, h.y - 4, 14, 8);
       this.physics.add.existing(body);
       body.body.setImmovable(true);
       body.body.setCollideWorldBounds(true);
       this.physics.add.collider(body, this.obstacles);
       this.physics.add.collider(this.playerBody, body);
-      this.world.push(shadow, sprite, alert, nameTag);
+      this.world.push(shadow, sprite, alert, nameTag, mark);
       this.setSpriteTex(sprite, T.walkTex ? T.walkTex + '_walk_front_1' : T.tex + '_down', T.h);
+      const G = h.guard, V = G && (STEALTH.view[h.type] || STEALTH.view.turban);
       this.bandits.push({
         home: { x: h.x, y: h.y }, body, sprite, shadow, alert,
         t: T, nameTag, hp: T.hp, state: 'idle', facing: 'down', dead: false,
@@ -1098,6 +1186,9 @@ class VillageScene extends Phaser.Scene {
         preemptCd: 0, pRoll: false, pd: undefined, pt: 0,
         lastKind: null, feintAt: 0, sx: h.x, sy: h.y, ghostT: 0,
         spawn: h, hidden: false, enc: h.enc, mode: h.mode,
+        mark, aware: !G, alertV: 0, markUntil: 0, lookA: G ? ANG[G.face || 'down'] : 0,
+        sentry: G ? { patrol: G.patrol || null, baseA: ANG[G.face || 'down'], view: [V[0], V[1] * Math.PI / 180],
+                      phase: Math.random() * STEALTH.scanMs, pi: 0, waitUntil: 0, lastStim: -1e9, lsx: 0, lsy: 0 } : null,
       });
     }
     if (!this.encArea()) for (const b of this.bandits) this.hideBandit(b);   // 森林的敵人由 resetForest 依遭遇模式安排
@@ -1107,7 +1198,7 @@ class VillageScene extends Phaser.Scene {
     if (this.area === 'field') this.exits.push({ x0: FIELD_START.x - 60, x1: FIELD_START.x + 60, y0: MAP_H - 30, y1: MAP_H + 5, to: 'town', spawn: { x: TOWN_GATE.x, y: TOWN_GATE.y }, facing: 'left', when: 'walk' });   // 開戰前可以退回鎮內
     this.stage = { phase: 'walk', t0: 0, amb: 0 };   // walk：往上走（等下一個伏擊）→ intro／fight：伏兵出現 → cleared：擊敗 Boss → end：本段結束
     if (this.encArea()) this.resetForest();
-    if (this.area === 'field') this.resetBattle();
+    if (this.area === 'field') this.resetCamp();
     for (let i = 0; i < this.bandits.length; i++) {
       for (let j = i + 1; j < this.bandits.length; j++) {
         this.physics.add.collider(this.bandits[i].body, this.bandits[j].body);
@@ -1404,7 +1495,7 @@ class VillageScene extends Phaser.Scene {
     const m = Math.hypot(dx, dy), k = m > JOY_R ? JOY_R / m : 1;
     this.joy.dx = dx * k; this.joy.dy = dy * k;       // 畫面上搖桿頭的位置
     // 速度：小死區之後很快加到全速，輕輕一拖就起步
-    const mag = Math.max(0, Math.min(1, (m - JOY_DEAD) / (JOY_FULL - JOY_DEAD)));
+    const mag = Math.max(0, Math.min(1, (m - JOY_DEAD) / ((this.joyFull || JOY_FULL) - JOY_DEAD)));   // joyFull：營地潛行時放寬
     const ux = m > 0 ? dx / m : 0, uy = m > 0 ? dy / m : 0;
     this.joy.x = ux * mag; this.joy.y = uy * mag;
   }
@@ -1582,7 +1673,7 @@ class VillageScene extends Phaser.Scene {
     // 受傷表現：閃紅、無敵時間內閃爍
     if (time < this.heroFlashUntil) this.hero.setTint(0xff7a6a); else if (this.drink) this.hero.setTint(0xbfe8a8); else if (this.guarding) this.hero.setTint(0xb8d4f0); else this.hero.clearTint();
     this.drawGuard(time);
-    this.hero.setAlpha(!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1);
+    this.hero.setAlpha((!this.down && time < this.invulnUntil && Math.floor(time / 80) % 2 ? 0.45 : 1) * (this.sneaking ? 0.7 : 1));   // 潛行中身影淡一點
 
     this.updateDrink(time);
     this.updateDrops(time);
@@ -1770,6 +1861,7 @@ class VillageScene extends Phaser.Scene {
       const bx = b.body.x, by = b.body.y + 4;     // 山賊腳底
       if (Math.hypot(cx - bx, cy - (by - 20)) < ATK_RADIUS + 12) {
         this.atk.hit.add(b);
+        if (this.stealthHit(b, this.atk.dx, this.atk.dy, time)) continue;   // 還沒發現你：偷襲（小兵即死、武將進入單挑）
         const live = time >= b.t0 + REACT_DELAY;   // 提示動作之後，防禦/閃避才生效
         if (b.state === 'dodge' && live) {
           // 閃躲中：這刀落空（「閃」字在敵人起閃的當下已經顯示）
@@ -1807,6 +1899,7 @@ class VillageScene extends Phaser.Scene {
 
   updateBandits(time) {
     const px = this.playerBody.x, py = this.playerBody.y + 4;
+    const dt = Math.min(0.05, Math.max(0, (time - (this.bTick === undefined ? time : this.bTick)) / 1000)); this.bTick = time;   // 這一幀的秒數（警戒計算用）
     for (const b of this.bandits) {
       const bd = b.body.body;
       if (b.state === 'hidden') { bd.setVelocity(0, 0); continue; }   // 還藏在樹林裡
@@ -1842,6 +1935,18 @@ class VillageScene extends Phaser.Scene {
 
       if (b.state === 'dead') {
         if (time >= b.respawnAt) this.reviveBandit(b);
+      } else if (b.state === 'sentry') {
+        // 營地守衛（還沒發現你）：站崗或巡邏，視野與腳步聲會讓警戒上升
+        [vx, vy] = this.sentryTick(b, time, dt, px, py);
+      } else if (b.state === 'held') {
+        // 單挑中：已經發現你的敵人站在圈外看著，不出手
+        faceToward();
+        const D = this.duel;
+        if (!D || this.down) b.state = this.down ? 'idle' : 'chase';
+        else {
+          const hx = bx - D.x, hy = by - D.y, hd = Math.hypot(hx, hy) || 1;
+          if (hd < DUEL.r + 30) { vx = hx / hd * b.t.speed * 0.7; vy = hy / hd * b.t.speed * 0.7; }
+        }
       } else if (b.state === 'hurt') {
         vx = b.kx; vy = b.ky;
         if (time >= b.until) {
@@ -1999,6 +2104,9 @@ class VillageScene extends Phaser.Scene {
         }
       }
 
+      // 營地：繞過木柵（走營門或缺口）、被帳篷卡住時側身繞開；出招中的位移不改
+      if (this.area === 'field' && !b.dead && (b.state === 'sentry' || b.state === 'held' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee'))
+        [vx, vy] = this.campSteer(b, vx, vy, time);
       bd.setVelocity(vx, vy);
 
       // 圖片、陰影、驚嘆號
@@ -2006,7 +2114,7 @@ class VillageScene extends Phaser.Scene {
         // 移動中（追、繞、逼近）播走路動畫；蓄力、出刀、防禦等維持原本姿勢
         const wdt = time - (b.lastT === undefined ? time : b.lastT); b.lastT = time;
         const sp = Math.hypot(vx, vy);
-        const walkable = b.state === 'enter' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee' || b.ret;
+        const walkable = b.state === 'enter' || b.state === 'chase' || b.state === 'stalk' || b.state === 'rest' || b.state === 'pause' || b.state === 'flee' || b.state === 'sentry' || b.state === 'held' || b.ret;
         if (!walkable) b.moveOn = false;
         else if (sp > 8) b.moveOn = true;
         else if (sp < 3) b.moveOn = false;
@@ -2060,6 +2168,11 @@ class VillageScene extends Phaser.Scene {
         if (b.state !== 'dead') b.sprite.setAlpha((b.state === 'dodge' && time - b.t0 >= REACT_DELAY ? 0.45 : 1) * fadeIn);
         b.alert.setVisible(b.state === 'windup' && (b.kind === 'lunge' || b.kind === 'heavy')).setPosition(bx, by - b.t.h - 2);
         b.nameTag.setVisible(!b.dead && b.t.showName).setPosition(bx, by - b.t.h - 16);
+        if (b.sentry) {   // 頭上的記號：「!」剛發現你、「?」起疑
+          const bang = time < b.markUntil, q = !bang && b.state === 'sentry' && b.alertV >= STEALTH.susp;
+          b.mark.setVisible(!b.dead && (bang || q)).setPosition(bx, by - b.t.h - (b.t.showName ? 28 : 12));
+          if (bang) b.mark.setText('!').setColor('#ff5a3a'); else if (q) b.mark.setText('?').setColor('#ffd84a');
+        }
       }
     }
   }
@@ -2246,6 +2359,7 @@ class VillageScene extends Phaser.Scene {
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
     b.alert.setVisible(false); b.nameTag.setVisible(false);
+    if (b.mark) b.mark.setVisible(false);
     b.respawnAt = time + b.t.respawnMs;
     const dir = dx >= 0 ? 1 : -1;
     b.deadT0 = time; b.deadDir = dir;
@@ -3432,7 +3546,7 @@ class VillageScene extends Phaser.Scene {
     // 倒下＝整段重來：伏兵全部回到樹林裡，重新往上走
     PROG = { enc: SAVED ? SAVED.prog.enc.slice() : [] };   // 世界進度退回上次存檔
     if (this.encArea()) this.resetForest(); else for (const b of this.bandits) this.hideBandit(b);
-    if (this.area === 'field') this.resetBattle();
+    if (this.area === 'field') this.resetCamp();
     if (!this.encArea()) this.stage = { phase: 'walk', t0: 0, amb: 0 };
     this.bannerText.setVisible(false);
     this.cine = false; this.heroAlert.setVisible(false);
@@ -3485,6 +3599,427 @@ class VillageScene extends Phaser.Scene {
     }
     const left = bt.queue.length + this.battleActive();
     this.objText.setVisible(st.phase === 'fight').setText('剩餘黃巾 ' + left);
+  }
+
+  // ---------- 大興山黃巾營地：潛行、偷襲、單挑（v0.23.0） ----------
+  // 守衛全部回到崗位、滿血、沒發現你（剛進場、倒下重來）
+  resetCamp() {
+    this.duel = null; this.campSpotted = false;
+    for (const b of this.bandits) {
+      this.idleBandit(b);
+      const S = b.sentry; if (!S) continue;
+      b.state = 'sentry'; b.aware = false; b.alertV = 0; b.markUntil = 0; b.nav = null;
+      S.pi = S.patrol ? 1 % S.patrol.length : 0; S.waitUntil = 0; S.lastStim = -1e9;
+      b.lookA = S.patrol ? Math.atan2(S.patrol[S.pi][1] - S.patrol[0][1], S.patrol[S.pi][0] - S.patrol[0][0]) : S.baseA;
+      b.facing = angFacing(b.lookA);
+      b.mark.setVisible(false);
+    }
+  }
+
+  // 守衛（還沒發現你）每幀：看、聽、漲警戒；沒起疑時站崗張望或巡邏
+  sentryTick(b, time, dt, px, py) {
+    const S = b.sentry, bx = b.body.x, by = b.body.y + 4;
+    let vx = 0, vy = 0;
+    if (!this.duel) {   // 單挑時其他守衛不會注意到你（時間到才會被叫來）
+      const [rng, half] = S.view, dx = px - bx, dy = py - by, d = Math.hypot(dx, dy);
+      let seen = false;
+      if (!this.down && d < rng) {
+        const da = Math.atan2(Math.sin(Math.atan2(dy, dx) - b.lookA), Math.cos(Math.atan2(dy, dx) - b.lookA));
+        seen = Math.abs(da) < half && this.campClear(bx, by, px, py);
+      }
+      const heard = !seen && !this.down && this.noiseR > 0 && d < this.noiseR;
+      if (seen) {
+        let fill = STEALTH.fillNear + (STEALTH.fillFar - STEALTH.fillNear) * (d / rng);
+        if (this.quiet) fill *= 1 + (STEALTH.sneakMul - 1) * Math.max(0, Math.min(1, (d - 40) / 60));   // 潛行優待：貼到面前（40 以內）就沒有了
+        b.alertV += dt / fill; S.lastStim = time; S.lsx = px; S.lsy = py;
+      } else if (heard) {
+        b.alertV += STEALTH.hearRate * dt; S.lastStim = time; S.lsx = px; S.lsy = py;
+      } else if (time - S.lastStim > STEALTH.decayDelay) b.alertV = Math.max(0, b.alertV - STEALTH.decay * dt);
+      if (b.alertV >= 1) { this.campDetect(b, time); return [0, 0]; }
+    }
+    const slow = b.t.speed * 0.45;
+    if (b.alertV >= STEALTH.susp) {
+      // 起疑：停下腳步、轉頭看可疑的方向；更懷疑時（看得到那裡）慢慢走過去
+      const ax = S.lsx - bx, ay = S.lsy - by, ad = Math.hypot(ax, ay) || 1;
+      b.lookA = turnToward(b.lookA, Math.atan2(ay, ax), 3.5 * dt);
+      if (b.alertV > 0.6 && ad > 30 && this.campClear(bx, by, S.lsx, S.lsy)) { vx = ax / ad * b.t.speed * 0.35; vy = ay / ad * b.t.speed * 0.35; }
+      S.waitUntil = time + 1200;   // 疑心消了以後，先原地張望一下才回崗
+    } else if (time < S.waitUntil) {
+      // 停下來張望（巡邏到點、或剛消除疑心）
+      b.lookA = turnToward(b.lookA, (S.restA === undefined ? b.lookA : S.restA) + Math.sin((time + S.phase) / 900) * 0.9, 1.6 * dt);
+    } else {
+      const tgt = S.patrol ? S.patrol[S.pi] : [b.home.x, b.home.y];
+      const tx = tgt[0] - bx, ty = tgt[1] - by, td = Math.hypot(tx, ty);
+      if (td > 6) {
+        vx = tx / td * slow; vy = ty / td * slow;
+        b.lookA = turnToward(b.lookA, Math.atan2(ty, tx), 4 * dt);
+        S.restA = undefined;
+      } else if (S.patrol) {
+        S.restA = b.lookA; S.pi = (S.pi + 1) % S.patrol.length; S.waitUntil = time + 1400;   // 到點：停下張望，再往下一點
+      } else {
+        // 站崗：在原位左右張望
+        b.lookA = turnToward(b.lookA, S.baseA + Math.sin((time + S.phase) / STEALTH.scanMs * Math.PI * 2) * STEALTH.scan * Math.PI / 180, 2 * dt);
+      }
+    }
+    b.facing = angFacing(b.lookA);
+    return [vx, vy];
+  }
+
+  // 被發現：這個守衛大喊，附近的同伴一起進入戰鬥（被偷襲打倒的不會叫人）
+  campDetect(b, time) {
+    this.campWake(b, time);
+    for (const o of this.bandits) if (o !== b && Math.hypot(o.body.x - b.body.x, o.body.y - b.body.y) < STEALTH.callR) this.campWake(o, time + 150 + Math.random() * 250);
+    if (!this.campSpotted) { this.campSpotted = true; this.banner('被發現了！', 1100); }
+  }
+  campWake(o, time) {
+    if (o.dead || o.hidden || o.aware) return;
+    o.aware = true; o.alertV = 1; o.markUntil = time + 1100;
+    o.state = this.down ? 'idle' : 'chase'; o.stalked = false; o.closeIn = false; o.nextKind = null;
+    o.reactCd = time + 500; o.preemptCd = time + 500;   // 剛發現你，先不防禦、不搶先出刀
+    o.nameTag.setVisible(!!o.t.showName);
+  }
+
+  // 兩點之間看得到嗎（木柵、帳篷、貨堆擋視線）；wallsOnly：只算木柵
+  campClear(x1, y1, x2, y2, wallsOnly) {
+    for (const r of (wallsOnly ? this.campWalls : this.campOcc)) { const t = segHitsRect(x1, y1, x2, y2, r); if (t >= 0 && t <= 1) return false; }
+    return true;
+  }
+  // 被木柵隔開時，下一步要走去哪裡（營門或缺口；營外隔著營地時繞過營角）
+  campRoute(bx, by, px, py) {
+    const L = CAMP, inB = campInside(bx, by), inP = campInside(px, py);
+    if (inB !== inP) {
+      let best = null, bd = 1e9;
+      for (const o of this.campOpen) {
+        const a = inB ? o.in : o.out, c = inB ? o.out : o.in;
+        const d = Math.hypot(a.x - bx, a.y - by) + Math.hypot(c.x - px, c.y - py);
+        if (d < bd) { bd = d; best = { a, c }; }
+      }
+      return Math.hypot(best.a.x - bx, best.a.y - by) > 14 ? best.a : best.c;
+    }
+    if (!inB) {
+      const m = 30, cs = [[L.x0 - m, L.y0 - m], [L.x1 + m, L.y0 - m], [L.x0 - m, L.y1 + m], [L.x1 + m, L.y1 + m]];
+      let best = null, bd = 1e9;
+      for (const [x, y] of cs) {
+        if (!this.campClear(bx, by, x, y, true)) continue;
+        const d = Math.hypot(x - bx, y - by) + Math.hypot(px - x, py - y);
+        if (d < bd) { bd = d; best = { x, y }; }
+      }
+      return best;
+    }
+    return null;
+  }
+  campSteer(b, vx, vy, time) {
+    const sp = Math.hypot(vx, vy), bx = b.body.x, by = b.body.y + 4;
+    const N = b.nav || (b.nav = { t: time, x: bx, y: by, until: 0, sign: 1 });
+    if (sp < 10) { N.t = time; N.x = bx; N.y = by; return [vx, vy]; }
+    if (b.aware) {
+      const px = this.playerBody.x, py = this.playerBody.y + 4;
+      if (!this.campClear(bx, by, px, py, true)) {
+        const tg = this.campRoute(bx, by, px, py);
+        if (tg) { const tx = tg.x - bx, ty = tg.y - by, td = Math.hypot(tx, ty) || 1; vx = tx / td * sp; vy = ty / td * sp; }
+      }
+    }
+    // 卡住了（想走卻幾乎沒動）：側身繞一下
+    if (time < N.until) { const a = N.sign * 1.2, c = Math.cos(a), s = Math.sin(a); [vx, vy] = [vx * c - vy * s, vx * s + vy * c]; }
+    if (time - N.t >= 250) {
+      const moved = Math.hypot(bx - N.x, by - N.y);
+      if (moved < sp * (time - N.t) / 1000 * 0.25 && time >= N.until) { N.until = time + 450; N.sign = Math.random() < 0.5 ? 1 : -1; }
+      N.t = time; N.x = bx; N.y = by;
+    }
+    return [vx, vy];
+  }
+
+  // 揮劍打中還沒發現你的守衛：小兵、力士一擊斃命；武將扣一半血、進入單挑
+  stealthHit(b, dx, dy, time) {
+    if (this.area !== 'field' || !b.sentry || b.aware || b.dead) return false;
+    b.lastHit = time; b.flashUntil = time + 140;
+    this.hitstop(HIT_STOP_KILL);
+    this.cameras.main.shake(HIT_SHAKE_KILL[0], HIT_SHAKE_KILL[1]);
+    if (b.t.animTex) {   // 武將（有專屬動作圖的都是武將）
+      const dmg = Math.round(b.t.hp * DUEL.firstHit);
+      b.hp = Math.max(1, b.hp - dmg);
+      this.spawnDamage(b.body.x, b.body.y - b.t.h - 4, dmg);
+      this.spawnDamage(b.body.x, b.body.y - b.t.h - 18, '偷襲', '#ffe08a');
+      this.startDuel(b, time);
+    } else {
+      b.hp = 0;
+      this.spawnDamage(b.body.x, b.body.y - b.t.h - 12, '暗殺', '#ffe08a');
+      this.killBandit(b, dx, time);
+    }
+    return true;
+  }
+
+  startDuel(b, time) {
+    this.duel = { b, until: time + DUEL.ms, x: b.body.x, y: b.body.y + 4 };
+    b.aware = true; b.alertV = 1; b.markUntil = time + 1100;
+    b.state = 'hurt'; b.until = time + 700; b.hurtT0 = time; b.hurtDur = 700; b.kx = 0; b.ky = 0;   // 挨了偷襲先踉蹌一下
+    b.reactCd = time + 900; b.preemptCd = time + 900;
+    for (const o of this.bandits) if (o !== b && !o.dead && o.aware) o.state = 'held';   // 已經在打的人退到圈外
+    this.banner('單挑\n' + DUEL.ms / 1000 + ' 秒內打倒' + (b.t.name || '武將'), 1500);
+  }
+  updateDuel(time) {
+    const D = this.duel; if (!D) return;
+    const release = () => { for (const o of this.bandits) if (o.state === 'held') o.state = 'chase'; this.duel = null; };
+    if (this.down) { release(); return; }
+    if (D.b.dead) { release(); this.banner('單挑勝利', 1300); return; }
+    if (time >= D.until) {
+      // 時間到：附近還沒發現你的敵兵趕過來（最多 DUEL.call 個，近的先來）
+      const near = this.bandits.filter(o => !o.dead && !o.aware && Math.hypot(o.body.x - D.x, o.body.y - D.y) < DUEL.callR)
+        .sort((p, q) => Math.hypot(p.body.x - D.x, p.body.y - D.y) - Math.hypot(q.body.x - D.x, q.body.y - D.y)).slice(0, DUEL.call);
+      for (const o of near) this.campWake(o, time);
+      release();
+      this.banner(near.length ? '時間到　敵兵趕來了！' : '時間到', 1500);
+      return;
+    }
+    // 單挑圈：主角和武將都出不去
+    for (const [body, oy] of [[this.playerBody, 4], [D.b.body, 4]]) {
+      const dx = body.x - D.x, dy = body.y + oy - D.y, d = Math.hypot(dx, dy);
+      if (d > DUEL.r) body.body.reset(D.x + dx / d * DUEL.r, D.y + dy / d * DUEL.r - oy);
+    }
+  }
+
+  updateCamp(time) {
+    const st = this.stage;
+    const engaged = this.bandits.some(b => !b.dead && b.aware);
+    const spd = Math.hypot(this.mv.x, this.mv.y) / SPEED;
+    this.quiet = !this.roll && spd < STEALTH.sneak;                          // 慢走或站著：沒有腳步聲
+    this.sneaking = this.quiet && spd > 0.08 && !engaged && st.phase === 'fight' && !this.down;
+    this.noiseR = this.roll ? STEALTH.hearRoll : !this.quiet ? STEALTH.hear : 0;
+    this.joyFull = !engaged && st.phase !== 'cleared' && st.phase !== 'end' ? STEALTH.joyFull : 0;
+    if (st.phase === 'walk' && !this.down && this.playerBody.y < FIELD_TRIGGER_Y) {
+      st.phase = 'fight'; st.t0 = time;
+      if (!this.campHinted) {
+        this.campHinted = true;
+        this.banner('大興山 · 黃巾營地\n搖桿輕推＝放慢腳步潛行\n沒被發現時出手，一擊斃敵' + (STORY.c2plan === 'scout' ? '\n（斥候回報：營地西面的木柵破了一段）' : ''), 4200);
+      } else this.banner('大興山 · 黃巾營地', 1500);
+    }
+    this.updateDuel(time);
+    if (st.phase === 'fight' && !this.down && this.bandits.every(b => b.dead)) {
+      st.phase = 'cleared'; st.t0 = time;
+      const got = this.settleXp();
+      this.banner('攻破黃巾營地\n獲得 ' + got + ' 經驗', 3000);
+      if (STORY.zou && !STORY.xing) {   // 第 2 章：大興山大捷，看完劇情再回鎮
+        STORY.xing = true; this.saveGrowth(); st.story = true;
+        const go = () => { if (this.down || this.transitioning || this.dlg) { this.time.delayedCall(600, go); return; }
+          this.openScene(STORY_XING, () => { st.phase = 'end'; this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left'); }); };
+        this.time.delayedCall(2600, go);
+      }
+    }
+    if (st.phase === 'cleared' && !st.story && time - st.t0 > 4200) {
+      st.phase = 'end';
+      this.gotoArea('town', { x: TOWN_GATE.x, y: TOWN_GATE.y }, 'left');
+    }
+    const left = this.bandits.filter(b => !b.dead).length;
+    const sub = this.duel ? '\n單挑　' + Math.max(0, Math.ceil((this.duel.until - time) / 1000)) + ' 秒' : this.sneaking ? '\n潛行中' : '';
+    this.objText.setVisible(st.phase === 'fight').setText('剩餘黃巾 ' + left + sub);
+    this.drawCamp(time);
+  }
+
+  // 守衛的視野扇形（被木柵、帳篷擋住的地方不畫）、警戒條、單挑圈
+  drawCamp(time) {
+    const g = this.campGfx, m = this.campMarkGfx, px = this.playerBody.x, py = this.playerBody.y + 4;
+    g.clear(); m.clear();
+    for (const b of this.bandits) {
+      if (b.dead || b.state !== 'sentry') continue;
+      const bx = b.body.x, by = b.body.y + 4;
+      if (Math.hypot(px - bx, py - by) > 380) continue;
+      const [rng, half] = b.sentry.view, a = Math.min(1, b.alertV);
+      const col = a < 0.02 ? 0xfff2b0 : a < STEALTH.susp ? 0xffd070 : 0xff6a40, al = 0.07 + 0.12 * a;
+      const pts = [{ x: bx, y: by }], N = 11;
+      for (let i = 0; i <= N; i++) {
+        const ang = b.lookA - half + 2 * half * i / N, ex = bx + Math.cos(ang) * rng, ey = by + Math.sin(ang) * rng;
+        let t = 1;
+        for (const r of this.campOcc) { const h = segHitsRect(bx, by, ex, ey, r); if (h >= 0 && h < t) t = h; }
+        pts.push({ x: bx + (ex - bx) * t, y: by + (ey - by) * t });
+      }
+      g.fillStyle(col, al); g.fillPoints(pts, true);
+      g.lineStyle(1, col, Math.min(0.5, al * 2.2)); g.strokePoints(pts, true);
+      if (b.alertV > 0.02) {   // 警戒條：黃 → 紅，滿了就發現你
+        const w = 22, x0 = bx - w / 2, y0 = by - b.t.h - (b.t.showName ? 24 : 8);
+        m.fillStyle(0x000000, 0.65); m.fillRect(x0 - 1, y0 - 1, w + 2, 5);
+        m.fillStyle(a < 0.6 ? 0xffd84a : 0xff5a3a, 1); m.fillRect(x0, y0, w * a, 3);
+      }
+    }
+    const D = this.duel;
+    if (D) {
+      const k = 0.55 + 0.25 * Math.sin(time / 160);
+      g.fillStyle(0xd8a040, 0.07); g.fillCircle(D.x, D.y, DUEL.r);
+      g.lineStyle(3, 0xd8a040, k); g.strokeCircle(D.x, D.y, DUEL.r);
+    }
+    if (this.campFire) {   // 火堆的火苗跳動
+      const f = this.campFire, t = time / 1000;
+      f.flame.setScale(0.5 * (1 + 0.08 * Math.sin(t * 11)), 0.5 * (1 + 0.14 * Math.sin(t * 7.3 + 1)));
+      f.glow.setAlpha(0.16 + 0.05 * Math.sin(t * 9));
+    }
+  }
+
+  // ---------- 營地組件 ----------
+  // 帥旗（通用組件）：旗桿不染色，旗面是淺灰底圖、依陣營染色；之後的營地、城都可以用
+  addBanner(x, y, color) {
+    this.makeCampTextures();
+    const pole = this.add.image(x, y, 'campk_pole').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    const cloth = this.add.image(x + 1, y - 100, 'campk_flag').setOrigin(0, 0).setScale(0.5).setTint(color).setDepth(y);
+    const sh = this.add.ellipse(x, y, 10, 4, 0x000000, 0.3).setDepth(-9);
+    this.world.push(pole, cloth, sh);
+    this.tweens.add({ targets: cloth, scaleX: 0.42, scaleY: 0.52, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });   // 旗面飄動
+    this.block(x - 3, y - 4, x + 3, y);
+    return { pole, cloth };
+  }
+
+  // 依版面資料蓋營地：木柵、營門、缺口、帳篷等組件；記下擋路、擋視線的範圍
+  buildCamp(L) {
+    this.makeCampTextures();
+    const S = 0.5, G = L.gate, B = L.breach;
+    const fade = (img, x, y, hw, h) => this.forestTrees.push({ img, bl: null, x, y, hw, h, faded: false });   // 角色走到後面時變半透明
+    const add = (key, x, y, depth, flip) => { const img = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(S).setDepth(depth === undefined ? y : depth).setFlipX(!!flip); this.world.push(img); return img; };
+    // 木柵（擋路也擋視線）
+    this.campWalls = [
+      { x0: L.x0 - 5, x1: L.x1 + 5, y0: L.y0 - 6, y1: L.y0 + 4 },   // 北
+      { x0: L.x0 - 5, x1: G.x0, y0: L.y1 - 6, y1: L.y1 + 4 },       // 南（營門左）
+      { x0: G.x1, x1: L.x1 + 5, y0: L.y1 - 6, y1: L.y1 + 4 },       // 南（營門右）
+      { x0: L.x0 - 5, x1: L.x0 + 5, y0: L.y0, y1: B.y0 },           // 西（缺口上）
+      { x0: L.x0 - 5, x1: L.x0 + 5, y0: B.y1, y1: L.y1 },           // 西（缺口下）
+      { x0: L.x1 - 5, x1: L.x1 + 5, y0: L.y0, y1: L.y1 },           // 東
+    ];
+    this.campOcc = this.campWalls.slice();
+    for (const r of this.campWalls) this.block(r.x0, r.y0, r.x1, r.y1);
+    const bm = (B.y0 + B.y1) / 2, gm = (G.x0 + G.x1) / 2;
+    this.campOpen = [
+      { in: { x: gm, y: L.y1 - 24 }, out: { x: gm, y: L.y1 + 28 } },        // 營門
+      { in: { x: L.x0 + 24, y: bm }, out: { x: L.x0 - 28, y: bm } },        // 西面缺口
+    ];
+    for (let x = L.x0; x < L.x1; x += 16) add('campk_wallh', x + 8, L.y0 + 3);   // 北面木柵
+    for (let x = L.x0; x < L.x1; x += 16) {
+      if (x + 16 > G.x0 && x < G.x1) continue;
+      fade(add('campk_wallh', x + 8, L.y1 + 3), x + 8, L.y1 + 3, 8, 40);         // 南面木柵
+    }
+    for (let y = L.y0 + 8; y <= L.y1; y += 7) {                                  // 東西兩面：一根一根的木樁
+      for (const x of [L.x0, L.x1]) {
+        if (x === L.x0 && y > B.y0 - 2 && y < B.y1 + 6) continue;
+        fade(add('campk_stake', x, y + 2), x, y + 2, 3, 40);
+      }
+    }
+    add('campk_broken', L.x0 - 4, B.y1 + 2, B.y0);                               // 缺口：倒在地上的木樁
+    fade(add('campk_gate', gm, L.y1 + 4), gm, L.y1 + 4, 34, 56);                 // 營門
+    // 組件
+    for (const p of L.parts) {
+      if (p.k === 'flag') { this.addBanner(p.x, p.y, L.flagColor); continue; }
+      const D = CAMP_PARTS[p.k];
+      this.world.push(this.add.ellipse(p.x, p.y - 1, D.w * 0.9, Math.max(6, D.w * 0.16), 0x000000, 0.26).setDepth(-9));
+      const img = add('campk_' + p.k, p.x, p.y, p.y, p.flip);
+      const [a, b2, c, d] = D.foot, r = { x0: p.x + a, y0: p.y + b2, x1: p.x + c, y1: p.y + d };
+      this.block(r.x0, r.y0, r.x1, r.y1);
+      if (D.occ) this.campOcc.push(r);
+      if (D.h > 30) fade(img, p.x, p.y, D.w * 0.42, D.h * 0.92);
+      if (p.k === 'fire') {
+        const glow = this.add.ellipse(p.x, p.y - 4, 70, 34, 0xffb050, 0.18).setDepth(-8);
+        const flame = this.add.image(p.x, p.y - 5, 'campk_flame').setOrigin(0.5, 1).setScale(S).setDepth(p.y + 1);
+        this.world.push(glow, flame);
+        this.campFire = { flame, glow };
+      }
+    }
+    this.campGfx = this.add.graphics().setDepth(-6);           // 視野扇形、單挑圈（畫在地上）
+    this.campMarkGfx = this.add.graphics().setDepth(8002);     // 警戒條
+    this.world.push(this.campGfx, this.campMarkGfx);
+  }
+
+  // 暫代組件圖（程式畫，只做一次）：每單位 2 像素、硬邊、深色輪廓；正式圖到了再換
+  makeCampTextures() {
+    if (this.textures.exists('campk_pole')) return;
+    const K = 2;
+    const mk = (key, w, h, draw) => {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      const R = (x, y, ww, hh, c) => { g.fillStyle(c, 1); g.fillRect(Math.round(x * K), Math.round(y * K), Math.max(1, Math.round(ww * K)), Math.max(1, Math.round(hh * K))); };
+      // 多邊形：逐列填色（不用抗鋸齒的路徑，邊緣保持硬邊）
+      const P = (pts, c) => {
+        g.fillStyle(c, 1);
+        const ys = pts.map(p => p[1] * K), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
+        for (let y = y0; y < y1; y++) {
+          const yc = y + 0.5, xs = [];
+          for (let i = 0; i < pts.length; i++) {
+            const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length];
+            const A = ay * K, Bv = by * K;
+            if ((A <= yc && Bv > yc) || (Bv <= yc && A > yc)) xs.push(ax * K + (yc - A) / (Bv - A) * (bx - ax) * K);
+          }
+          xs.sort((p, q) => p - q);
+          for (let i = 0; i + 1 < xs.length; i += 2) { const xa = Math.round(xs[i]), xb = Math.round(xs[i + 1]); if (xb > xa) g.fillRect(xa, y, xb - xa, 1); }
+        }
+      };
+      // 線（輪廓）：一格一格的方塊，粗 t 單位
+      const Ln = (x0, y0, x1, y1, c, t = 1) => {
+        g.fillStyle(c, 1);
+        const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * K));
+        for (let i = 0; i <= n; i++) { const x = (x0 + (x1 - x0) * i / n) * K, y = (y0 + (y1 - y0) * i / n) * K; g.fillRect(Math.round(x - t * K / 2), Math.round(y - t * K / 2), Math.round(t * K), Math.round(t * K)); }
+      };
+      const Pl = (pts, c, oc) => { P(pts, c); if (oc !== undefined) for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; Ln(a[0], a[1], b[0], b[1], oc); } };
+      draw(R, Pl, Ln);
+      g.generateTexture(key, w * K, h * K); g.destroy();
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    };
+    const O = 0x2b2218, C1 = 0xd6c8a0, C2 = 0xb6a67c, C3 = 0x8e7e5a, IN = 0x3a3024, Y = 0xc9a23a;
+    const W0 = 0xa68458, W1 = 0x8a6a44, W2 = 0x6e5234, W3 = 0x4e3a24, ROPE = 0xc4b48a;
+    const tent = (key, w, h, trim) => mk(key, w, h, (R, Pl, Ln) => {
+      const cx = w / 2, bA = h * 0.07, fA = h * 0.3, bb = h * 0.64, fb = h - 2, bx = w * 0.13, fx = w * 0.06;
+      Pl([[bx, bb], [cx, bA], [cx, fA], [fx, fb]], C2, O);                 // 左側屋面
+      Pl([[cx, bA], [w - bx, bb], [w - fx, fb], [cx, fA]], C3, O);         // 右側屋面（背光）
+      Pl([[fx, fb], [cx, fA], [w - fx, fb]], C1, O);                       // 正面
+      const dw = w * 0.13;
+      Pl([[cx - dw, fb], [cx, fA + (fb - fA) * 0.42], [cx + dw, fb]], IN, O);   // 門口
+      Pl([[cx, fA + (fb - fA) * 0.42], [cx + dw, fb], [cx + dw * 1.45, fb]], C2, O);   // 掀開的門簾
+      for (let k = 1; k <= 3; k++) { const t = k / 4; Ln(cx + (fx - cx) * t, fA + (fb - fA) * t, cx + (bx - cx) * t, bA + (bb - bA) * t, C3); Ln(cx + (w - fx - cx) * t, fA + (fb - fA) * t, cx + (w - bx - cx) * t, bA + (bb - bA) * t, W2); }   // 帆布接縫
+      if (trim) { Ln(fx + 2, fb - 2, cx, fA + 3, Y); Ln(cx, fA + 3, w - fx - 2, fb - 2, Y); }
+      R(cx - 1, bA - 4, 2, 5, W3);                                          // 頂上的木桿
+      if (trim) Pl([[cx + 1, bA - 4], [cx + 8, bA - 2], [cx + 1, bA]], Y, O);   // 小三角旗
+      Ln(fx, fb, 0.5, h - 0.5, ROPE); Ln(w - fx, fb, w - 0.5, h - 0.5, ROPE);   // 營繩
+    });
+    tent('campk_tent_s', 60, 48, false);
+    tent('campk_tent_b', 112, 84, true);
+    mk('campk_tower', 40, 112, (R, Pl, Ln) => {
+      R(9, 34, 3, 72, W1); R(28, 34, 3, 72, W1);                        // 後面兩根腳（亮一點）
+      Ln(10, 50, 30, 78, W2, 1.5); Ln(30, 50, 10, 78, W2, 1.5); Ln(10, 80, 30, 104, W2, 1.5); Ln(30, 80, 10, 104, W2, 1.5);   // 斜撐
+      R(4, 34, 4, 78, W2); R(32, 34, 4, 78, W2); R(4, 34, 1, 78, O); R(35, 34, 1, 78, O);   // 前面兩根腳
+      R(1, 29, 38, 6, W0); R(1, 34, 38, 3, W2); R(1, 29, 38, 1, O); R(1, 37, 38, 1, O);     // 平台
+      for (const x of [3, 19, 35]) R(x, 17, 2, 12, W2);                  // 欄杆
+      R(2, 19, 36, 2, W1);
+      Pl([[0, 18], [20, 2], [40, 18]], C3, O); Ln(6, 15, 20, 5, C2); Ln(34, 15, 20, 5, W2);   // 茅草頂
+    });
+    mk('campk_fire', 26, 14, (R, Pl, Ln) => {
+      for (const [x, y] of [[2, 8], [6, 11], [11, 12], [16, 12], [20, 11], [23, 8], [6, 5], [19, 5]]) { R(x, y, 3, 2.5, 0x8a8a80); R(x, y + 1.5, 3, 1, 0x5e5e56); }   // 石圈
+      R(8, 7, 10, 4, 0x3a3530);                                          // 灰燼
+      Ln(6, 10, 20, 6, W3, 2); Ln(6, 6, 20, 10, W2, 2);                  // 柴
+    });
+    mk('campk_flame', 12, 18, (R, Pl) => {
+      Pl([[6, 0], [11, 11], [9, 18], [3, 18], [1, 11]], 0xe8853a);
+      Pl([[6, 6], [9, 13], [8, 18], [4, 18], [3, 13]], 0xf6d26a);
+    });
+    mk('campk_crates', 50, 38, (R, Pl, Ln) => {
+      R(2, 12, 26, 8, W0); R(2, 20, 26, 17, W1); R(2, 27, 26, 1, W3); R(2, 12, 26, 1, O); R(2, 37, 26, 1, O); R(2, 12, 1, 25, O); R(28, 12, 1, 26, O); R(2, 20, 27, 1, W3);   // 大木箱（看得到頂面）
+      R(8, 2, 16, 6, W0); R(8, 8, 16, 5, W1); R(8, 2, 16, 1, O); R(8, 2, 1, 11, O); R(24, 2, 1, 11, O); R(8, 8, 16, 1, W3);   // 疊在上面的小箱
+      for (const [x, y] of [[30, 22], [38, 24]]) { R(x + 1, y, 10, 13, C2); R(x, y + 2, 12, 9, C2); R(x + 2, y - 1, 8, 2, C1); R(x + 1, y + 12, 10, 1, O); R(x, y + 2, 1, 9, O); R(x + 11, y + 2, 1, 9, O); R(x + 4, y + 4, 4, 1, C3); }   // 麻袋
+    });
+    mk('campk_juma', 58, 26, (R, Pl, Ln) => {
+      for (const x of [8, 22, 36, 50]) { Ln(x - 6, 24, x + 6, 3, W1, 2); Ln(x - 6, 3, x + 6, 24, W2, 2); R(x + 5, 2, 2, 2, W0); R(x - 7, 2, 2, 2, W0); }   // 削尖的木樁交叉
+      R(1, 15, 56, 4, W2); R(1, 15, 56, 1, O); R(1, 19, 56, 1, O);       // 橫木
+    });
+    const stake = (R, Pl, Ln, x) => {
+      R(x + 1, 8, 6, 34, W1); R(x + 5, 8, 2, 34, W2); R(x + 1, 8, 1, 34, O);
+      Pl([[x + 1, 8.5], [x + 4, 1.5], [x + 7, 8.5]], W0, O);
+    };
+    mk('campk_wallh', 16, 42, (R, Pl, Ln) => { stake(R, Pl, Ln, 0); stake(R, Pl, Ln, 8); R(0, 30, 16, 2, ROPE); R(0, 14, 16, 1.5, ROPE); });
+    mk('campk_stake', 8, 42, (R, Pl, Ln) => { stake(R, Pl, Ln, 0); R(0, 30, 8, 2, ROPE); });
+    mk('campk_gate', 72, 60, (R, Pl, Ln) => {
+      for (const x of [0, 64]) { R(x + 1, 8, 7, 52, W1); R(x + 6, 8, 2, 52, W2); R(x + 1, 8, 1, 52, O); Pl([[x + 1, 8.5], [x + 4.5, 1], [x + 8, 8.5]], W0, O); }   // 兩根門柱
+      R(0, 10, 72, 6, W1); R(0, 10, 72, 1, O); R(0, 16, 72, 1, O); R(0, 14, 72, 2, W2);   // 橫樑
+      Pl([[29, 17], [43, 17], [43, 28], [36, 25], [29, 28]], Y, O);      // 門上的黃布
+    });
+    mk('campk_broken', 44, 14, (R, Pl, Ln) => { Ln(2, 10, 30, 4, W2, 3); Ln(2, 10, 30, 4, W1, 2); Ln(12, 13, 42, 8, W2, 3); Ln(12, 13, 42, 8, W1, 2); R(29, 3, 2, 2, W0); R(41, 7, 2, 2, W0); });
+    mk('campk_pole', 4, 104, (R) => { R(1, 3, 2, 101, W3); R(0, 0, 4, 3, Y); });
+    mk('campk_flag', 34, 44, (R, Pl) => {   // 旗面：淺灰，遊戲裡依陣營染色（燕尾旗）
+      Pl([[0, 0], [32, 0], [32, 40], [24, 34], [16, 40], [16, 44], [0, 44]], 0x7c7c7c);
+      Pl([[1, 1], [31, 1], [31, 37], [24, 31.5], [15, 37.5], [15, 43], [1, 43]], 0xe8e8e8);
+      R(1, 1, 30, 3, 0xbdbdbd); R(1, 40, 14, 3, 0xbdbdbd); R(10, 4, 2, 39, 0xd2d2d2);
+      R(5, 13, 12, 12, 0xf6f6f6); R(5, 13, 12, 1, 0xa8a8a8); R(5, 24, 12, 1, 0xa8a8a8); R(5, 13, 1, 12, 0xa8a8a8); R(16, 13, 1, 12, 0xa8a8a8);   // 留給字號的方框（不寫字）
+    });
   }
 
   // ---------- 森林路線：遭遇流程 ----------
@@ -3546,7 +4081,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   updateStage(time) {
-    if (this.area === 'field') this.updateBattle(time);
+    if (this.area === 'field') this.updateCamp(time);
     if (this.encArea()) this.updateForest(time);
     // 黑條與操作介面跟著 cine 淡入淡出
     const k = this.cineK = Math.max(0, Math.min(1, this.cineK + (this.cine ? 1 : -1) * 0.06));
@@ -3622,7 +4157,7 @@ class VillageScene extends Phaser.Scene {
   }
 
   buildForest() { this.buildWoods(walkable, 11, 'forest_ground', true); }
-  buildField() { this.buildWoods(fieldWalkable, 23, 'field_ground', false); }
+  buildField() { this.buildWoods(fieldWalkable, 23, 'field_ground', false); this.buildCamp(CAMP); }
 
   buildWoods(walk, seed0, groundKey, forestProps, blossom) {
     let seed = seed0;
