@@ -217,7 +217,7 @@ const JOY_DEAD = 6;     // 死區：拖不到這個距離不動
 const JOY_FULL = 34;    // 拖到這個距離就是全速
 
 // 戰鬥
-const VERSION = 'v0.23.0';   // 每次更新請加一
+const VERSION = 'v0.24.0';   // 每次更新請加一
 const BTN_R = 42;           // 攻擊鍵半徑（螢幕像素）
 const ATK_CD = 980;         // 兩次攻擊的最短間隔（毫秒）
 const ATK_SWING = 460;      // 揮劍動作本身的長度（拉長＝動畫變慢，看起來更重）
@@ -588,6 +588,101 @@ const DROPS = {
   bandit: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
   ytcaptain: [['jc', 0.7], ['jc', 0.25], ['xq', 0.25]],
 };
+// ---------- 裝備（5 格）：數值與被動，靠套裝與標籤湊出額外效果（v0.24.0） ----------
+// 每格的裝備數量不設上限，新增只要在 GEAR 加一行。全部機率掉落，沒有保證掉落。
+// mods：dmg 傷害%、def 減傷%、hp 氣血上限、stam 氣力上限、regen 氣力回復%、roll 翻滾耗氣減少%、kh 擊殺回血（氣血上限%）
+const GEAR_SLOTS = ['weapon', 'head', 'body', 'feet', 'trinket'];
+const GEAR_SLOT_NAMES = { weapon: '武器', head: '頭', body: '身', feet: '腳', trinket: '飾品' };
+const GEAR = {
+  // 武器
+  hj_blade:    { name: '黃巾刀',   slot: 'weapon', set: 'hj',  tags: ['輕'],       mods: { dmg: 0.04 } },
+  han_blade:   { name: '官軍環首刀', slot: 'weapon', set: 'han', tags: ['重'],       mods: { dmg: 0.07 } },
+  hunter_knife:{ name: '獵人短刀', slot: 'weapon',               tags: ['輕', '血'], mods: { dmg: 0.03, roll: 0.05 } },
+  heavy_sword: { name: '鐵匠重劍', slot: 'weapon',               tags: ['重'],       mods: { dmg: 0.12, regen: -0.05 } },
+  chief_blade: { name: '渠帥大刀', slot: 'weapon',               tags: ['重', '血'], mods: { dmg: 0.10, kh: 0.02 } },
+  // 頭
+  hj_band:     { name: '黃巾頭帶', slot: 'head', set: 'hj',  tags: ['輕'], mods: { stam: 10 } },
+  han_helm:    { name: '官軍鐵盔', slot: 'head', set: 'han', tags: ['重'], mods: { def: 0.03, hp: 10 } },
+  straw_hat:   { name: '斗笠',     slot: 'head',               tags: ['輕'], mods: { regen: 0.05 } },
+  daoist_crown:{ name: '道士髮冠', slot: 'head',               tags: ['氣'], mods: { stam: 15, regen: 0.03 } },
+  // 身
+  hj_vest:     { name: '黃巾短衣', slot: 'body', set: 'hj',  tags: ['輕'], mods: { hp: 10 } },
+  han_armor:   { name: '官軍皮甲', slot: 'body', set: 'han', tags: ['重'], mods: { def: 0.04, hp: 15 } },
+  cloth_robe:  { name: '粗布衣',   slot: 'body',               tags: ['輕'], mods: { regen: 0.06 } },
+  iron_lamellar:{ name: '鐵札甲',  slot: 'body',               tags: ['重'], mods: { def: 0.08, regen: -0.06 } },
+  // 腳
+  hj_sandals:  { name: '黃巾草履', slot: 'feet', set: 'hj',  tags: ['輕'], mods: { roll: 0.06 } },
+  han_boots:   { name: '官軍戰靴', slot: 'feet', set: 'han', tags: ['重'], mods: { def: 0.02, hp: 8 } },
+  hemp_shoes:  { name: '麻鞋',     slot: 'feet',               tags: ['輕'], mods: { regen: 0.04 } },
+  iron_boots:  { name: '鐵頭靴',   slot: 'feet',               tags: ['重'], mods: { def: 0.04 } },
+  // 飾品
+  charm:       { name: '護身符',   slot: 'trinket',            tags: ['氣'], mods: { stam: 15 } },
+  jade:        { name: '玉佩',     slot: 'trinket',                           mods: { hp: 15 } },
+  wolf_fang:   { name: '狼牙',     slot: 'trinket',            tags: ['血'], mods: { kh: 0.03 } },
+  tiger_tally: { name: '虎符',     slot: 'trinket',            tags: ['重'], mods: { def: 0.02, dmg: 0.03 } },
+  incense:     { name: '行氣香囊', slot: 'trinket',            tags: ['氣'], mods: { regen: 0.08 } },
+};
+// 套裝：件數愈多愈強，低階效果會一直保留
+const GEAR_SETS = {
+  hj:  { name: '黃巾', bonus: { 2: { dmg: 0.04 }, 4: { kh: 0.05, hp: 30 } } },
+  han: { name: '官軍', bonus: { 2: { def: 0.03 }, 4: { def: 0.05, stam: 20 } } },
+};
+// 標籤連動：同標籤件數湊夠就啟動，只取達成的最高一檔
+const GEAR_TAGS = {
+  '輕': { 3: { roll: 0.20, regen: 0.12 }, 5: { roll: 0.35, regen: 0.20 } },
+  '重': { 3: { def: 0.05, hp: 20 },       5: { def: 0.10, hp: 40 } },
+  '血': { 2: { kh: 0.03 },                3: { kh: 0.06, dmg: 0.05 } },
+  '氣': { 2: { stam: 15 },                3: { stam: 30, regen: 0.10 } },
+};
+// 掉落：[裝備, 機率]，每個敵人倒下時各擲一次
+const GEAR_DROPS = {
+  robber:     [['hunter_knife', 0.04], ['cloth_robe', 0.06], ['hemp_shoes', 0.06], ['straw_hat', 0.04]],
+  turban:     [['hj_blade', 0.04], ['hj_band', 0.05], ['hj_vest', 0.05], ['hj_sandals', 0.05]],
+  ytelite:    [['hj_blade', 0.08], ['hj_band', 0.08], ['hj_vest', 0.08], ['hj_sandals', 0.08], ['wolf_fang', 0.04], ['charm', 0.04]],
+  hansoldier: [['han_blade', 0.06], ['han_helm', 0.06], ['han_armor', 0.06], ['han_boots', 0.06], ['iron_boots', 0.03]],
+  hangeneral: [['han_blade', 0.15], ['han_helm', 0.15], ['han_armor', 0.15], ['han_boots', 0.15], ['tiger_tally', 0.10], ['iron_lamellar', 0.08]],
+  bandit:     [['heavy_sword', 0.20], ['iron_lamellar', 0.20], ['iron_boots', 0.15], ['jade', 0.15], ['incense', 0.12]],
+  ytcaptain:  [['chief_blade', 0.40], ['daoist_crown', 0.25], ['wolf_fang', 0.20], ['incense', 0.15], ['jade', 0.15]],
+};
+const MOD_LABEL = { dmg: '傷害', def: '減傷', hp: '氣血', stam: '氣力', regen: '氣力回復', roll: '翻滾耗氣', kh: '擊殺回血' };
+function modText(m) {
+  const out = [];
+  for (const k of Object.keys(MOD_LABEL)) {
+    const v = m[k]; if (!v) continue;
+    const pct = k !== 'hp' && k !== 'stam';
+    const num = pct ? Math.round(Math.abs(v) * 100) + '%' : String(Math.abs(v));
+    const sign = k === 'roll' ? (v > 0 ? '-' : '+') : (v > 0 ? '+' : '-');
+    out.push(MOD_LABEL[k] + ' ' + sign + num);
+  }
+  return out.join('　');
+}
+// 算出 5 格全穿上後的總加成、啟動中的搭配，以及還差幾件的提示
+function gearTotals(eq) {
+  const mods = { dmg: 0, def: 0, hp: 0, stam: 0, regen: 0, roll: 0, kh: 0 }, active = [], hints = [];
+  const add = m => { for (const k in m) mods[k] = (mods[k] || 0) + m[k]; };
+  const setN = {}, tagN = {};
+  for (const sl of GEAR_SLOTS) {
+    const G = GEAR[eq && eq[sl]]; if (!G) continue;
+    add(G.mods);
+    if (G.set) setN[G.set] = (setN[G.set] || 0) + 1;
+    for (const t of (G.tags || [])) tagN[t] = (tagN[t] || 0) + 1;
+  }
+  const nums = o => Object.keys(o).map(Number).sort((a, b) => a - b);
+  for (const id in setN) {
+    const S = GEAR_SETS[id], n = setN[id];
+    for (const need of nums(S.bonus)) if (n >= need) { add(S.bonus[need]); active.push({ name: S.name + '套裝 ' + need + ' 件', mods: S.bonus[need] }); }
+    const nx = nums(S.bonus).find(x => x > n);
+    if (nx) hints.push({ name: S.name + '套裝 ' + n + '/' + nx, mods: S.bonus[nx] });
+  }
+  for (const t in tagN) {
+    const T = GEAR_TAGS[t]; if (!T) continue;
+    const n = tagN[t], got = nums(T).filter(x => n >= x).pop();
+    if (got) { add(T[got]); active.push({ name: '「' + t + '」×' + got, mods: T[got] }); }
+    const nx = nums(T).find(x => x > n);
+    if (nx) hints.push({ name: '「' + t + '」' + n + '/' + nx, mods: T[nx] });
+  }
+  return { mods, active, hints };
+}
 // 存檔欄位：共 3 格。第 1 格沿用舊 key（舊存檔直接在第 1 格），第 2、3 格加後綴；最後用的是哪一格記在 dajianghu_slot
 const SLOT_COUNT = 3;
 const slotKey = k => k === 1 ? 'dajianghu_save_v1' : 'dajianghu_save_v1_s' + k;
@@ -1292,6 +1387,7 @@ class VillageScene extends Phaser.Scene {
     this.uiCam.ignore(this.world);
     this.buildPanel();
     this.buildInv();
+    this.buildEquip();
     this.buildDialog();
     this.buildShop();
 
@@ -1314,6 +1410,7 @@ class VillageScene extends Phaser.Scene {
     ['ONE', 'TWO', 'THREE'].forEach((n, k) => this.input.keyboard.on('keydown-' + n, () => this.pickChoice(k)));
     this.input.on('pointerdown', p => {
       if (this.menuPointer(p)) return;
+      if (this.eqPointer(p)) return;
       if (this.invPointer(p)) return;
       if (this.panelPointer(p)) return;
       if (this.shopPointer(p)) return;
@@ -1369,7 +1466,7 @@ class VillageScene extends Phaser.Scene {
       this.objText.setX(this.scale.width / 2);
       this.downText.setPosition(this.scale.width / 2, this.scale.height / 2 - 40);
       this.bannerText.setPosition(this.scale.width / 2, this.scale.height * 0.3);
-      this.layoutPanel(); this.layoutInv();
+      this.layoutPanel(); this.layoutInv(); this.layoutEquip();
     };
     this.scale.on('resize', this.onResize);
     this.events.once('shutdown', () => this.scale.off('resize', this.onResize));
@@ -1554,7 +1651,7 @@ class VillageScene extends Phaser.Scene {
     }
 
     // 耐力回復（翻滾中不回復）
-    if (time >= this.stamRegenAt && !this.roll && !this.guarding) this.stam = Math.min(this.maxStam(), this.stam + STAM_REGEN * delta / 1000);
+    if (time >= this.stamRegenAt && !this.roll && !this.guarding) this.stam = Math.min(this.maxStam(), this.stam + STAM_REGEN * Math.max(0.3, 1 + this.gt.mods.regen) * delta / 1000);
 
     // 翻滾：緩衝輸入、結束判定
     if (!this.roll && this.rollBuf > time) this.tryRoll(time);
@@ -1827,7 +1924,7 @@ class VillageScene extends Phaser.Scene {
     const m = Math.hypot(dx, dy) || 1;
     dx /= m; dy /= m;
     this.atk = null;
-    this.useStamina(back ? BACK_COST : ROLL_COST, time);
+    this.useStamina((back ? BACK_COST : ROLL_COST) * (1 - Math.min(0.6, this.gt.mods.roll)), time);
     const dur = back ? BACK_DUR : ROLL_DUR, move = back ? BACK_MOVE : ROLL_MOVE;
     const dist = back ? BACK_DIST : ROLL_DIST;
     const iFrom = back ? BACK_I_FROM : ROLL_I_FROM, iTo = back ? BACK_I_TO : ROLL_I_TO;
@@ -2356,6 +2453,7 @@ class VillageScene extends Phaser.Scene {
     b.state = 'dead'; b.dead = true;
     this.gainKillXp(b);
     this.rollDrops(b);
+    this.killHeal();
     b.body.body.setVelocity(0, 0);
     b.body.body.enable = false;
     b.alert.setVisible(false); b.nameTag.setVisible(false);
@@ -2381,6 +2479,7 @@ class VillageScene extends Phaser.Scene {
     this.xp = 0; this.pending = 0; this.wz = 0;
     this.inv = { flask: 0, jc: 0, xq: 0, cloth: 0 }; this.quick = 'flask';   // 藥壺要第一次參拜才拿到
     this.stats = { hp: 0, sta: 0, atk: 0, def: 0 };
+    this.gearOwned = {}; this.gearEq = { weapon: null, head: null, body: null, feet: null, trinket: null };
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
       if (d && d.stats) {
@@ -2397,8 +2496,15 @@ class VillageScene extends Phaser.Scene {
           PROG = { enc: SAVED.prog.enc.slice() };
         }
       }
+      if (d && d.gear) {   // 裝備：只收認得的裝備，穿著的必須擁有且部位正確
+        const own = d.gear.own || {};
+        for (const id in own) if (GEAR[id]) this.gearOwned[id] = Math.max(0, own[id] | 0);
+        const eq = d.gear.eq || {};
+        for (const sl of GEAR_SLOTS) { const id = eq[sl]; if (GEAR[id] && GEAR[id].slot === sl && (this.gearOwned[id] | 0) > 0) this.gearEq[sl] = id; }
+      }
       if (d && d.inv) { for (const k of ITEM_ORDER) this.inv[k] = Math.max(0, d.inv[k] | 0); this.inv.flask = Math.min(FLASK_MAX, this.inv.flask); if (ITEMS[d.quick]) this.quick = d.quick; }
     } catch (e) {}
+    this.refreshGear();
     this.calcLv();
   }
 
@@ -2406,7 +2512,7 @@ class VillageScene extends Phaser.Scene {
 
   saveGrowth() {
     try {
-      const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz, ts: Date.now() };
+      const o = { v: SAVE_VER, xp: this.xp, stats: this.stats, inv: this.inv, quick: this.quick, wz: this.wz, gear: { own: this.gearOwned, eq: this.gearEq }, ts: Date.now() };
       o.story = STORY;
       if (SAVED) { o.area = SAVED.area; o.prog = SAVED.prog; o.at = SAVED.at; }
       localStorage.setItem(SAVE_KEY, JSON.stringify(o));
@@ -2422,10 +2528,10 @@ class VillageScene extends Phaser.Scene {
     return true;
   }
 
-  maxHp() { return statMaxHp(this.stats.hp); }
-  maxStam() { return statMaxStam(this.stats.sta); }
+  maxHp() { return statMaxHp(this.stats.hp) + (this.gt ? this.gt.mods.hp : 0); }
+  maxStam() { return statMaxStam(this.stats.sta) + (this.gt ? this.gt.mods.stam : 0); }
   playerDmg() {
-    return Math.max(1, Math.round((PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG)) * statAtk(this.stats.atk)));
+    return Math.max(1, Math.round((PLAYER_DMG_MIN + Math.floor(Math.random() * PLAYER_DMG_RNG)) * statAtk(this.stats.atk) * (1 + (this.gt ? this.gt.mods.dmg : 0))));
   }
 
   // 章節固定經驗（劇情結算時呼叫；直接入帳，不受等級影響）
@@ -2806,6 +2912,9 @@ class VillageScene extends Phaser.Scene {
     for (const [id, p] of (DROPS[b.spawn.type] || [])) {
       if (Math.random() < p) this.spawnDrop(id, b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12);
     }
+    for (const [gid, p] of (GEAR_DROPS[b.spawn.type] || [])) {
+      if (Math.random() < p) this.spawnDrop('g_' + gid, b.body.x + (Math.random() - 0.5) * 24, b.body.y + (Math.random() - 0.5) * 12);
+    }
     const w = WZ_DROP[b.spawn.type];
     if (w && Math.random() < w[0]) {
       const n = w[1] + Math.floor(Math.random() * (w[2] - w[1] + 1));
@@ -2822,20 +2931,166 @@ class VillageScene extends Phaser.Scene {
       if (d.id === 'wz') {   // 五銖錢：金色圓錢加方孔
         g.fillStyle(0xd9b45a, 1); g.fillCircle(d.x, d.y - 5 + bob, 4.5);
         g.fillStyle(0x3a3520, 1); g.fillRect(d.x - 1, d.y - 6 + bob, 2, 2);
+      } else if (d.id.slice(0, 2) === 'g_') {   // 裝備：紫紅色小包
+        g.fillStyle(0x9a4a8a, 1); g.fillRoundedRect(d.x - 5, d.y - 10 + bob, 10, 9, 2);
+        g.fillStyle(0xf0d890, 1); g.fillRect(d.x - 1, d.y - 8 + bob, 2, 5);
       } else {
         g.fillStyle(d.id === 'xq' ? 0x6a9ad9 : 0xb08a4a, 1); g.fillRoundedRect(d.x - 4, d.y - 9 + bob, 8, 8, 2);
         g.fillStyle(0xf0e6c8, 1); g.fillRect(d.x - 1, d.y - 11 + bob, 2, 3);
       }
       if (time - d.t0 > 400 && Math.hypot(px - d.x, py - d.y) < 20) {
         if (d.id === 'wz') { this.wz += d.n; this.spawnDamage(d.x, d.y - 14, '+' + d.n + ' 五銖', '#e8d890'); }
+        else if (d.id.slice(0, 2) === 'g_') { const gid = d.id.slice(2); this.addGear(gid); this.spawnDamage(d.x, d.y - 14, '+' + GEAR[gid].name, '#f0b8e8'); }
         else { this.inv[d.id] = (this.inv[d.id] | 0) + 1; this.spawnDamage(d.x, d.y - 14, '+' + ITEMS[d.id].name, '#e8d890'); }
         this.drops.splice(i, 1); this.saveGrowth();
       }
     }
   }
 
+  // ---------- 裝備（5 格） ----------
+  addGear(id) { this.gearOwned[id] = (this.gearOwned[id] | 0) + 1; }
+  gearList(slot) { return Object.keys(GEAR).filter(id => GEAR[id].slot === slot && (this.gearOwned[id] | 0) > 0); }
+  refreshGear() {
+    this.gt = gearTotals(this.gearEq);
+    if (this.php != null && this.stam != null) { this.php = Math.min(this.php, this.maxHp()); this.stam = Math.min(this.stam, this.maxStam()); }
+  }
+  equipGear(slot, id) { this.gearEq[slot] = id || null; this.refreshGear(); this.saveGrowth(); }
+  killHeal() {
+    const kh = this.gt.mods.kh;
+    if (!(kh > 0) || this.down || this.php <= 0 || this.php >= this.maxHp()) return;
+    const n = Math.max(1, Math.round(this.maxHp() * kh));
+    this.php = Math.min(this.maxHp(), this.php + n);
+    this.spawnDamage(this.playerBody.x, this.playerBody.y + 4 - HERO_H - 4, '+' + n, '#9ad98a');
+  }
+
+  eqBtnRect() { return { x: this.scale.width - 70, y: 56, w: 62, h: 24 }; }
+  eqEntries(slot) { return (this.gearEq[slot] ? [''] : []).concat(this.gearList(slot)); }
+
+  buildEquip() {
+    const mk = (o) => { o.setDepth(1100); this.ui.push(o); this.cameras.main.ignore(o); return o; };
+    const tx = (size, color, stroke = 3) => ({ fontFamily: 'system-ui, sans-serif', fontSize: size + 'px', color, stroke: '#000000', strokeThickness: stroke });
+    this.eqOpen = false; this.eqView = 'main'; this.eqPage = 0;
+    this.eqBtnText = mk(this.add.text(0, 0, '裝備', tx(14, '#e6f0dc')).setOrigin(0.5).setDepth(1101));
+    this.eqTitle = mk(this.add.text(0, 0, '裝備', tx(18, '#f0d890')).setOrigin(0.5, 0));
+    this.eqRows = [0, 1, 2, 3, 4].map(() => ({
+      name: mk(this.add.text(0, 0, '', tx(15, '#e6f0dc')).setDepth(1101)),
+      desc: mk(this.add.text(0, 0, '', tx(11, '#c8d8c0')).setDepth(1101)),
+    }));
+    this.eqInfo = mk(this.add.text(0, 0, '', Object.assign(tx(11, '#d8e4cc', 2), { lineSpacing: 3 })).setDepth(1101));
+    this.eqClose = mk(this.add.text(0, 0, '離開', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.eqBack = mk(this.add.text(0, 0, '返回', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.eqPrev = mk(this.add.text(0, 0, '上頁', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.eqNext = mk(this.add.text(0, 0, '下頁', tx(16, '#16201a', 0)).setOrigin(0.5).setDepth(1101));
+    this.layoutEquip();
+    this.setEquipVisible(false);
+  }
+
+  setEquipVisible(v) {
+    for (const o of [this.eqTitle, this.eqInfo, this.eqClose, this.eqBack, this.eqPrev, this.eqNext]) o.setVisible(v);
+    for (const r of this.eqRows) { r.name.setVisible(v); r.desc.setVisible(v); }
+  }
+
+  layoutEquip() {
+    const W = this.scale.width, H = this.scale.height;
+    const pw = Math.min(W - 24, 360), infoH = 100;
+    const rowH = Math.max(34, Math.min(46, Math.floor((H - 24 - 44 - infoH - 56) / 5)));
+    const ph = 44 + rowH * 5 + infoH + 56;
+    const px = (W - pw) / 2, py = Math.max(12, (H - ph) / 2);
+    const rows = [];
+    for (let i = 0; i < 5; i++) {
+      const y = py + 44 + i * rowH;
+      rows.push({ y, hit: { x0: px + 8, x1: px + pw - 8, y0: y - 2, y1: y + rowH - 4 } });
+      this.eqRows[i].name.setPosition(px + 14, y); this.eqRows[i].desc.setPosition(px + 14, y + 20);
+    }
+    const by = py + ph - 30;
+    this.eq_ = { px, py, pw, ph, rowH, rows,
+      close: { x: W / 2, y: by, w: 120, h: 34 }, back: { x: W / 2 - 92, y: by, w: 84, h: 34 },
+      prev: { x: W / 2, y: by, w: 84, h: 34 }, next: { x: W / 2 + 92, y: by, w: 84, h: 34 } };
+    this.eqTitle.setPosition(W / 2, py + 12);
+    this.eqInfo.setPosition(px + 14, py + 44 + rowH * 5 + 4).setWordWrapWidth(pw - 28);
+    this.eqClose.setPosition(W / 2, by); this.eqBack.setPosition(W / 2 - 92, by);
+    this.eqPrev.setPosition(W / 2, by); this.eqNext.setPosition(W / 2 + 92, by);
+    const r = this.eqBtnRect(); this.eqBtnText.setPosition(r.x + r.w / 2, r.y + r.h / 2);
+  }
+
+  openEquip() {
+    this.eqOpen = true; this.eqView = 'main'; this.eqPage = 0;
+    this.joy.id = null; this.joy.active = false; this.joy.x = this.joy.y = this.joy.dx = this.joy.dy = 0; this.btn.held = false;
+    this.layoutEquip(); this.setEquipVisible(true);
+  }
+  closeEquip() { this.eqOpen = false; this.setEquipVisible(false); this.saveGrowth(); }
+
+  eqPointer(p) {
+    const hit = b => Math.abs(p.x - b.x) <= b.w / 2 && Math.abs(p.y - b.y) <= b.h / 2;
+    if (this.eqOpen) {
+      const P = this.eq_;
+      if (this.eqView === 'main') {
+        if (hit(P.close)) { this.closeEquip(); return true; }
+        P.rows.forEach((r, i) => { if (p.x >= r.hit.x0 && p.x <= r.hit.x1 && p.y >= r.hit.y0 && p.y <= r.hit.y1) { this.eqView = GEAR_SLOTS[i]; this.eqPage = 0; } });
+      } else {
+        const slot = this.eqView, list = this.eqEntries(slot), pages = Math.max(1, Math.ceil(list.length / 5));
+        if (hit(P.back)) this.eqView = 'main';
+        else if (hit(P.prev)) this.eqPage = Math.max(0, this.eqPage - 1);
+        else if (hit(P.next)) this.eqPage = Math.min(pages - 1, this.eqPage + 1);
+        else P.rows.forEach((r, i) => {
+          if (!(p.x >= r.hit.x0 && p.x <= r.hit.x1 && p.y >= r.hit.y0 && p.y <= r.hit.y1)) return;
+          const e = list[this.eqPage * 5 + i];
+          if (e === undefined) return;
+          this.equipGear(slot, e || null); this.eqView = 'main';   // 穿好直接回主頁，看得到搭配有沒有啟動
+        });
+      }
+      return true;
+    }
+    const r = this.eqBtnRect();
+    if (this.canOpenInv() && !this.panelOpen && !this.invOpen && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.openEquip(); return true; }
+    return false;
+  }
+
+  drawEquipUI() {
+    const g = this.pnGfx, W = this.scale.width, k = 1 - this.cineK;
+    const r = this.eqBtnRect(), can = this.canOpenInv() && !this.panelOpen && !this.invOpen && !this.eqOpen;
+    g.fillStyle(0x16201a, can ? 0.6 : 0.25); g.fillRoundedRect(r.x, r.y, r.w, r.h, 6);
+    g.lineStyle(2, 0xe6f0dc, can ? 0.6 : 0.25); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 6);
+    this.eqBtnText.setAlpha((can ? 1 : 0.35) * k).setVisible(!this.invOpen && !this.panelOpen && !this.eqOpen);
+    if (!this.eqOpen) return;
+    const P = this.eq_, main = this.eqView === 'main', slot = this.eqView;
+    g.fillStyle(0x000000, 0.55); g.fillRect(0, 0, W, this.scale.height);
+    g.fillStyle(0x16201a, 0.96); g.fillRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    g.lineStyle(2, 0xe6f0dc, 0.7); g.strokeRoundedRect(P.px, P.py, P.pw, P.ph, 10);
+    const btn = (b, col) => { g.fillStyle(col, 1); g.fillRoundedRect(b.x - b.w / 2, b.y - b.h / 2, b.w, b.h, 8); };
+    const gt = this.gt;
+    this.eqClose.setVisible(main); this.eqBack.setVisible(!main); this.eqPrev.setVisible(!main); this.eqNext.setVisible(!main);
+    if (main) {
+      this.eqTitle.setText('裝備　' + GEAR_SLOTS.filter(sl => this.gearEq[sl]).length + ' / 5 格');
+      GEAR_SLOTS.forEach((sl, i) => {
+        const row = P.rows[i], rr = this.eqRows[i], G = GEAR[this.gearEq[sl]];
+        g.fillStyle(0x24332a, 1); g.fillRoundedRect(P.px + 8, row.y - 2, P.pw - 16, P.rowH - 4, 6);
+        rr.name.setVisible(true).setText(GEAR_SLOT_NAMES[sl] + '　' + (G ? G.name : '（空）') + (G && G.set ? '　〔' + GEAR_SETS[G.set].name + '〕' : '') + (G && G.tags ? '　' + G.tags.join('・') : ''));
+        rr.desc.setVisible(true).setText(G ? modText(G.mods) : '點此挑選（已有 ' + this.gearList(sl).length + ' 件）');
+      });
+      const lines = gt.active.map(a => '◆ ' + a.name + '：' + modText(a.mods)).concat(gt.hints.map(h => '· ' + h.name + '：' + modText(h.mods))).slice(0, 6);
+      this.eqInfo.setVisible(true).setText(lines.length ? lines.join('\n') : '穿上同套裝或同標籤的裝備，湊夠件數就有額外效果');
+      btn(P.close, 0xd9b45a);
+    } else {
+      const list = this.eqEntries(slot), pages = Math.max(1, Math.ceil(list.length / 5));
+      this.eqPage = Math.min(this.eqPage, pages - 1);
+      this.eqTitle.setText('選擇' + GEAR_SLOT_NAMES[slot] + '　' + (this.eqPage + 1) + ' / ' + pages);
+      for (let i = 0; i < 5; i++) {
+        const row = P.rows[i], rr = this.eqRows[i], e = list[this.eqPage * 5 + i];
+        if (e === undefined) { rr.name.setVisible(false); rr.desc.setVisible(false); continue; }
+        g.fillStyle(0x24332a, 1); g.fillRoundedRect(P.px + 8, row.y - 2, P.pw - 16, P.rowH - 4, 6);
+        if (e === '') { rr.name.setVisible(true).setText('（卸下）'); rr.desc.setVisible(true).setText('脫掉目前的' + GEAR_SLOT_NAMES[slot]); continue; }
+        const G = GEAR[e], n = this.gearOwned[e] | 0;
+        rr.name.setVisible(true).setText((this.gearEq[slot] === e ? '✓ ' : '') + G.name + (n > 1 ? ' ×' + n : '') + (G.set ? '　〔' + GEAR_SETS[G.set].name + '〕' : '') + (G.tags ? '　' + G.tags.join('・') : ''));
+        rr.desc.setVisible(true).setText(modText(G.mods));
+      }
+      this.eqInfo.setVisible(true).setText(list.length ? '點一件就穿上，會回到主頁看搭配效果' : '還沒有這個部位的裝備，打倒敵人有機會掉落');
+      btn(P.back, 0xb8a878); btn(P.prev, this.eqPage > 0 ? 0xd9b45a : 0x555044); btn(P.next, this.eqPage < pages - 1 ? 0xd9b45a : 0x555044);
+    }
+  }
+
   // ---------- 鎮內 NPC 與對話 ----------
-  modal() { return !!(this.panelOpen || this.invOpen || this.dlg || this.shop || this.menu); }
+  modal() { return !!(this.panelOpen || this.invOpen || this.eqOpen || this.dlg || this.shop || this.menu); }
 
   buildNpcs() {
     for (const d of NPCS) {
@@ -2997,7 +3252,7 @@ class VillageScene extends Phaser.Scene {
 
   canTalk() {
     const ph = this.stage && this.stage.phase;
-    return !this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.down && !this.cine && !this.transitioning
+    return !this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.eqOpen && !this.down && !this.cine && !this.transitioning
       && (ph === 'walk' || ph === 'cleared') && !this.atk && !this.roll && !this.drink && !!this.nearNpc();
   }
 
@@ -3152,7 +3407,7 @@ class VillageScene extends Phaser.Scene {
       n.sprite.setFlipX(dir === 'side' && flip);
     }
     // 劇情角色走近自動開口（例如鎮內的關羽）
-    if (!this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.menu && !this.down && !this.cine && !this.transitioning && !this.atk && !this.roll && !this.drink && this.playerBody) {
+    if (!this.dlg && !this.shop && !this.panelOpen && !this.invOpen && !this.eqOpen && !this.menu && !this.down && !this.cine && !this.transitioning && !this.atk && !this.roll && !this.drink && this.playerBody) {
       for (const n of this.npcs) if (n.auto && (!n.when || n.when()) && !STORY[(STORY_SCENES[n.scene] || {}).flag] && Math.hypot(this.playerBody.x - n.x, this.playerBody.y - n.y) < 72) { this.openDialog(n); break; }
     }
     // 「對話」鈕
@@ -3336,13 +3591,13 @@ class VillageScene extends Phaser.Scene {
     const r = this.invBtnRect(), can = this.canOpenInv() && !this.panelOpen && !this.invOpen;
     g.fillStyle(0x16201a, can ? 0.6 : 0.25); g.fillRoundedRect(r.x, r.y, r.w, r.h, 6);
     g.lineStyle(2, 0xe6f0dc, can ? 0.6 : 0.25); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 6);
-    this.invBtnText.setAlpha((can ? 1 : 0.35) * k).setVisible(!this.invOpen && !this.panelOpen);
+    this.invBtnText.setAlpha((can ? 1 : 0.35) * k).setVisible(!this.invOpen && !this.panelOpen && !this.eqOpen);
     // 藥鍵
     const pp = this.potPos(), id = [this.quick, 'flask', 'jc', 'xq'].find(q => this.itemUseful(q)), shown = id || this.quick;
     const flash = false;   // 藥鍵不閃爍
     const potOn = !!STORY.flask;   // 拿到藥壺之後才顯示「藥」鍵
-    if (this.invOpen || !potOn) this.potText.setVisible(false); else this.potText.setVisible(true);
-    if (!this.invOpen && potOn) {
+    if (this.invOpen || this.eqOpen || !potOn) this.potText.setVisible(false); else this.potText.setVisible(true);
+    if (!this.invOpen && !this.eqOpen && potOn) {
     g.fillStyle(0x16201a, this.drink ? 0.75 : 0.45); g.fillCircle(pp.x, pp.y, 28);
     g.lineStyle(3, flash ? 0xc0503a : (this.drink ? 0x9ad98a : 0xe6f0dc), this.drink ? 0.95 : 0.55); g.strokeCircle(pp.x, pp.y, 28);
     if (this.drink) { g.lineStyle(4, 0x9ad98a, 0.9); g.beginPath(); g.arc(pp.x, pp.y, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, (t - this.drink.start) / DRINK_MS), false); g.strokePath(); }
@@ -3510,7 +3765,7 @@ class VillageScene extends Phaser.Scene {
         this.spawnDamage(px, py - HERO_H - 18, '破防', '#9fd8ff');
       }
     }
-    dmg = Math.max(1, Math.round(dmg * (1 - statDef(this.stats.def))));
+    dmg = Math.max(1, Math.round(dmg * (1 - Math.min(0.8, statDef(this.stats.def) + this.gt.mods.def))));
     this.php = Math.max(0, this.php - dmg);
     this.roll = null; this.drink = null;
     this.invulnUntil = time + INVULN_MS;
@@ -4457,6 +4712,7 @@ class VillageScene extends Phaser.Scene {
 
     this.drawPanelUI();
     this.drawInvUI();
+    this.drawEquipUI();
     this.updateWalkers();
     this.drawDialogUI();
     this.drawShopUI();
